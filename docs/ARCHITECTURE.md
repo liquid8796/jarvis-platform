@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.49
+# Architecture decisions · 1.0.51
 
 ## Transport choice
 
@@ -40,3 +40,9 @@ Windows Job Objects are used to group the launched shell and children with kill-
 SQLite WAL and EF Identity/OpenIddict tables, initial schema version 1. Existing DB is never dropped/recreated. `EnsureCreated` is intentionally initial-schema-only; later schema changes require reviewed migrations and backups. Optimistic revisions protect device/catalog edits. One process keeps live sockets in memory: do not run multiple replicas behind round-robin. Horizontal scale would require an external routing directory/message bus and a shared production database, neither provided in this version.
 
 Archive is a source release, not evidence that these workflows have all passed runtime tests. See BUILD-STATUS and ACCEPTANCE.
+
+## Adaptive orchestration boundary - 1.0.51
+
+Adaptive orchestration is an Agent Core policy layer, not a new authority. Plans are validated DAGs and repairs can replace only the currently failed logical action; completed actions are not replayed. The Task Gateway coordinator hook is optional and receives no direct tool execution capability: returned replacement steps go back through local schema validation and `AgentConnection` guarded invocation.
+
+Default composition supplies no model planner/coordinator. This keeps deterministic task execution and security behavior stable while providing a concrete extension point for a future model/plugin planner.

@@ -71,3 +71,9 @@ Upgrade the server and agent together. Task-v1 is negotiated separately from the
 ## Verification
 
 Release 1.0.48 passed 177 tests across Core, Windows and Server suites, including real process execution and OAuth MCP task flow. Run `python .\scripts\Verify-TaskGatewayRelease.py` after packaging to reproduce binary-version, CLI smoke, ZIP/gzip integrity, publish-directory SHA-256 parity and prohibited-file checks. Full evidence is in [Build status](BUILD-STATUS.md).
+
+## Optional adaptive repair - 1.0.51
+
+`AUTONOMOUS` now has an optional local coordinator extension point. If a configured coordinator returns a replacement after a known failed step/verification, the replacement must retain the logical step ID, cannot regress stage, is revalidated against the current installed-tool registry, and still requires local authorization. At most two adaptive repairs are attempted.
+
+This does not change goal creation: Jarvis still does not ship or silently configure an LLM planner. Without an injected coordinator, `AUTONOMOUS` behaves like the existing explicit client plan. NORMAL/READ_ONLY execution is unchanged. Cancellation, task deadline or uncertain interruption never enters adaptive repair.

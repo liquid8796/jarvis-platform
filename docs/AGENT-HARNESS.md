@@ -44,3 +44,8 @@ The Windows adapter adds a `ComputerStateTracker` in front of the reused baselin
 
 `computer.get_state` provides bounded foreground/focus/accessibility context, while `computer.screenshot` appends fresh state metadata to its normal result. `ToolInventory.Pause()` invalidates every outstanding state. This layer does not weaken baseline frontmost-app checks, app grants or local consent.
 
+## Adaptive execution in 1.0.51
+
+`AdaptivePlan` validates 1..32 actions, dependency existence/cycles, stage names and a 0..3 repair budget. `AdaptiveAgentExecutionLoop` executes dependency-ready actions, verifies each result and asks an injected replanner only for the failed action. A replacement must keep the logical action ID, have no unmet dependencies and consumes the bounded repair budget. Completed actions are never replayed by this loop.
+
+Task Gateway has a separate optional `IRemoteTaskAdaptiveCoordinator` with an even tighter two-repair cap. It is active only for `AUTONOMOUS`, never for cancellation/timeout, and replacement steps are passed through `RemoteTaskRules`, installed schema validation and the guarded local tool invoker. No coordinator is configured by default.

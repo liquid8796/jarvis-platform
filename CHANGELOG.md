@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.51 - 2026-09-16
+
+- Add validated adaptive DAG contracts plus an async plan/execute/verify/replan loop that never replays already verified actions.
+- Bound repairs to the failed logical action and a maximum repair budget; replacement actions keep the same logical ID and cannot introduce unmet dependencies.
+- Add optional Task Gateway adaptive coordination for `AUTONOMOUS` tasks only. Normal/read-only task execution remains deterministic, and cancellation/timeout is never automatically repaired.
+- Validate gateway repair replacements for logical ID/stage, installed tool/schema and existing local permission/approval boundaries before execution.
+- Preserve default behavior when no adaptive coordinator is configured; the gateway does not silently invent an LLM planner.
+
 ## 1.0.50 - 2026-09-16
 
 - Add opaque per-session computer observation state IDs and generations; stale, evicted, invalidated or cross-session state fails closed before desktop input reaches the baseline tool.

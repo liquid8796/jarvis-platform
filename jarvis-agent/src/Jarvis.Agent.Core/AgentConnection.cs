@@ -16,6 +16,7 @@ public sealed class AgentConnection : IAsyncDisposable
     private readonly IApprovalService _approval;
     private readonly ToolPermissionPolicy _permissions;
     private readonly AgentLifecycleHub _lifecycle;
+    private readonly IRemoteTaskAdaptiveCoordinator? _adaptiveCoordinator;
     private readonly LocalControlGate _gate;
     private readonly SemaphoreSlim _parallel = new(4, 4);
     private readonly SemaphoreSlim _interactive = new(1, 1);
@@ -37,13 +38,15 @@ public sealed class AgentConnection : IAsyncDisposable
         : this(new DynamicToolRegistry(tools), approval, gate, permissions, taskStorageRoot, socketConnector) { }
 
     public AgentConnection(DynamicToolRegistry registry, IApprovalService approval, LocalControlGate gate, ToolPermissionPolicy? permissions = null,
-        string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null, AgentLifecycleHub? lifecycle = null)
+        string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null, AgentLifecycleHub? lifecycle = null,
+        IRemoteTaskAdaptiveCoordinator? adaptiveCoordinator = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _approval = approval; _gate = gate;
         _taskStorageRoot = taskStorageRoot;
         _socketConnector = socketConnector ?? ConnectSocketAsync;
         _lifecycle = lifecycle ?? new AgentLifecycleHub();
+        _adaptiveCoordinator = adaptiveCoordinator;
         _gate.Changed += OnGateChanged;
         _permissions = permissions ?? new ToolPermissionPolicy();
         _permissions.PermissionsRevoked += CancelInFlight;
@@ -75,7 +78,7 @@ public sealed class AgentConnection : IAsyncDisposable
         var taskRoot = Path.Combine(_taskStorageRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "JarvisAgent", "TaskRuns"), RemoteTaskStore.Hash(endpoint.AbsoluteUri + "|" + options.DeviceId));
         _remoteTasks = new RemoteTaskHost(taskRoot, folders, _registry, () => _gate.IsArmed,
-            InvokeInstalledToolAsync, CancelOwnedJobAsync);
+            InvokeInstalledToolAsync, CancelOwnedJobAsync, _adaptiveCoordinator);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
         var attempt = 0;
         while (!stop.IsCancellationRequested)

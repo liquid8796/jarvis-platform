@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.51 Adaptive Harness - executed verification (2026-09-16)
+
+- Added validated adaptive dependency DAGs, async per-action execution/verification, bounded replacement of only the failed logical action, and optional `AUTONOMOUS` Task Gateway repair coordination.
+- RED/GREEN evidence: adaptive harness tests initially failed on missing plan/executor/verifier/replanner contracts; gateway adaptive-rule tests initially failed until replacement ID/stage and mode/cancellation/budget guards existed.
+- `dotnet test tests/Jarvis.Core.Tests/Jarvis.Core.Tests.csproj --nologo`: **97 passed, 0 failed**.
+- `dotnet test Jarvis.slnx --nologo`: **202 passed, 0 failed** (Core 97, Windows 28, Server 77).
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.51 and assembly/file 1.0.51.0. Default composition still supplies no model planner/coordinator; no production deployment was performed.
+
 ## 1.0.50 Stateful Computer Use - executed verification (2026-09-16)
 
 - Added session-scoped opaque computer state IDs/generations, stale/cross-session rejection, `computer.get_state`, bounded Windows UI Automation observation, and state-bound `computer.computer_batch`.

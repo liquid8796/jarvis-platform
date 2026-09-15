@@ -13,14 +13,15 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
     private readonly Func<bool> _armed;
     private readonly Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> _invoke;
     private readonly Func<string, AgentExecutionContext, Task> _cancelJob;
+    private readonly IRemoteTaskAdaptiveCoordinator? _adaptive;
     private readonly Dictionary<string, Active> _active = new(StringComparer.Ordinal);
     private readonly HashSet<string> _storageFaults = new(StringComparer.Ordinal);
     private bool _disposed;
 
     public RemoteTaskHost(string root, WorkspaceDirectories folders, DynamicToolRegistry registry,
         Func<bool> armed, Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> invoke,
-        Func<string, AgentExecutionContext, Task> cancelJob)
-    { _store = new(root); _folders = folders; _registry = registry; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; }
+        Func<string, AgentExecutionContext, Task> cancelJob, IRemoteTaskAdaptiveCoordinator? adaptive = null)
+    { _store = new(root); _folders = folders; _registry = registry; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; _adaptive = adaptive; }
 
     public Task<RemoteTaskReply> HandleAsync(string operation, RemoteTaskRequest request, CancellationToken sessionToken)
     {
@@ -155,59 +156,93 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
         var task = initial;
         try
         {
-            foreach (var step in task.Plan.Steps)
+            foreach (var originalStep in task.Plan.Steps)
             {
-                active.Stop.Token.ThrowIfCancellationRequested();
-                RequireArmed();
-                task = Save(task with { Snapshot = task.Snapshot with { Status = "RUNNING", CurrentStep = step.Id, UpdatedAt = DateTimeOffset.UtcNow } });
-                for (var attempt = 1; attempt <= step.MaxAttempts; attempt++)
+                var step = originalStep;
+                var repairs = 0;
+                while (true)
                 {
-                    using var stepStop = CancellationTokenSource.CreateLinkedTokenSource(active.Stop.Token);
-                    stepStop.CancelAfter(TimeSpan.FromSeconds(step.TimeoutSeconds));
-                    var context = new AgentExecutionContext(task.Snapshot.Project,
-                        task.Snapshot.TaskId + ":" + step.Id + ":" + attempt, "task:" + task.OwnerId + ":" + task.Snapshot.TaskId)
-                    { AdditionalDirectories = _folders.Additional };
-                    RemoteStepResult result;
-                    try
-                    {
-                        if (step.ToolId == "process.start")
-                            result = await RemoteProcessRunner.RunAsync(step, context, _invoke, _cancelJob, stepStop.Token);
-                        else
-                        {
-                            var reply = await _invoke(step.ToolId, step.Arguments, context, stepStop.Token);
-                            result = new(!reply.IsError, reply.Text, Error: reply.IsError ? reply.Text : null);
-                        }
-                        if (result.Output.Length > RemoteTaskRules.OutputLimit)
-                            result = result with { Output = result.Output[^RemoteTaskRules.OutputLimit..], Truncated = true };
-                        if (stepStop.IsCancellationRequested)
-                            result = result with { Success = false, Error = result.Error ?? "Step cancelled or deadline exceeded; partial output retained." };
-                        if (result.Success && !string.IsNullOrEmpty(step.ExpectedText) && !result.Output.Contains(step.ExpectedText, StringComparison.Ordinal))
-                            result = result with { Success = false, Error = "Expected text was not found in the bounded step output." };
-                    }
-                    catch (Exception ex)
-                    {
-                        result = new(false, "", Error: ex is OperationCanceledException
-                            ? "Step cancelled or deadline exceeded; mutating actions were not replayed."
-                            : ex is ArgumentException or UnauthorizedAccessException or InvalidOperationException ? ex.Message : "Step failed: " + ex.GetType().Name);
-                    }
-                    var output = result.Output ?? "";
-                    var artifact = new RemoteTaskArtifact(task.Artifacts.Count, step.Id, step.Stage, step.ToolId, attempt,
-                        result.Success, output.Length <= RemoteTaskRules.OutputLimit ? output : output[^RemoteTaskRules.OutputLimit..],
-                        result.Truncated || output.Length > RemoteTaskRules.OutputLimit, result.ExitCode, DateTimeOffset.UtcNow,
-                        result.Error is { Length: > 2000 } e ? e[..2000] : result.Error);
-                    task = Save(task with { Artifacts = task.Artifacts.Append(artifact).ToArray() });
                     active.Stop.Token.ThrowIfCancellationRequested();
-                    if (result.Success)
+                    RequireArmed();
+                    task = Save(task with { Snapshot = task.Snapshot with { Status = "RUNNING", CurrentStep = step.Id, UpdatedAt = DateTimeOffset.UtcNow } });
+                    var succeeded = false;
+                    var cancelledOrTimedOut = false;
+                    RemoteTaskArtifact? failureArtifact = null;
+
+                    for (var attempt = 1; attempt <= step.MaxAttempts; attempt++)
                     {
-                        task = Save(task with { Snapshot = task.Snapshot with { CompletedSteps = task.Snapshot.CompletedSteps + 1, UpdatedAt = DateTimeOffset.UtcNow } });
-                        break;
+                        using var stepStop = CancellationTokenSource.CreateLinkedTokenSource(active.Stop.Token);
+                        stepStop.CancelAfter(TimeSpan.FromSeconds(step.TimeoutSeconds));
+                        var context = new AgentExecutionContext(task.Snapshot.Project,
+                            task.Snapshot.TaskId + ":" + step.Id + ":r" + repairs + ":" + attempt,
+                            "task:" + task.OwnerId + ":" + task.Snapshot.TaskId)
+                        { AdditionalDirectories = _folders.Additional };
+                        RemoteStepResult result;
+                        try
+                        {
+                            if (step.ToolId == "process.start")
+                                result = await RemoteProcessRunner.RunAsync(step, context, _invoke, _cancelJob, stepStop.Token);
+                            else
+                            {
+                                var reply = await _invoke(step.ToolId, step.Arguments, context, stepStop.Token);
+                                result = new(!reply.IsError, reply.Text, Error: reply.IsError ? reply.Text : null);
+                            }
+                            if (result.Output.Length > RemoteTaskRules.OutputLimit)
+                                result = result with { Output = result.Output[^RemoteTaskRules.OutputLimit..], Truncated = true };
+                            if (stepStop.IsCancellationRequested)
+                                result = result with { Success = false, Error = result.Error ?? "Step cancelled or deadline exceeded; partial output retained." };
+                            if (result.Success && !string.IsNullOrEmpty(step.ExpectedText) && !result.Output.Contains(step.ExpectedText, StringComparison.Ordinal))
+                                result = result with { Success = false, Error = "Expected text was not found in the bounded step output." };
+                        }
+                        catch (Exception ex)
+                        {
+                            result = new(false, "", Error: ex is OperationCanceledException
+                                ? "Step cancelled or deadline exceeded; mutating actions were not replayed."
+                                : ex is ArgumentException or UnauthorizedAccessException or InvalidOperationException ? ex.Message : "Step failed: " + ex.GetType().Name);
+                        }
+
+                        cancelledOrTimedOut = stepStop.IsCancellationRequested;
+                        var output = result.Output ?? "";
+                        var artifactAttempt = repairs * 3 + attempt;
+                        var artifact = new RemoteTaskArtifact(task.Artifacts.Count, step.Id, step.Stage, step.ToolId, artifactAttempt,
+                            result.Success, output.Length <= RemoteTaskRules.OutputLimit ? output : output[^RemoteTaskRules.OutputLimit..],
+                            result.Truncated || output.Length > RemoteTaskRules.OutputLimit, result.ExitCode, DateTimeOffset.UtcNow,
+                            result.Error is { Length: > 2000 } e ? e[..2000] : result.Error);
+                        task = Save(task with { Artifacts = task.Artifacts.Append(artifact).ToArray() });
+                        active.Stop.Token.ThrowIfCancellationRequested();
+                        if (result.Success)
+                        {
+                            task = Save(task with { Snapshot = task.Snapshot with { CompletedSteps = task.Snapshot.CompletedSteps + 1, UpdatedAt = DateTimeOffset.UtcNow } });
+                            succeeded = true;
+                            break;
+                        }
+
+                        failureArtifact = artifact;
+                        if (cancelledOrTimedOut) break;
+                        if (attempt < step.MaxAttempts)
+                            await Task.Delay(200 * attempt, active.Stop.Token);
                     }
-                    if (stepStop.IsCancellationRequested || attempt == step.MaxAttempts)
+
+                    if (succeeded) break;
+
+                    if (failureArtifact is not null && RemoteTaskAdaptiveRules.CanRepair(
+                            task.Plan.ExecutionMode, repairs, cancelledOrTimedOut, _adaptive is not null))
                     {
-                        Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", Error = artifact.Error, UpdatedAt = DateTimeOffset.UtcNow } });
-                        return;
+                        var replacement = await _adaptive!.RepairAsync(task.Plan, step, failureArtifact, repairs + 1, active.Stop.Token);
+                        if (replacement is not null)
+                        {
+                            RemoteTaskAdaptiveRules.ValidateReplacement(step, replacement);
+                            var repairPlan = task.Plan with { Steps = [replacement] };
+                            RemoteTaskRules.Validate(repairPlan);
+                            ValidateTools(repairPlan);
+                            step = replacement;
+                            repairs++;
+                            continue;
+                        }
                     }
-                    await Task.Delay(200 * attempt, active.Stop.Token);
+
+                    Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", Error = failureArtifact?.Error, UpdatedAt = DateTimeOffset.UtcNow } });
+                    return;
                 }
             }
             lock (_sync)
