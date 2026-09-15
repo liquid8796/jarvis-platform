@@ -78,3 +78,15 @@
 
 ### Commit
 feat(jarvis): prepare v1.0.17 agent build baseline
+
+
+## 1.0.47
+
+- Add autonomous execution loop tests.
+- Validate retry policy behavior.
+- Update agent harness documentation.
+- Add runtime identifiers and assembly version alignment for agent packaging.
+- Fix agent publish target resolution for win-x64 packaging.
+- Allow publish restore to resolve runtime assets when package generation is executed.
+- Align package metadata with VERSION 1.0.47.
+

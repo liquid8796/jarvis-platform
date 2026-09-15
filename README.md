@@ -105,3 +105,13 @@ Version package **1.0.23**, assembly/file **1.0.23.0**. Commit đề xuất:
 ```text
 feat(agent): add multi-directory workspaces and integrate Jarvis branding
 ```
+
+## Agent Harness (1.0.47)
+
+Architecture:
+
+Goal -> Planner -> Executor -> Tool Router -> MCP Tools -> Artifact -> Verification -> Recovery -> Memory
+
+Core remains framework independent and integrations are provided by adapters.
+
+Packaging supports win-x64 runtime assets for Agent delivery.

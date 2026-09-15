@@ -12,6 +12,7 @@ try {
   if ($LASTEXITCODE -ne 0 -or $sdk -notmatch '^10\.') { throw '.NET 10 SDK is required.' }
   function Run-Dotnet([string[]]$Arguments) { & dotnet @Arguments; if($LASTEXITCODE -ne 0){throw "dotnet failed: $($Arguments -join ' ')"} }
   $restore=@(); if($NoRestore){$restore=@('--no-restore')}
+  $restorePublish=@()
   if(-not $SkipTests){
     Run-Dotnet (@('test','tests/Jarvis.Core.Tests','-c','Release','--logger','trx','--results-directory','artifacts/test-results')+$restore)
     if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
@@ -29,7 +30,7 @@ try {
     if([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT){throw 'Build the Windows desktop package on Windows with .NET desktop targeting packs.'}
     $agentOutput=Join-Path $root "artifacts/agent/$version"
     foreach($target in @(@('Jarvis.Agent.Desktop','desktop'),@('Jarvis.Agent.Cli','cli'))){
-      Run-Dotnet (@('publish',"jarvis-agent/src/$($target[0])",'-c','Release','-r','win-x64','--self-contained','true','-p:PublishSingleFile=false','-o',"$agentOutput/$($target[1])")+$restore)
+      Run-Dotnet (@('publish',"jarvis-agent/src/$($target[0])",'-c','Release','-r','win-x64','--self-contained','true','-p:PublishSingleFile=false','-o',"$agentOutput/$($target[1])")+$restorePublish)
     }
         # Ship both real entry points, not standalone baseline host artifacts or secrets.
     # Required framework assemblies are not private configuration files.
