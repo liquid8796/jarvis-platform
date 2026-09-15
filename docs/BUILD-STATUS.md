@@ -1,5 +1,14 @@
 # Build / test status
 
+## 1.0.54 Developer Tools / Harness Evaluation - executed verification (2026-09-16)
+
+- Added workspace-bounded `developer.symbol_search`, sensitive fixed-shape `developer.test`, an owned DAP adapter session contract, reusable `HarnessEvaluator`, and `scripts/Run-HarnessEvaluation.ps1`. The two published developer tools are injected through the dynamic registry and remain under local schema/Arm/Pause/permission/approval policy.
+- RED/GREEN evidence: developer-tool tests first failed because the DeveloperTools namespace/contracts did not exist; after implementation one parser boundary test exposed an unnecessary minimum output size and was fixed at the implementation boundary; publication coverage then failed until AgentConnection host bootstrap registered the developer tools. Evaluator tests verify metrics, duplicate-name rejection, cancellation and JSON output.
+- `scripts/Run-HarnessEvaluation.ps1`: **8/8 scenario groups passed, 0 failed**, covering **98 targeted tests** (dynamic catalog 5, permission/pause 30, adaptive no-replay 6, tool code mode/plugins 8, delegation/SQLite memory 7, developer tools/evaluator 8, stale computer state 11, task transport/no-replay 23). JSON written to ignored `artifacts/evaluation/harness-eval.json`.
+- Core suite: **120 passed, 0 failed**.
+- `dotnet test Jarvis.slnx --nologo`: **225 passed, 0 failed** (Core 120, Windows 28, Server 77). Existing vendor warnings remain; no new NuGet audit warning was emitted.
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.54 and assembly/file 1.0.54.0. No package publish, merge, push or production deployment was performed.
+
 ## 1.0.53 Delegation / Durable Memory - executed verification (2026-09-16)
 
 - Added persisted task lineage, bounded same-scope child creation, fork/join polling, MCP/REST `parentTaskId`, and replaced the fake dictionary `SqliteMemoryStore` with partitioned durable SQLite memory.

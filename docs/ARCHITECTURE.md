@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.53
+# Architecture decisions · 1.0.54
 
 ## Transport choice
 
@@ -58,3 +58,9 @@ Plugin manifests are discovery/integrity metadata. Hash pins protect the referen
 Delegation does not introduce a second execution authority. Forked work is materialized as ordinary persisted RemoteTask records with explicit lineage and therefore traverses the same tool registry, local policy gates and no-replay logic as parent work. Scope inheritance is enforced locally, not trusted from the server or caller.
 
 Durable autonomous memory is SQLite-backed and explicitly partitioned; it is not an implicit global model memory. Owner/project/namespace are part of the primary key, TTL is enforced during reads, and provenance remains attached to each current value.
+
+## Developer and evaluation boundary - 1.0.54
+
+Developer convenience is layered on top of existing governance rather than bypassing it. Published developer tools remain normal `IAgentTool` instances in `DynamicToolRegistry`; test execution is not treated as read-only. DAP support is deliberately a local owned-process contract without remote attach/injection semantics.
+
+Evaluation is credential-free and deterministic. `HarnessEvaluator` is a generic metrics runner; `Run-HarnessEvaluation.ps1` binds it operationally to the regression suites that exercise dynamic catalog refresh, schema/policy rejection, stale desktop state, adaptive no-replay, code-mode budgets, delegation/memory and task transport behavior.

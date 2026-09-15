@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.54 - 2026-09-16
+
+- Add `developer.symbol_search`, a bounded workspace-scoped source/text search that skips VCS/build/dependency directories and returns structured file/line matches.
+- Add `developer.test`, a sensitive/mutating fixed `dotnet test` wrapper with workspace path validation, cancellation/owned-process cleanup, bounded stdout/stderr and structured passed/failed/skipped/total parsing.
+- Add a DAP adapter launcher/session contract that validates adapter/workspace inputs and owns only the process it starts; stop/cancellation kills that owned adapter and no arbitrary attach/injection API is exposed.
+- Add `HarnessEvaluator` machine-readable metrics plus `scripts/Run-HarnessEvaluation.ps1`, which runs deterministic real regression groups for dynamic catalogs, policy/pause, adaptive no-replay, tool code mode/plugins, delegation/SQLite memory, developer tools, stale Computer Use state and task transport robustness.
+- Publish the two developer tools through the dynamic Agent host so they retain the same local schema, Arm/Pause, exact-permission and approval boundaries as other tools.
+
 ## 1.0.53 - 2026-09-16
 
 - Add durable task lineage (`parentTaskId`, `rootTaskId`, `depth`) to task snapshots and persist it across agent restart/reopen while preserving top-level create digest compatibility.

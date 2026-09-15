@@ -61,3 +61,9 @@ Task Gateway has a separate optional `IRemoteTaskAdaptiveCoordinator` with an ev
 Task lineage is persisted in the same local snapshots as ordinary task state. A child is created only from an existing same-owner parent on the same bound device; the Agent resolves the child project and rejects any difference from the parent, rejects broader execution modes, caps depth at 3 and direct children at 8. `RemoteTaskDelegation.JoinAsync` polls at most eight child IDs until terminal state and propagates caller cancellation.
 
 The former dictionary-backed `SqliteMemoryStore` now uses parameterized SQLite operations. `MemoryPartition` separates owner/project/namespace; `DurableMemoryEntry` carries provenance plus created/updated/expiry timestamps. WAL and bounded busy retry support concurrent writers, expired rows are removed/excluded on read, and result/query/value sizes are bounded.
+
+## Developer tools and evaluation in 1.0.54
+
+The host bootstrap now adds `developer.symbol_search` and `developer.test` to the same dynamic registry as `tool_program.run`. Symbol search applies a selected-workspace path boundary plus file/result/line-size caps. The test tool uses a fixed `dotnet test` process shape, owns cancellation/cleanup and parses bounded structured counts; because tests may build/write, it is marked mutating+sensitive.
+
+`DapAdapterLauncher` is a non-tool Core contract: an adapter path must be an existing absolute local file, working directory must remain inside selected workspace directories, arguments are bounded, shell execution is disabled and the returned session can kill only its owned process. `HarnessEvaluator` records scenario success/duration/tool/security metrics, while the PowerShell harness runs real test groups offline and emits JSON.

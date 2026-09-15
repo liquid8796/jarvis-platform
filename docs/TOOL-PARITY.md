@@ -16,7 +16,8 @@ Counts below are derived from source registration, **not a captured tool list fr
 | Shell | 2 | 2 | Normal and Bash variants; detached background mode disallowed |
 | Workflow | 2 | 2 | Todo and AskUserQuestion |
 | Managed process jobs | 3 | 3 | Added process.start/read/cancel |
-| **Expected total** | **53** | **50** | Subject to Windows build/runtime verification |
+| Agent Core host tools | 3 | 3 | tool_program.run + developer.symbol_search + developer.test; plugin projections are additional/dynamic |
+| **Expected total** | **56** | **53** | Subject to Windows build/runtime verification |
 
 Mouse move/click/double-click/right-click/drag/scroll and keyboard actions already exist in the baseline computer batch/browser computer implementations. They are reused, not replaced with a new incomplete mouse simulator. This is not a binary clone of a specific Codex proprietary tool protocol.
 
@@ -28,7 +29,7 @@ Tool public names are namespaced (`computer__…`, `browser__…`, `filesystem__
 
 `show_widget` displays isolated HTML in WPF or writes a local artifact in CLI. No external CDN, arbitrary network, host bridge, `sendPrompt`, inline ChatGPT Apps resource or widget streaming preview is advertised. The baseline read_me documentation may discuss features supported by its original host; this host's limitations take precedence and are appended to tool descriptions.
 
-The original app has unrelated orchestration/provider/task/team/scheduling functionality. Its source remains available in `vendor`, but those capabilities are **not automatically exposed as remote tools**. This delivery does not register a dedicated DAP debugger, general-purpose subagent LLM runner, arbitrary MCP server spawning or screenshot video streaming service. New tools should implement `IAgentTool` and have explicit permission/schema tests.
+The original app has unrelated orchestration/provider/task/team/scheduling functionality. Its source remains available in `vendor`, but those capabilities are **not automatically exposed as remote tools**. This delivery does not register an arbitrary remote DAP attach/injection debugger, general-purpose subagent LLM runner, arbitrary MCP server spawning or screenshot video streaming service. 1.0.54 adds an owned local DAP adapter session contract only. New tools should implement `IAgentTool` and have explicit permission/schema tests.
 
 114 optional font binaries from bundled skill assets are omitted; `omitted-font-assets.json` lists paths. No required computer/browser C# implementation is removed. Existing third-party copyright/license notices remain with their source; review redistribution rights of baseline/reference-derived assets before public publication.
 
@@ -41,3 +42,9 @@ Foreground/focus/accessibility observation is bounded to 200 UI Automation nodes
 ## Tool Code Mode and plugin projection - 1.0.52
 
 Jarvis now adds the host-owned `tool_program.run` composite tool in Agent Core. It is deliberately smaller than an unrestricted Node/Python REPL but supports conditional and bounded iterative composition while retaining per-tool policy checks. Plugin manifests may extend the dynamic catalog only when the local host already supplies the implementation; the SDK does not claim binary compatibility with Codex plugins and does not execute manifest-referenced code.
+
+## Developer power tools - 1.0.54
+
+`developer.symbol_search` scans at most 2,000 workspace files, skips common VCS/build/dependency directories, clips long lines and caps returned matches. `developer.test` only invokes the fixed `dotnet test` executable/verb against a selected-workspace project or directory and returns structured test counts with bounded output; callers cannot replace the executable or inject an arbitrary command string through this tool.
+
+`DapAdapterLauncher` is not remotely published as a tool. It validates an absolute local adapter file plus workspace working directory, starts an owned stdio process with shell execution disabled, and exposes only wait/stop semantics for that process. This is a foundation for future reviewed debugger adapters rather than a generic process/injection escape hatch.

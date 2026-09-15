@@ -51,3 +51,9 @@ Plugin discovery accepts only top-level local manifests, rejects path traversal 
 A `parentTaskId` is lineage metadata, not authority. The Agent loads the parent from the current owner's local store, requires identical resolved project/device scope, prevents execution-mode escalation, and enforces local child/depth bounds before persisting the child. The server cannot forge a different owner in the task request.
 
 Durable memory uses parameterized SQL and bounded keys/values/provenance/search limits. Partitions include owner, project and namespace in every lookup/upsert primary key; expired records are not returned. SQLite dependency versions are pinned above the vulnerable 2.1.11 native bundle observed by NuGet audit during implementation.
+
+## Developer-tool boundary - 1.0.54
+
+`developer.symbol_search` rejects paths outside selected workspaces and skips dependency/VCS/build directories. `developer.test` does not accept an arbitrary command: it always starts `dotnet test` with argument-list encoding, shell execution disabled, bounded timeout/output and owned-process cancellation; it remains sensitive/mutating for local approval purposes.
+
+DAP support exposes no generic attach, injection or process-control tool. A launcher may start one explicit existing adapter executable and the resulting session can stop only that owned process. The offline evaluation script executes repository tests locally and contains no credential/model dependency.

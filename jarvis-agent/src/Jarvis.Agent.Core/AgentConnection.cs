@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text.Json;
+using Jarvis.Agent.Core.DeveloperTools;
 using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.RemoteTasks;
 using Jarvis.Agent.Core.ToolPrograms;
@@ -60,9 +61,14 @@ public sealed class AgentConnection : IAsyncDisposable
     private void EnsureCompositeTools()
     {
         var snapshot = _registry.Snapshot;
-        if (snapshot.Tools.ContainsKey("tool_program.run")) return;
-        var program = new ToolProgramTool(new ToolProgramEngine(InvokeInstalledToolAsync));
-        _registry.Replace(snapshot.Tools.Values.Append(program));
+        var additions = new List<IAgentTool>();
+        if (!snapshot.Tools.ContainsKey("tool_program.run"))
+            additions.Add(new ToolProgramTool(new ToolProgramEngine(InvokeInstalledToolAsync)));
+        if (!snapshot.Tools.ContainsKey("developer.symbol_search"))
+            additions.Add(new DeveloperSymbolSearchTool());
+        if (!snapshot.Tools.ContainsKey("developer.test"))
+            additions.Add(new DeveloperTestTool());
+        if (additions.Count > 0) _registry.Replace(snapshot.Tools.Values.Concat(additions));
     }
     public void ApplyPluginCatalog(PluginCatalogSnapshot catalog)
     {
