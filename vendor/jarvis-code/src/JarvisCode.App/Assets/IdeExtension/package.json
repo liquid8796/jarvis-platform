@@ -1,0 +1,25 @@
+{
+  "name": "jarvis-code-ide",
+  "displayName": "Jarvis Code IDE Bridge",
+  "description": "Connect Jarvis Code to this editor's diagnostics, selection and review diffs.",
+  "version": "1.0.0",
+  "publisher": "jarvis-code",
+  "engines": { "vscode": "^1.96.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "capabilities": { "untrustedWorkspaces": { "supported": false }, "virtualWorkspaces": false },
+  "contributes": {
+    "commands": [
+      { "command": "jarvisCode.acceptDiff", "title": "Jarvis Code: Accept Change" },
+      { "command": "jarvisCode.rejectDiff", "title": "Jarvis Code: Reject Change" },
+      { "command": "jarvisCode.connectionStatus", "title": "Jarvis Code: Connection Status" }
+    ],
+    "menus": {
+      "editor/title": [
+        { "command": "jarvisCode.acceptDiff", "when": "resourceScheme == jarvis-diff && jarvisCode.diffCanApply", "group": "navigation" },
+        { "command": "jarvisCode.rejectDiff", "when": "resourceScheme == jarvis-diff", "group": "navigation" }
+      ]
+    }
+  }
+}

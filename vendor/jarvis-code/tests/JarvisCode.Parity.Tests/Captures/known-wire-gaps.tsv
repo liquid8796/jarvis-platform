@@ -1,0 +1,17 @@
+# Wire differences measured against the recorded reference and not yet closed.
+# Columns: fixture, dimension (Body | Betas), why it is still open, what this app builds today.
+#
+# These are not approvals. Every row is a place the reference asks the model to
+# think differently than this app does, kept here so the difference is visible
+# in a test run instead of being discovered on a live request. The test that
+# reads them fails when a row stops describing what we build — including when it
+# is fixed — so closing one is a deliberate edit of this file.
+#
+# 2026-09-02: empty. The four gaps the 2.1.251 round left open (3-5/3-7-sonnet
+# given thinking they cannot use, opus-4-5 missing its effort dial, haiku-4-5's
+# beta order) all had one root — a one-axis model classifier — and closed when
+# AnthropicEffort.Classify grew the reference's four axes, measured over sixteen
+# 2.1.257 captures. The trailing-beta slot after effort-2025-11-24, recorded here
+# as a rollout flag, turned out stable across two builds and every model class
+# (afk-mode on every adaptive model, fallback-credit on opus-5 and fable/mythos)
+# and is pinned too. A future row goes below this comment as before.

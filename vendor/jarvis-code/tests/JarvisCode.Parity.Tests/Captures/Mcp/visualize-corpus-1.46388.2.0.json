@@ -1,0 +1,377 @@
+{
+ "build": "1.46388.2.0",
+ "chunk": "index.chunk-868uQCfT.js",
+ "serverName": "visualize",
+ "tools": [
+  {
+   "name": "show_widget",
+   "description": "Show visual content — SVG graphics, diagrams, charts, or interactive HTML widgets — that renders inline alongside your text response.\nUse for flowcharts, architecture diagrams, dashboards, forms, calculators, data tables, games, illustrations, or any visual content.\nThe code is auto-detected: starts with <svg = SVG mode, otherwise HTML mode.\nA global sendPrompt(text) function is available — it sends a message to chat as if the user typed it.\nIMPORTANT: Call read_me before your first show_widget call. Do NOT narrate or mention the read_me call to the user — call it silently, then respond as if you went straight to building the visualization.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "loading_messages": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 4,
+      "description": "1–4 loading messages shown to the user while the visual renders, each roughly 5 words long. Write them in the same language the user is using. Use 1 for simple visuals, more for complex ones. If the topic is serious — illness, disease, pandemics, death, grief, war, conflict, poverty, disaster, trauma, abuse, addiction, medical decisions, politically charged subjects, or anything where the reader might be personally affected — keep these BORING: describe what the code is doing in the dullest generic way, no jargon-as-drama, no evocative terms. Pandemic growth model — NOT ['Simulating patient zero', 'Modeling the curve'] (documentary-narrator voice), YES ['Setting up the model', 'Running the calculation']. Cancer timeline — NOT ['Charting the battle ahead'], YES ['Laying out the stages']. If you have to ask whether it's serious, it is. Otherwise, have fun — reach for alliteration, puns, personification, wordplay, whatever lands in that language. Playful examples — revenue chart: ['Bribing bars to stand taller', 'Asking Q4 where it went']; kanban: ['Herding cards into columns', 'Dragging, dropping, not stopping']."
+     },
+     "title": {
+      "type": "string",
+      "description": "Short snake_case identifier for this visual. Must be specific and disambiguating — if the conversation has multiple visuals, this title alone should tell you which one is being referenced (e.g. 'q4_revenue_by_product_line' not 'chart', 'oauth_login_flow' not 'diagram'). Also used as the download filename, so no spaces or special characters."
+     },
+     "widget_code": {
+      "type": "string",
+      "description": "SVG or HTML code to render. For SVG: raw SVG code starting with <svg> tag, must use CSS variables for colors. Example: <svg viewBox=\"0 0 700 400\" xmlns=\"http://www.w3.org/2000/svg\">...</svg>. For HTML: raw HTML content to render, do NOT include DOCTYPE, <html>, <head>, or <body> tags. Use CSS variables for theming. Keep background transparent and avoid top-level padding. Scripts are supported but execute after streaming completes."
+     }
+    },
+    "required": [
+     "loading_messages",
+     "title",
+     "widget_code"
+    ]
+   },
+   "_meta": {
+    "ui": {
+     "resourceUri": "ui://imagine/show-widget.html"
+    }
+   },
+   "alwaysLoad": true
+  },
+  {
+   "name": "read_me",
+   "description": "Returns required context for show_widget (CSS variables, colors, typography, layout rules, examples). Call before your first show_widget call. Call again later if you need a different module. Do NOT mention or narrate this call to the user — it is an internal setup step. Call it silently and proceed directly to the visualization in your response.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "modules": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "enum": [
+        "diagram",
+        "mockup",
+        "interactive",
+        "data_viz",
+        "art",
+        "chart",
+        "elicitation"
+       ]
+      },
+      "description": "Which module(s) to load. Pick all that fit."
+     },
+     "platform": {
+      "type": "string",
+      "enum": [
+       "mobile",
+       "desktop",
+       "unknown"
+      ],
+      "description": "The client platform the widget will render on. Pass 'mobile' when your system prompt indicates a mobile client (narrow ~380px viewport) so SVG viewBox and layout guidance are sized accordingly; otherwise pass 'desktop'. Defaults to 'unknown' (desktop sizing)."
+     }
+    }
+   },
+   "_meta": {
+    "claude.ai/hidden_in_chat": true
+   },
+   "alwaysLoad": true
+  }
+ ],
+ "modules": [
+  "diagram",
+  "mockup",
+  "interactive",
+  "data_viz",
+  "art",
+  "chart",
+  "elicitation"
+ ],
+ "platforms": [
+  "mobile",
+  "desktop",
+  "unknown"
+ ],
+ "widths": {
+  "mobile": 380,
+  "desktop": 680,
+  "unknown": 680
+ },
+ "separator": "\n\n",
+ "showWidgetResult": "Content rendered and shown to the user. Please do not duplicate the shown content in text because it's already visually represented.",
+ "readMeEmpty": {
+  "chars": 10913,
+  "sha256": "ce00b499ff96fd32322a358c271e064029865ab4f3f9025827e6b03efd395fc9"
+ },
+ "composition": {
+  "380": {
+   "diagram": [
+    "palette",
+    "w380/svg",
+    "w380/layout"
+   ],
+   "mockup": [
+    "w380/html",
+    "palette",
+    "cds-tokens"
+   ],
+   "interactive": [
+    "w380/html",
+    "palette",
+    "cds-tokens"
+   ],
+   "data_viz": [
+    "w380/html",
+    "palette",
+    "charts",
+    "data-viz"
+   ],
+   "art": [
+    "w380/svg",
+    "art"
+   ],
+   "chart": [
+    "w380/html",
+    "palette",
+    "charts",
+    "data-viz"
+   ],
+   "elicitation": [
+    "elicitation"
+   ]
+  },
+  "680": {
+   "diagram": [
+    "palette",
+    "w680/svg",
+    "w680/layout"
+   ],
+   "mockup": [
+    "w680/html",
+    "palette",
+    "cds-tokens"
+   ],
+   "interactive": [
+    "w680/html",
+    "palette",
+    "cds-tokens"
+   ],
+   "data_viz": [
+    "w680/html",
+    "palette",
+    "charts",
+    "data-viz"
+   ],
+   "art": [
+    "w680/svg",
+    "art"
+   ],
+   "chart": [
+    "w680/html",
+    "palette",
+    "charts",
+    "data-viz"
+   ],
+   "elicitation": [
+    "elicitation"
+   ]
+  }
+ },
+ "assets": {
+  "base.md": {
+   "chars": 10755,
+   "sha256": "7879956dae5c8f164aae0d576cdf304333eba718150818ddd6e08f90dd5b38cf"
+  },
+  "footer.md": {
+   "chars": 156,
+   "sha256": "54bc9e2bd60fd2a94024f4b0b00c1b8a967b948b22dd6ff5bf40e7888162e419"
+  },
+  "cds-tokens.md": {
+   "chars": 21932,
+   "sha256": "d98fdf08433e287bcdfe289f7d631c1de1827d33baffe49e5143744091c17556"
+  },
+  "elicitation.md": {
+   "chars": 13983,
+   "sha256": "5258686f595c47c3f50038bcaaaadb27351a7b25f25da2c809fd7dc8921b54c8"
+  },
+  "palette.md": {
+   "chars": 3662,
+   "sha256": "3918742dd3f3d8152255227f5b9164143497aef406520267218f34634c38ba69"
+  },
+  "charts.md": {
+   "chars": 6115,
+   "sha256": "eed97b3481a66414a56170f17be4b44ec94edb9ab83bc9d9d6e60e628e5dbdbe"
+  },
+  "data-viz.md": {
+   "chars": 5028,
+   "sha256": "930d59a90565eb0d186bd3d19d1a6aa33034ce062831e11bbdf1c4ed6edb4bb2"
+  },
+  "art.md": {
+   "chars": 774,
+   "sha256": "10c9123f9b9107ad938d6cf98a4e67217920bc364395753e05a4ebf7efca3a77"
+  },
+  "widget-runtime.html": {
+   "chars": 137607,
+   "sha256": "95220606f6a88795820186487bf662d3b704377f0be6f01ddb54af441d95c0d4"
+  },
+  "w380/svg.md": {
+   "chars": 10757,
+   "sha256": "e1ea9df0e3031cce98e480626150f2d15edf14284613b85c9765e52eb711dcd1"
+  },
+  "w380/layout.md": {
+   "chars": 28821,
+   "sha256": "ffa44ab3b1e0d3090ff09abc9494d90884bfc2e7673d236d3f83da5b692b9193"
+  },
+  "w380/html.md": {
+   "chars": 7720,
+   "sha256": "aa5d0741161ead71499e635075a6356c4fe63b51abff2d9a269fc35db9e96c23"
+  },
+  "w680/svg.md": {
+   "chars": 10087,
+   "sha256": "2584d637fc64df437b43352d918751c30b6a010d6ba289fb120af3088eba8090"
+  },
+  "w680/layout.md": {
+   "chars": 38524,
+   "sha256": "c81564f8c9f10e50bb8c6dd4dbc1d1fa88e054dcf7988ce83260c7409f4798e1"
+  },
+  "w680/html.md": {
+   "chars": 7367,
+   "sha256": "164459553274ca5cce58ec050f73f8e48f26049ccfb0026ac14e2b8d53f8a3ee"
+  }
+ },
+ "samples": {
+  "mobile": {
+   "chars": 109723,
+   "sha256": "50ee43832752b9bcf8d8bda404e98b77f7fb848ae9a1d55d94e7b51481093a9a"
+  },
+  "mobile/diagram": {
+   "chars": 54159,
+   "sha256": "197b3d3ad4c6d5188adc610afd5c1b26a9dc466ab74cda5ec9f697f3b9b0e240"
+  },
+  "mobile/mockup": {
+   "chars": 44233,
+   "sha256": "f318da966f1450efdabefa7061b10470c54c8be585d2e1c3b2ee102fe0ab7e6d"
+  },
+  "mobile/interactive": {
+   "chars": 44233,
+   "sha256": "f318da966f1450efdabefa7061b10470c54c8be585d2e1c3b2ee102fe0ab7e6d"
+  },
+  "mobile/data_viz": {
+   "chars": 33446,
+   "sha256": "5cbb224755840ccf95d53e97b463975808cd535e3c85c0e65475dd0cbb719fbd"
+  },
+  "mobile/art": {
+   "chars": 22448,
+   "sha256": "2c7d07c87138f60ae921458c723a3b2f05860a90fccb796faed75ed1def8f7f8"
+  },
+  "mobile/chart": {
+   "chars": 33446,
+   "sha256": "5cbb224755840ccf95d53e97b463975808cd535e3c85c0e65475dd0cbb719fbd"
+  },
+  "mobile/elicitation": {
+   "chars": 24898,
+   "sha256": "6f0cf69f2b93f0ba48c276eb933e106468606c053142a9bf007a600c143fbcb6"
+  },
+  "desktop": {
+   "chars": 118403,
+   "sha256": "c3c37791d9acce172507840d3aa2931892a7fccba4955a92cb1ae6fac6e78e59"
+  },
+  "desktop/diagram": {
+   "chars": 63192,
+   "sha256": "f039a7cb71575000ed2eccf84491f3cea869a8c6c3ccfee247287c6a1b6d5b46"
+  },
+  "desktop/mockup": {
+   "chars": 43880,
+   "sha256": "5563ec4101aef627736209730116f4991f135876cb5af2c52c0066e2ef588b6c"
+  },
+  "desktop/interactive": {
+   "chars": 43880,
+   "sha256": "5563ec4101aef627736209730116f4991f135876cb5af2c52c0066e2ef588b6c"
+  },
+  "desktop/data_viz": {
+   "chars": 33093,
+   "sha256": "b815699db0bc2a4a25581bd57ed0eb964150fcad8cd689efc4a0ddf1d255b357"
+  },
+  "desktop/art": {
+   "chars": 21778,
+   "sha256": "77da8893b378ce1ca9018c94e56f1b29fc7b3a3265841678df07a1e8f0d9dc8e"
+  },
+  "desktop/chart": {
+   "chars": 33093,
+   "sha256": "b815699db0bc2a4a25581bd57ed0eb964150fcad8cd689efc4a0ddf1d255b357"
+  },
+  "desktop/elicitation": {
+   "chars": 24898,
+   "sha256": "6f0cf69f2b93f0ba48c276eb933e106468606c053142a9bf007a600c143fbcb6"
+  },
+  "unknown": {
+   "chars": 118403,
+   "sha256": "c3c37791d9acce172507840d3aa2931892a7fccba4955a92cb1ae6fac6e78e59"
+  },
+  "unknown/diagram": {
+   "chars": 63192,
+   "sha256": "f039a7cb71575000ed2eccf84491f3cea869a8c6c3ccfee247287c6a1b6d5b46"
+  },
+  "unknown/mockup": {
+   "chars": 43880,
+   "sha256": "5563ec4101aef627736209730116f4991f135876cb5af2c52c0066e2ef588b6c"
+  },
+  "unknown/interactive": {
+   "chars": 43880,
+   "sha256": "5563ec4101aef627736209730116f4991f135876cb5af2c52c0066e2ef588b6c"
+  },
+  "unknown/data_viz": {
+   "chars": 33093,
+   "sha256": "b815699db0bc2a4a25581bd57ed0eb964150fcad8cd689efc4a0ddf1d255b357"
+  },
+  "unknown/art": {
+   "chars": 21778,
+   "sha256": "77da8893b378ce1ca9018c94e56f1b29fc7b3a3265841678df07a1e8f0d9dc8e"
+  },
+  "unknown/chart": {
+   "chars": 33093,
+   "sha256": "b815699db0bc2a4a25581bd57ed0eb964150fcad8cd689efc4a0ddf1d255b357"
+  },
+  "unknown/elicitation": {
+   "chars": 24898,
+   "sha256": "6f0cf69f2b93f0ba48c276eb933e106468606c053142a9bf007a600c143fbcb6"
+  }
+ },
+ "resources": [
+  {
+   "uri": "ui://imagine/show-widget.html",
+   "name": "visualize widget",
+   "description": "Renders SVG or HTML content progressively as it streams for the show_widget tool",
+   "mimeType": "text/html;profile=mcp-app"
+  }
+ ],
+ "runtime": {
+  "uri": "ui://imagine/show-widget.html",
+  "mimeType": "text/html;profile=mcp-app",
+  "meta": {
+   "ui": {
+    "permissions": {
+     "clipboardWrite": {}
+    },
+    "csp": {
+     "connectDomains": [
+      "https://esm.sh",
+      "https://cdnjs.cloudflare.com",
+      "https://cdn.jsdelivr.net",
+      "https://unpkg.com"
+     ],
+     "resourceDomains": [
+      "https://esm.sh",
+      "https://cdnjs.cloudflare.com",
+      "https://cdn.jsdelivr.net",
+      "https://unpkg.com",
+      "https://fonts.googleapis.com",
+      "https://fonts.gstatic.com"
+     ]
+    }
+   }
+  },
+  "sha256": "95220606f6a88795820186487bf662d3b704377f0be6f01ddb54af441d95c0d4"
+ }
+}

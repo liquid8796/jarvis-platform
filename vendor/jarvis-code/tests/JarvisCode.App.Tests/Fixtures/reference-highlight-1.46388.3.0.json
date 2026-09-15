@@ -1,0 +1,3326 @@
+[
+  {
+    "lang": "javascript",
+    "theme": "github-dark",
+    "text": "const result = /abc+/g.test(\"text\"); // comment",
+    "tokens": [
+      {
+        "content": "const",
+        "offset": 0,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 5,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "result",
+        "offset": 6,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 12,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 13,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 14,
+        "color": "#DBEDFF",
+        "fontStyle": 0
+      },
+      {
+        "content": "/",
+        "offset": 15,
+        "color": "#9ECBFF",
+        "fontStyle": 0
+      },
+      {
+        "content": "abc",
+        "offset": 16,
+        "color": "#DBEDFF",
+        "fontStyle": 0
+      },
+      {
+        "content": "+",
+        "offset": 19,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": "/",
+        "offset": 20,
+        "color": "#9ECBFF",
+        "fontStyle": 0
+      },
+      {
+        "content": "g",
+        "offset": 21,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": ".",
+        "offset": 22,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "test",
+        "offset": 23,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 27,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"text\"",
+        "offset": 28,
+        "color": "#9ECBFF",
+        "fontStyle": 0
+      },
+      {
+        "content": "); ",
+        "offset": 34,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "// comment",
+        "offset": 37,
+        "color": "#6A737D",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "typescript",
+    "theme": "github-dark",
+    "text": "interface User { name: string; age?: number }",
+    "tokens": [
+      {
+        "content": "interface",
+        "offset": 0,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 9,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "User",
+        "offset": 10,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": " { ",
+        "offset": 14,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "name",
+        "offset": 17,
+        "color": "#FFAB70",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 21,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 22,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "string",
+        "offset": 23,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": "; ",
+        "offset": 29,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "age",
+        "offset": 31,
+        "color": "#FFAB70",
+        "fontStyle": 0
+      },
+      {
+        "content": "?:",
+        "offset": 34,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 36,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "number",
+        "offset": 37,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": " }",
+        "offset": 43,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "tsx",
+    "theme": "github-dark",
+    "text": "const element = <button disabled={false}>Run</button>;",
+    "tokens": [
+      {
+        "content": "const",
+        "offset": 0,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 5,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "element",
+        "offset": 6,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 13,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 14,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " <",
+        "offset": 15,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 17,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 23,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "disabled",
+        "offset": 24,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 32,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 33,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "false",
+        "offset": 34,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": "}>Run</",
+        "offset": 39,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 46,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": ">;",
+        "offset": 52,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "python",
+    "theme": "github-dark",
+    "text": "def greet(name: str):\n    return f\"Hello {name}\"",
+    "tokens": [
+      {
+        "content": "def",
+        "offset": 0,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 3,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "greet",
+        "offset": 4,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "(name: ",
+        "offset": 9,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "str",
+        "offset": 16,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": "):",
+        "offset": 19,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "    ",
+        "offset": 0,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "return",
+        "offset": 4,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 10,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "f",
+        "offset": 11,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"Hello ",
+        "offset": 12,
+        "color": "#9ECBFF",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 19,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": "name",
+        "offset": 20,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 24,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"",
+        "offset": 25,
+        "color": "#9ECBFF",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "sql",
+    "theme": "github-dark",
+    "text": "SELECT count(*) AS total FROM users WHERE active = true;",
+    "tokens": [
+      {
+        "content": "SELECT",
+        "offset": 0,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 6,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "count",
+        "offset": 7,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 12,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "*",
+        "offset": 13,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": ") ",
+        "offset": 14,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "AS",
+        "offset": 16,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " total ",
+        "offset": 18,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "FROM",
+        "offset": 25,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " users ",
+        "offset": 29,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "WHERE",
+        "offset": 36,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " active ",
+        "offset": 41,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 49,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " true;",
+        "offset": 50,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "rust",
+    "theme": "github-dark",
+    "text": "fn main() { let value: Option<i32> = Some(42); println!(\"{:?}\", value); }",
+    "tokens": [
+      {
+        "content": "fn",
+        "offset": 0,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 2,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "main",
+        "offset": 3,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "() { ",
+        "offset": 7,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "let",
+        "offset": 12,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " value",
+        "offset": 15,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 21,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 22,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "Option",
+        "offset": 23,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "<",
+        "offset": 29,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "i32",
+        "offset": 30,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "> ",
+        "offset": 33,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 35,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 36,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "Some",
+        "offset": 37,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 41,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "42",
+        "offset": 42,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": "); ",
+        "offset": 44,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "println!",
+        "offset": 47,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 55,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"{:?}\"",
+        "offset": 56,
+        "color": "#9ECBFF",
+        "fontStyle": 0
+      },
+      {
+        "content": ", value); }",
+        "offset": 62,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "csharp",
+    "theme": "github-dark",
+    "text": "public record User(string Name) { public int Age { get; init; } }",
+    "tokens": [
+      {
+        "content": "public",
+        "offset": 0,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 6,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "record",
+        "offset": 7,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 13,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "User",
+        "offset": 14,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 18,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "string",
+        "offset": 19,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 25,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "Name",
+        "offset": 26,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": ") { ",
+        "offset": 30,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "public",
+        "offset": 34,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 40,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "int",
+        "offset": 41,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 44,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "Age",
+        "offset": 45,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": " { ",
+        "offset": 48,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "get",
+        "offset": 51,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": "; ",
+        "offset": 54,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "init",
+        "offset": 56,
+        "color": "#F97583",
+        "fontStyle": 0
+      },
+      {
+        "content": "; } }",
+        "offset": 60,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "yaml",
+    "theme": "github-dark",
+    "text": "service:\n  port: 8080\n  enabled: true",
+    "tokens": [
+      {
+        "content": "service",
+        "offset": 0,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 7,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "  ",
+        "offset": 0,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "port",
+        "offset": 2,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": ": ",
+        "offset": 6,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "8080",
+        "offset": 8,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "  ",
+        "offset": 0,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "enabled",
+        "offset": 2,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": ": ",
+        "offset": 9,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "true",
+        "offset": 11,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "html",
+    "theme": "github-dark",
+    "text": "<style>.x { color: red }</style><button title=\"Go\">Go</button>",
+    "tokens": [
+      {
+        "content": "<",
+        "offset": 0,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "style",
+        "offset": 1,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": ">",
+        "offset": 6,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": ".x",
+        "offset": 7,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": " { ",
+        "offset": 9,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "color",
+        "offset": 12,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": ": ",
+        "offset": 17,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "red",
+        "offset": 19,
+        "color": "#79B8FF",
+        "fontStyle": 0
+      },
+      {
+        "content": " }</",
+        "offset": 22,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "style",
+        "offset": 26,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": "><",
+        "offset": 31,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 33,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 39,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "title",
+        "offset": 40,
+        "color": "#B392F0",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 45,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"Go\"",
+        "offset": 46,
+        "color": "#9ECBFF",
+        "fontStyle": 0
+      },
+      {
+        "content": ">Go</",
+        "offset": 50,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 55,
+        "color": "#85E89D",
+        "fontStyle": 0
+      },
+      {
+        "content": ">",
+        "offset": 61,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "markdown",
+    "theme": "github-dark",
+    "text": "# Heading\n\n**strong** and [link](https://example.com)",
+    "tokens": [
+      {
+        "content": "# Heading",
+        "offset": 0,
+        "color": "#79B8FF",
+        "fontStyle": 2
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "**strong**",
+        "offset": 0,
+        "color": "#E1E4E8",
+        "fontStyle": 2
+      },
+      {
+        "content": " and [",
+        "offset": 10,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "link",
+        "offset": 16,
+        "color": "#DBEDFF",
+        "fontStyle": 4
+      },
+      {
+        "content": "](",
+        "offset": 20,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      },
+      {
+        "content": "https://example.com",
+        "offset": 22,
+        "color": "#E1E4E8",
+        "fontStyle": 4
+      },
+      {
+        "content": ")",
+        "offset": 41,
+        "color": "#E1E4E8",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "javascript",
+    "theme": "claude-dark",
+    "text": "const result = /abc+/g.test(\"text\"); // comment",
+    "tokens": [
+      {
+        "content": "const",
+        "offset": 0,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " result =",
+        "offset": 5,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 14,
+        "color": "hsl(95, 70%, 63%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "/",
+        "offset": 15,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "abc",
+        "offset": 16,
+        "color": "hsl(95, 70%, 63%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "+",
+        "offset": 19,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "/",
+        "offset": 20,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "g",
+        "offset": 21,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ".",
+        "offset": 22,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "test",
+        "offset": 23,
+        "color": "hsl(210, 100%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 27,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"text\"",
+        "offset": 28,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ");",
+        "offset": 34,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 36,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "// comment",
+        "offset": 37,
+        "color": "hsl(220, 10%, 55%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "typescript",
+    "theme": "claude-dark",
+    "text": "interface User { name: string; age?: number }",
+    "tokens": [
+      {
+        "content": "interface",
+        "offset": 0,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 9,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "User",
+        "offset": 10,
+        "color": "hsl(30, 95%, 68%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 14,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 15,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " name: ",
+        "offset": 16,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "string",
+        "offset": 23,
+        "color": "hsl(30, 95%, 68%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ";",
+        "offset": 29,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " age?: ",
+        "offset": 30,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "number",
+        "offset": 37,
+        "color": "hsl(30, 95%, 68%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 43,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 44,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "tsx",
+    "theme": "claude-dark",
+    "text": "const element = <button disabled={false}>Run</button>;",
+    "tokens": [
+      {
+        "content": "const",
+        "offset": 0,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " element = ",
+        "offset": 5,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "<",
+        "offset": 16,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 17,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 23,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "disabled",
+        "offset": 24,
+        "color": "hsl(355, 80%, 70%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 32,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 33,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "false",
+        "offset": 34,
+        "color": "hsl(180, 80%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}>",
+        "offset": 39,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "Run",
+        "offset": 41,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "</",
+        "offset": 44,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 46,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">;",
+        "offset": 52,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "python",
+    "theme": "claude-dark",
+    "text": "def greet(name: str):\n    return f\"Hello {name}\"",
+    "tokens": [
+      {
+        "content": "def",
+        "offset": 0,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 3,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "greet",
+        "offset": 4,
+        "color": "hsl(210, 100%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 9,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "name",
+        "offset": 10,
+        "color": "hsl(30, 90%, 67%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 14,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 15,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "str",
+        "offset": 16,
+        "color": "hsl(30, 95%, 68%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "):",
+        "offset": 19,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "    ",
+        "offset": 0,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "return",
+        "offset": 4,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 10,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "f",
+        "offset": 11,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"Hello ",
+        "offset": 12,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 19,
+        "color": "hsl(180, 80%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "name",
+        "offset": 20,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 24,
+        "color": "hsl(180, 80%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"",
+        "offset": 25,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "sql",
+    "theme": "claude-dark",
+    "text": "SELECT count(*) AS total FROM users WHERE active = true;",
+    "tokens": [
+      {
+        "content": "SELECT",
+        "offset": 0,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 6,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "count",
+        "offset": 7,
+        "color": "hsl(210, 100%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(*) ",
+        "offset": 12,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "AS",
+        "offset": 16,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " total ",
+        "offset": 18,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "FROM",
+        "offset": 25,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " users ",
+        "offset": 29,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "WHERE",
+        "offset": 36,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " active = true;",
+        "offset": 41,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "rust",
+    "theme": "claude-dark",
+    "text": "fn main() { let value: Option<i32> = Some(42); println!(\"{:?}\", value); }",
+    "tokens": [
+      {
+        "content": "fn",
+        "offset": 0,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 2,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "main",
+        "offset": 3,
+        "color": "hsl(210, 100%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "()",
+        "offset": 7,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 9,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 10,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 11,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "let",
+        "offset": 12,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " value: ",
+        "offset": 15,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "Option",
+        "offset": 23,
+        "color": "hsl(30, 95%, 68%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "<",
+        "offset": 29,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "i32",
+        "offset": 30,
+        "color": "hsl(30, 95%, 68%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">",
+        "offset": 33,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " = ",
+        "offset": 34,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "Some",
+        "offset": 37,
+        "color": "hsl(30, 95%, 68%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 41,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "42",
+        "offset": 42,
+        "color": "hsl(180, 80%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ");",
+        "offset": 44,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 46,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "println!",
+        "offset": 47,
+        "color": "hsl(210, 100%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 55,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"",
+        "offset": 56,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 57,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":?",
+        "offset": 58,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 60,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"",
+        "offset": 61,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ",",
+        "offset": 62,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " value",
+        "offset": 63,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ");",
+        "offset": 69,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 71,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 72,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "csharp",
+    "theme": "claude-dark",
+    "text": "public record User(string Name) { public int Age { get; init; } }",
+    "tokens": [
+      {
+        "content": "public",
+        "offset": 0,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 6,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "record",
+        "offset": 7,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 13,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "User",
+        "offset": 14,
+        "color": "hsl(30, 95%, 68%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 18,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "string",
+        "offset": 19,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " Name",
+        "offset": 25,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ")",
+        "offset": 30,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 31,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 32,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 33,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "public",
+        "offset": 34,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 40,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "int",
+        "offset": 41,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " Age ",
+        "offset": 44,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 49,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 50,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "get",
+        "offset": 51,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ";",
+        "offset": 54,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 55,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "init",
+        "offset": 56,
+        "color": "hsl(280, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ";",
+        "offset": 60,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 61,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 62,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 63,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 64,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "yaml",
+    "theme": "claude-dark",
+    "text": "service:\n  port: 8080\n  enabled: true",
+    "tokens": [
+      {
+        "content": "service",
+        "offset": 0,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 7,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "  ",
+        "offset": 0,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "port",
+        "offset": 2,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 6,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 7,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "8080",
+        "offset": 8,
+        "color": "hsl(180, 80%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "  ",
+        "offset": 0,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "enabled",
+        "offset": 2,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 9,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 10,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "true",
+        "offset": 11,
+        "color": "hsl(180, 80%, 65%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "html",
+    "theme": "claude-dark",
+    "text": "<style>.x { color: red }</style><button title=\"Go\">Go</button>",
+    "tokens": [
+      {
+        "content": "<",
+        "offset": 0,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "style",
+        "offset": 1,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">.",
+        "offset": 6,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "x",
+        "offset": 8,
+        "color": "hsl(355, 80%, 70%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 9,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 10,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 11,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "color",
+        "offset": 12,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 17,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " red ",
+        "offset": 18,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}</",
+        "offset": 23,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "style",
+        "offset": 26,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "><",
+        "offset": 31,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 33,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 39,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "title",
+        "offset": 40,
+        "color": "hsl(355, 80%, 70%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 45,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"Go\"",
+        "offset": 46,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">",
+        "offset": 50,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "Go",
+        "offset": 51,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "</",
+        "offset": 53,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 55,
+        "color": "hsl(355, 85%, 72%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">",
+        "offset": 61,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "markdown",
+    "theme": "claude-dark",
+    "text": "# Heading\n\n**strong** and [link](https://example.com)",
+    "tokens": [
+      {
+        "content": "#",
+        "offset": 0,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " Heading",
+        "offset": 1,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "**",
+        "offset": 0,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "strong",
+        "offset": 2,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "**",
+        "offset": 8,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " and ",
+        "offset": 10,
+        "color": "hsl(220, 15%, 93%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "[",
+        "offset": 15,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "link",
+        "offset": 16,
+        "color": "hsl(95, 75%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "](",
+        "offset": 20,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "https://example.com",
+        "offset": 22,
+        "color": "hsl(180, 80%, 65%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ")",
+        "offset": 41,
+        "color": "hsl(220, 15%, 85%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "javascript",
+    "theme": "claude-light",
+    "text": "const result = /abc+/g.test(\"text\"); // comment",
+    "tokens": [
+      {
+        "content": "const",
+        "offset": 0,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " result =",
+        "offset": 5,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 14,
+        "color": "hsl(120, 90%, 27%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "/",
+        "offset": 15,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "abc",
+        "offset": 16,
+        "color": "hsl(120, 90%, 27%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "+",
+        "offset": 19,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "/",
+        "offset": 20,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "g",
+        "offset": 21,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ".",
+        "offset": 22,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "test",
+        "offset": 23,
+        "color": "hsl(215, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 27,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"text\"",
+        "offset": 28,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ");",
+        "offset": 34,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 36,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "// comment",
+        "offset": 37,
+        "color": "hsl(220, 10%, 48%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "typescript",
+    "theme": "claude-light",
+    "text": "interface User { name: string; age?: number }",
+    "tokens": [
+      {
+        "content": "interface",
+        "offset": 0,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 9,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "User",
+        "offset": 10,
+        "color": "hsl(25, 100%, 35%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 14,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 15,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " name: ",
+        "offset": 16,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "string",
+        "offset": 23,
+        "color": "hsl(25, 100%, 35%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ";",
+        "offset": 29,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " age?: ",
+        "offset": 30,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "number",
+        "offset": 37,
+        "color": "hsl(25, 100%, 35%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 43,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 44,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "tsx",
+    "theme": "claude-light",
+    "text": "const element = <button disabled={false}>Run</button>;",
+    "tokens": [
+      {
+        "content": "const",
+        "offset": 0,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " element = ",
+        "offset": 5,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "<",
+        "offset": 16,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 17,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 23,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "disabled",
+        "offset": 24,
+        "color": "hsl(355, 85%, 40%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 32,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 33,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "false",
+        "offset": 34,
+        "color": "hsl(180, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}>",
+        "offset": 39,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "Run",
+        "offset": 41,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "</",
+        "offset": 44,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 46,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">;",
+        "offset": 52,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "python",
+    "theme": "claude-light",
+    "text": "def greet(name: str):\n    return f\"Hello {name}\"",
+    "tokens": [
+      {
+        "content": "def",
+        "offset": 0,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 3,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "greet",
+        "offset": 4,
+        "color": "hsl(215, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 9,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "name",
+        "offset": 10,
+        "color": "hsl(25, 95%, 37%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 14,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 15,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "str",
+        "offset": 16,
+        "color": "hsl(25, 100%, 35%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "):",
+        "offset": 19,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "    ",
+        "offset": 0,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "return",
+        "offset": 4,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 10,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "f",
+        "offset": 11,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"Hello ",
+        "offset": 12,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 19,
+        "color": "hsl(180, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "name",
+        "offset": 20,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 24,
+        "color": "hsl(180, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"",
+        "offset": 25,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "sql",
+    "theme": "claude-light",
+    "text": "SELECT count(*) AS total FROM users WHERE active = true;",
+    "tokens": [
+      {
+        "content": "SELECT",
+        "offset": 0,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 6,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "count",
+        "offset": 7,
+        "color": "hsl(215, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(*) ",
+        "offset": 12,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "AS",
+        "offset": 16,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " total ",
+        "offset": 18,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "FROM",
+        "offset": 25,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " users ",
+        "offset": 29,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "WHERE",
+        "offset": 36,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " active = true;",
+        "offset": 41,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "rust",
+    "theme": "claude-light",
+    "text": "fn main() { let value: Option<i32> = Some(42); println!(\"{:?}\", value); }",
+    "tokens": [
+      {
+        "content": "fn",
+        "offset": 0,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 2,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "main",
+        "offset": 3,
+        "color": "hsl(215, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "()",
+        "offset": 7,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 9,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 10,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 11,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "let",
+        "offset": 12,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " value: ",
+        "offset": 15,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "Option",
+        "offset": 23,
+        "color": "hsl(25, 100%, 35%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "<",
+        "offset": 29,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "i32",
+        "offset": 30,
+        "color": "hsl(25, 100%, 35%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">",
+        "offset": 33,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " = ",
+        "offset": 34,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "Some",
+        "offset": 37,
+        "color": "hsl(25, 100%, 35%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 41,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "42",
+        "offset": 42,
+        "color": "hsl(180, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ");",
+        "offset": 44,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 46,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "println!",
+        "offset": 47,
+        "color": "hsl(215, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 55,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"",
+        "offset": 56,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 57,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":?",
+        "offset": 58,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 60,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"",
+        "offset": 61,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ",",
+        "offset": 62,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " value",
+        "offset": 63,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ");",
+        "offset": 69,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 71,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 72,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "csharp",
+    "theme": "claude-light",
+    "text": "public record User(string Name) { public int Age { get; init; } }",
+    "tokens": [
+      {
+        "content": "public",
+        "offset": 0,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 6,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "record",
+        "offset": 7,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 13,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "User",
+        "offset": 14,
+        "color": "hsl(25, 100%, 35%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "(",
+        "offset": 18,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "string",
+        "offset": 19,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " Name",
+        "offset": 25,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ")",
+        "offset": 30,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 31,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 32,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 33,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "public",
+        "offset": 34,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 40,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "int",
+        "offset": 41,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " Age ",
+        "offset": 44,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 49,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 50,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "get",
+        "offset": 51,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ";",
+        "offset": 54,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 55,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "init",
+        "offset": 56,
+        "color": "hsl(280, 100%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ";",
+        "offset": 60,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 61,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 62,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 63,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}",
+        "offset": 64,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "yaml",
+    "theme": "claude-light",
+    "text": "service:\n  port: 8080\n  enabled: true",
+    "tokens": [
+      {
+        "content": "service",
+        "offset": 0,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 7,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "  ",
+        "offset": 0,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "port",
+        "offset": 2,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 6,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 7,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "8080",
+        "offset": 8,
+        "color": "hsl(180, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "  ",
+        "offset": 0,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "enabled",
+        "offset": 2,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 9,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 10,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "true",
+        "offset": 11,
+        "color": "hsl(180, 100%, 25%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  },
+  {
+    "lang": "html",
+    "theme": "claude-light",
+    "text": "<style>.x { color: red }</style><button title=\"Go\">Go</button>",
+    "tokens": [
+      {
+        "content": "<",
+        "offset": 0,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "style",
+        "offset": 1,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">.",
+        "offset": 6,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "x",
+        "offset": 8,
+        "color": "hsl(355, 85%, 40%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 9,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "{",
+        "offset": 10,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 11,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "color",
+        "offset": 12,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ":",
+        "offset": 17,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " red ",
+        "offset": 18,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "}</",
+        "offset": 23,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "style",
+        "offset": 26,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "><",
+        "offset": 31,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 33,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " ",
+        "offset": 39,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "title",
+        "offset": 40,
+        "color": "hsl(355, 85%, 40%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "=",
+        "offset": 45,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\"Go\"",
+        "offset": 46,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">",
+        "offset": 50,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "Go",
+        "offset": 51,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "</",
+        "offset": 53,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "button",
+        "offset": 55,
+        "color": "hsl(355, 90%, 38%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ">",
+        "offset": 61,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": true
+  },
+  {
+    "lang": "markdown",
+    "theme": "claude-light",
+    "text": "# Heading\n\n**strong** and [link](https://example.com)",
+    "tokens": [
+      {
+        "content": "#",
+        "offset": 0,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " Heading",
+        "offset": 1,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "\n",
+        "offset": 0
+      },
+      {
+        "content": "**",
+        "offset": 0,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "strong",
+        "offset": 2,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "**",
+        "offset": 8,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": " and ",
+        "offset": 10,
+        "color": "hsl(220, 20%, 10%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "[",
+        "offset": 15,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "link",
+        "offset": 16,
+        "color": "hsl(120, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "](",
+        "offset": 20,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      },
+      {
+        "content": "https://example.com",
+        "offset": 22,
+        "color": "hsl(180, 100%, 25%)",
+        "fontStyle": 0
+      },
+      {
+        "content": ")",
+        "offset": 41,
+        "color": "hsl(220, 15%, 20%)",
+        "fontStyle": 0
+      }
+    ],
+    "equal": true,
+    "loaded": false
+  }
+]

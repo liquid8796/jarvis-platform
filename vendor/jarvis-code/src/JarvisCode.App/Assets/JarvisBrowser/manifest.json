@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Jarvis Browser",
+  "version": "1.1.0",
+  "description": "Connects your browser to Jarvis Code so the agent can read pages, navigate, interact with tabs you allow, and inspect console, network and screenshots while verifying a web app.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0/I7B7ZYoffwssKHexUlxvJKXve6xqgXJsTYTOndNDmoGzpTblGdQoOld2+rJ3w2m8tgvMPcBOVJwP2aM3ceNTwIa+QRRTYTzrNPXkFTwraH/WXxmqY2LFSQ1BKoNombL5J3qxjphKIk9hNCOc+zXODnBmHlWHJGZhguXzcuILQMHlNGMWuXML7MnI3sEjb6RvSGD+64oT7tKpfkI+4uDfkx+qs8GfxSIoiL1LivkhCCJx7k18QYWBv4AX9VwuDjmMttTUEabgvJg1qAz/ZxSuoKqVYiV7tLZxLQKXIQ6n6ozU66STzqDrt21gJFRvl6xOi4/DsEqAekGhFD7b2zzQIDAQAB",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "scripting",
+    "nativeMessaging",
+    "debugger"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "Jarvis Browser"
+  }
+}

@@ -1,0 +1,19 @@
+mermaid, shipped with Jarvis Code
+=================================
+
+mermaid.min.js is mermaid 11.16.1, obtained from npm and copied verbatim:
+
+  npm pack mermaid@11.16.1
+  tar xzf mermaid-11.16.1.tgz package/dist/mermaid.min.js package/LICENSE
+
+  sha256  18327bef70d96fb505fe7287d9f6a7362ebf07ff6576ddfaffb1a06f3e1a2954
+  bytes   3566058
+
+MIT licensed; LICENSE beside this file is the one the package publishes.
+Nothing has been edited: mermaid is loaded as its own <script> in an isolated
+WebView2 page, so it needs no bundling step and no adaptation.
+
+The reference desktop app ships the same file under
+resources/ion-dist/_frame-rt/_runtime/mermaid-11.16.1.min.js, byte for byte —
+which is how a copy taken from npm can be checked against what the reference
+renders with without any file being taken out of that install.

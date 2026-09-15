@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/JarvisCode.App/JarvisCode.App.csproj" />
+    <Project Path="src/JarvisCode.Cli/JarvisCode.Cli.csproj" />
+    <Project Path="src/JarvisCode.Core/JarvisCode.Core.csproj" />
+    <Project Path="src/JarvisCode.Host/JarvisCode.Host.csproj" />
+    <Project Path="src/JarvisCode.Providers/JarvisCode.Providers.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JarvisCode.App.Tests/JarvisCode.App.Tests.csproj" />
+    <Project Path="tests/JarvisCode.Cli.Tests/JarvisCode.Cli.Tests.csproj" />
+    <Project Path="tests/JarvisCode.Core.Tests/JarvisCode.Core.Tests.csproj" />
+    <Project Path="tests/JarvisCode.Parity.Tests/JarvisCode.Parity.Tests.csproj" />
+    <Project Path="tests/JarvisCode.Providers.Tests/JarvisCode.Providers.Tests.csproj" />
+  </Folder>
+</Solution>

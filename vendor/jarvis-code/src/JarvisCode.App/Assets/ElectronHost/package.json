@@ -1,0 +1,7 @@
+{
+  "name": "jarvis-browser-pane",
+  "version": "1.0.0",
+  "description": "The Browser pane's Electron engine process.",
+  "main": "main.js",
+  "private": true
+}

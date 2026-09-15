@@ -1,0 +1,23 @@
+# C# raw string literals keep the line endings of the file they are written in,
+# and this port's prompts, tool docs and system-reminders are raw string
+# literals. A checkout that rewrote them to CRLF would put CRLF on the wire
+# where the reference sends LF — the same text, no longer the same bytes. So
+# the working tree is LF whatever core.autocrlf says on the machine.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+
+# Skill-pack resources: fonts, archives and documents ship as-is.
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.gz binary
+
+# Preserve generated JS template-literal whitespace and vendored license text.
+src/JarvisCode.App/Assets/RichText/*.js -whitespace
+src/JarvisCode.App/Assets/RichText/licenses/** -whitespace
+src/JarvisCode.Core/Assets/Pdfium/licenses/** -whitespace
+src/JarvisCode.Core/ThirdParty/** -whitespace

@@ -1,0 +1,2709 @@
+<UserControl x:Class="JarvisCode.App.Views.ChatSurface"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:JarvisCode.App.Controls"
+             xmlns:infra="clr-namespace:JarvisCode.App.Infrastructure"
+             xmlns:vm="clr-namespace:JarvisCode.App.ViewModels"
+             xmlns:services="clr-namespace:JarvisCode.App.Services"
+             xmlns:views="clr-namespace:JarvisCode.App.Views"
+             xmlns:panels="clr-namespace:JarvisCode.App.Views.Panels"
+             xmlns:core="clr-namespace:JarvisCode.Core.Utilities;assembly=JarvisCode.Core"
+             FontFamily="{StaticResource UiFontFamily}"
+             Background="{DynamicResource Bg100Brush}">
+
+    <UserControl.Resources>
+        <DataTemplate DataType="{x:Type vm:SessionSummaryItem}">
+            <StackPanel Margin="0,14,0,18">
+                <TextBlock Text="Live summary" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource Text100Brush}" Margin="0,0,0,10" />
+                <controls:MarkdownView Markdown="{Binding Markdown}" Profile="Code" />
+                <TextBlock Text="{Binding Status}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Text500Brush}" Margin="0,10,0,0" />
+                <Button Content="Refresh summary" Command="{Binding RefreshCommand}" Style="{StaticResource GhostButton}"
+                        HorizontalAlignment="Left" Margin="0,8,0,0" />
+            </StackPanel>
+        </DataTemplate>
+        <infra:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <infra:BoolToVisibilityConverter x:Key="InverseBoolToVis" Invert="True" />
+        <infra:SurfaceMarkdownProfileConverter x:Key="SurfaceProfile" />
+        <infra:NullToCollapsedConverter x:Key="NullToCollapsed" />
+        <infra:ImageBlockConverter x:Key="ToolImage" />
+        <infra:ImageThumbnailConverter x:Key="Thumbnail" />
+
+        <!--
+             Row panels. Every list the transcript can grow without bound is laid
+             out by the virtualizer rather than by a StackPanel, so a session with a
+             thousand rows builds the screenful under the reader and estimates the
+             rest; the reference does exactly this on both of its surfaces.
+        -->
+        <ItemsPanelTemplate x:Key="VirtualTranscriptPanel">
+            <controls:VirtualizingTranscriptPanel Metric="Transcript" />
+        </ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="VirtualLinePanel">
+            <controls:VirtualizingTranscriptPanel Metric="Uniform"
+                                                  EstimatedRowHeight="20" />
+        </ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="VirtualCallPanel">
+            <controls:VirtualizingTranscriptPanel Metric="Uniform"
+                                                  EstimatedRowHeight="40" />
+        </ItemsPanelTemplate>
+
+        <!-- Message action icons: lucide geometry drawn on a 24×24 grid -->
+        <Geometry x:Key="CopyIconGlyph">M10,8 H20 A2,2 0 0 1 22,10 V20 A2,2 0 0 1 20,22 H10 A2,2 0 0 1 8,20 V10 A2,2 0 0 1 10,8 Z M4,16 C2.9,16 2,15.1 2,14 V4 C2,2.9 2.9,2 4,2 H14 C15.1,2 16,2.9 16,4</Geometry>
+        <Geometry x:Key="CheckIconGlyph">M20,6 L9,17 L4,12</Geometry>
+        <Geometry x:Key="RewindIconGlyph">M3,12 A9,9 0 1 0 12,3 A9.75,9.75 0 0 0 5.26,5.74 L3,8 M3,3 V8 H8</Geometry>
+        <Geometry x:Key="BranchIconGlyph">M15,5 A3,3 0 1 1 21,5 A3,3 0 1 1 15,5 Z M3,12 A3,3 0 1 1 9,12 A3,3 0 1 1 3,12 Z M15,19 A3,3 0 1 1 21,19 A3,3 0 1 1 15,19 Z M8.59,13.51 L15.42,17.49 M15.41,6.51 L8.59,10.49</Geometry>
+        <Geometry x:Key="ChevronRightGlyph">M9,18 L15,12 L9,6</Geometry>
+        <Geometry x:Key="ChevronDownGlyph">M6,9 L12,15 L18,9</Geometry>
+        <Geometry x:Key="ThumbsUpGlyph">M7,10 V22 M15,5.88 L14,10 H19.83 A2,2 0 0 1 21.75,12.56 L19.42,20.56 A2,2 0 0 1 17.5,22 H4 A2,2 0 0 1 2,20 V12 A2,2 0 0 1 4,10 H6.76 A2,2 0 0 0 8.55,8.89 L12,2 A3.13,3.13 0 0 1 15,5.88 Z</Geometry>
+        <Geometry x:Key="ThumbsDownGlyph">M17,14 V2 M9,18.12 L10,14 H4.17 A2,2 0 0 1 2.25,11.44 L4.58,3.44 A2,2 0 0 1 6.5,2 H20 A2,2 0 0 1 22,4 V12 A2,2 0 0 1 20,14 H17.24 A2,2 0 0 0 15.45,15.11 L12,22 A3.13,3.13 0 0 1 9,18.12 Z</Geometry>
+        <Geometry x:Key="EditIconGlyph">M12,20 H21 M16.5,3.5 A2.12,2.12 0 0 1 19.5,6.5 L7,19 L3,20 L4,16 Z</Geometry>
+        <!-- Read aloud: a speaker with two waves (lucide volume-2) -->
+        <Geometry x:Key="ReadAloudGlyph">M11,5 L6,9 H2 V15 H6 L11,19 Z M15.54,8.46 A5,5 0 0 1 15.54,15.54 M19.07,4.93 A10,10 0 0 1 19.07,19.07</Geometry>
+
+        <!-- Disclosure chevron: right when collapsed, down when open. -->
+        <!--
+             A transcript row's own button. The reference's tool row and group
+             header are `flex self-start ... rounded-sm` with no fill of their
+             own: hovering brightens the text and draws no pill behind it, which
+             is what a shrink-to-fit row would otherwise grow.
+        -->
+        <Style x:Key="TranscriptRowButton" TargetType="{x:Type ButtonBase}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AccentFocusVisual}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ButtonBase}">
+                        <Border Background="Transparent" CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DisclosureChevron" TargetType="Path">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="StrokeThickness" Value="2.2" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Data" Value="{StaticResource ChevronRightGlyph}" />
+            <Setter Property="Stroke" Value="{DynamicResource Text500Brush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                    <Setter Property="Data" Value="{StaticResource ChevronDownGlyph}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!--
+             An agent row navigates rather than expands, so its caret always
+             points the way it goes - the reference draws CaretRight there and
+             a turning disclosure caret only on rows that open in place.
+        -->
+        <Style x:Key="OpenCaret" TargetType="Path">
+            <!--
+                 The reference draws this one at size="sm", a CDS token rather
+                 than a pixel: the icon token it resolves to is 12px at the base
+                 density and 16px at the comfortable density, which is the one
+                 this build renders at (its control height is 32). So 16, where
+                 the disclosure caret beside it keeps its measured size of 14.
+            -->
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="StrokeThickness" Value="2.2" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Data" Value="{StaticResource ChevronRightGlyph}" />
+            <Setter Property="Stroke" Value="{DynamicResource Text500Brush}" />
+        </Style>
+
+        <Style x:Key="MessageActionGlyph" TargetType="Path">
+            <Setter Property="Stroke"
+                    Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type ButtonBase}}}" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+        </Style>
+
+        <Style x:Key="MessageActionButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="Foreground" Value="{DynamicResource Text500Brush}" />
+        </Style>
+
+        <!-- User message: tinted bubble, right aligned, with the hover action bar under it -->
+        <DataTemplate DataType="{x:Type vm:UserMessageItem}">
+            <!-- Transparent so the bubble, the gap under it and the action bar are one
+                 continuous hover region: without it the pointer falls through the gap on
+                 its way to the icons and the bar fades out before it can be reached. -->
+            <Grid x:Name="MessageRow" HorizontalAlignment="Right" Margin="80,10,0,2"
+                  Background="Transparent">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Background="{DynamicResource UserMessageBgBrush}"
+                        CornerRadius="14"
+                        Padding="14,9">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Text}"
+                                   TextWrapping="Wrap"
+                                   FontSize="14" LineHeight="21"
+                                   FontFamily="{StaticResource ChatFontFamily}"
+                                   Foreground="{DynamicResource Text100Brush}" />
+                        <TextBlock Text="{Binding AttachmentsSummary}"
+                                   Visibility="{Binding HasAttachments, Converter={StaticResource BoolToVis}}"
+                                   FontSize="11" Margin="0,5,0,0"
+                                   Foreground="{DynamicResource Text400Brush}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel x:Name="MessageActions" Grid.Row="1" Orientation="Horizontal"
+                            HorizontalAlignment="Right" Margin="0,3,2,0"
+                            Opacity="0" IsHitTestVisible="False">
+                    <TextBlock Text="{Binding RelativeTime}"
+                               FontSize="11.5" VerticalAlignment="Center" Margin="0,0,5,0"
+                               Foreground="{DynamicResource Text500Brush}" />
+
+                    <Button Style="{StaticResource MessageActionButton}"
+                            ToolTip="Copy" AutomationProperties.Name="Copy message"
+                            Command="{Binding CopyMessageCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Grid Width="15" Height="15">
+                            <Viewbox Visibility="{Binding IsCopied, Converter={StaticResource InverseBoolToVis}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CopyIconGlyph}" />
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Visibility="{Binding IsCopied, Converter={StaticResource BoolToVis}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CheckIconGlyph}" />
+                                </Canvas>
+                            </Viewbox>
+                        </Grid>
+                    </Button>
+
+                    <Button Style="{StaticResource MessageActionButton}" Margin="1,0,0,0"
+                            ToolTip="Edit message" AutomationProperties.Name="Edit message"
+                            Visibility="{Binding DataContext.IsCodeSurface, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}, Converter={StaticResource InverseBoolToVis}}"
+                            Command="{Binding EditMessageCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource EditIconGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button Style="{StaticResource MessageActionButton}" Margin="1,0,0,0"
+                            ToolTip="Rewind to here" AutomationProperties.Name="Rewind to here"
+                            Visibility="{Binding DataContext.IsCodeSurface, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}, Converter={StaticResource BoolToVis}}"
+                            Command="{Binding RewindMessageCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource RewindIconGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
+                    <Button Style="{StaticResource MessageActionButton}" Margin="1,0,0,0"
+                            ToolTip="Fork from here" AutomationProperties.Name="Fork from here"
+                            Visibility="{Binding DataContext.IsCodeSurface, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}, Converter={StaticResource BoolToVis}}"
+                            Command="{Binding BranchMessageCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource BranchIconGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <DataTemplate.Triggers>
+                <Trigger SourceName="MessageRow" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="MessageActions" Property="IsHitTestVisible" Value="True" />
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="MessageActions"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 To="1" Duration="0:0:0.12" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="MessageActions"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 To="0" Duration="0:0:0.12" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Assistant markdown -->
+        <DataTemplate DataType="{x:Type vm:AssistantTextItem}">
+            <Grid x:Name="ResponseRoot" Background="Transparent">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <!-- WorkingDirectory resolves the relative file links the harness
+                     prompt asks the model to write. -->
+                <controls:MarkdownView Markdown="{Binding Markdown}" IsStreaming="{Binding IsStreaming}"
+                                       Profile="{Binding DataContext.IsCodeSurface, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}, Converter={StaticResource SurfaceProfile}}"
+                                       WorkingDirectory="{Binding DataContext.Session.WorkingDirectory,
+                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                       Margin="0,4,0,2" />
+                <!-- Response actions (Chat): Copy · 👍 Good response · 👎 Bad response · Retry -->
+                <StackPanel x:Name="ResponseActions" Grid.Row="1" Orientation="Horizontal"
+                            HorizontalAlignment="Left" Margin="0,0,0,4"
+                            Opacity="0" IsHitTestVisible="False">
+                    <Button Style="{StaticResource MessageActionButton}"
+                            ToolTip="Copy" AutomationProperties.Name="Copy response"
+                            Command="{Binding CopyResponseCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Grid Width="15" Height="15">
+                            <Viewbox Visibility="{Binding IsCopied, Converter={StaticResource InverseBoolToVis}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CopyIconGlyph}" />
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Visibility="{Binding IsCopied, Converter={StaticResource BoolToVis}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CheckIconGlyph}" />
+                                </Canvas>
+                            </Viewbox>
+                        </Grid>
+                    </Button>
+                    <Button Margin="1,0,0,0"
+                            ToolTip="Good response" AutomationProperties.Name="Good response"
+                            Command="{Binding GoodResponseCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource MessageActionButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsGood}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrandBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource ThumbsUpGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button Margin="1,0,0,0"
+                            ToolTip="Bad response" AutomationProperties.Name="Bad response"
+                            Command="{Binding BadResponseCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource MessageActionButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBad}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrandBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource ThumbsDownGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <!-- Read aloud, which becomes Pause while it is speaking -->
+                    <Button Style="{StaticResource MessageActionButton}" Margin="1,0,0,0"
+                            ToolTip="{Binding ReadAloudLabel}"
+                            AutomationProperties.Name="{Binding ReadAloudLabel}"
+                            Command="{Binding ReadAloudCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource ReadAloudGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button Style="{StaticResource MessageActionButton}" Margin="1,0,0,0"
+                            ToolTip="Retry" AutomationProperties.Name="Retry"
+                            Command="{Binding RetryResponseCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource RewindIconGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                </StackPanel>
+            </Grid>
+            <DataTemplate.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, ElementName=ResponseRoot}" Value="True" />
+                        <Condition Binding="{Binding IsStreaming}" Value="False" />
+                        <Condition Binding="{Binding DataContext.IsCodeSurface, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <MultiDataTrigger.Setters>
+                        <Setter TargetName="ResponseActions" Property="Opacity" Value="1" />
+                        <Setter TargetName="ResponseActions" Property="IsHitTestVisible" Value="True" />
+                    </MultiDataTrigger.Setters>
+                </MultiDataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Thinking, Code surface: the reference's plain italic block with a copy
+             button that appears on hover or focus and copies a
+             "> **Thinking** (~N tok)" blockquote. -->
+        <DataTemplate x:Key="ThinkingCodeCellTemplate">
+            <Grid Margin="0,2,0,8" Background="Transparent">
+                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="13" LineHeight="19"
+                           FontStyle="Italic" Margin="0,0,40,0"
+                           Foreground="{DynamicResource Text400Brush}" />
+                <Button x:Name="ThinkingCopyButton" Style="{StaticResource RowButton}"
+                        HorizontalAlignment="Right" VerticalAlignment="Top" Padding="6,4"
+                        Opacity="0" IsHitTestVisible="False"
+                        Click="OnCopyThinking" Tag="{Binding}"
+                        AutomationProperties.Name="{Binding CopyActionName}">
+                    <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="12"
+                               Foreground="{DynamicResource Text400Brush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="&#xE8C8;" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCopied}" Value="True">
+                                        <Setter Property="Text" Value="&#xE73E;" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Button>
+            </Grid>
+            <DataTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="ThinkingCopyButton" Property="Opacity" Value="1" />
+                    <Setter TargetName="ThinkingCopyButton" Property="IsHitTestVisible" Value="True" />
+                </Trigger>
+                <!-- focus-within, so the button is reachable from the keyboard -->
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter TargetName="ThinkingCopyButton" Property="Opacity" Value="1" />
+                    <Setter TargetName="ThinkingCopyButton" Property="IsHitTestVisible" Value="True" />
+                </Trigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Thinking, Chat surface: the reference's conversation cell — timeline row,
+             markdown body, "Thought for …" header and the 200px clamp. -->
+        <DataTemplate x:Key="ThinkingChatCellTemplate">
+            <controls:ThinkingCell Margin="0,2,0,8" />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ThinkingItem}">
+            <ContentPresenter Content="{Binding}">
+                <ContentPresenter.Style>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="ContentTemplate" Value="{StaticResource ThinkingCodeCellTemplate}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsChatCell}" Value="True">
+                                <Setter Property="ContentTemplate" Value="{StaticResource ThinkingChatCellTemplate}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentPresenter.Style>
+            </ContentPresenter>
+        </DataTemplate>
+
+        <!-- A tool's output, wherever it is drawn: the shell card holds its own,
+             the generic body holds the other. -->
+        <Style x:Key="ToolOutputBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource Text400Brush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ResultIsError}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource Danger100Brush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- One image a tool returned: at the reference's 360px ceiling, opening its viewer -->
+        <DataTemplate x:Key="ToolResultImageTemplate">
+            <Button Style="{StaticResource TranscriptRowButton}"
+                    HorizontalAlignment="Left" Margin="0,0,0,4"
+                    Cursor="Hand" Click="OnToolImageActivated"
+                    AutomationProperties.Name="View screenshot">
+                <Border CornerRadius="5" ClipToBounds="True"
+                        BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1">
+                    <Image Source="{Binding Converter={StaticResource ToolImage}}"
+                           MaxHeight="360" Stretch="Uniform" StretchDirection="DownOnly" />
+                </Border>
+            </Button>
+        </DataTemplate>
+
+        <!-- Tool group ("Edited 2 files, ran 2 commands (1 failed)") -->
+        <DataTemplate DataType="{x:Type vm:ToolGroupItem}">
+            <StackPanel Margin="0,2,0,8">
+                <!-- One-line thinking recap, shown only in the thinking view -->
+                <TextBlock Text="{Binding ThinkingRecap}" FontSize="12" FontStyle="Italic"
+                           Foreground="{DynamicResource Text500Brush}" TextTrimming="CharacterEllipsis"
+                           Margin="4,0,0,3"
+                           Visibility="{Binding RecapVisible, Converter={StaticResource BoolToVis}}" />
+                <!--
+                     Summary header. Its clauses are drawn one at a time because the
+                     reference colours a clause whose calls all failed rather than
+                     counting them in a parenthetical, and because only the first is
+                     capitalised. Like the row below it, the button is as wide as its
+                     own sentence and the caret follows the text.
+                -->
+                <ToggleButton IsChecked="{Binding IsExpanded}"
+                              Style="{StaticResource TranscriptRowButton}"
+                              HorizontalAlignment="Left"
+                              Visibility="{Binding RendersCard, Converter={StaticResource BoolToVis}}"
+                              AutomationProperties.Name="{Binding Title}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontSize="13" FontWeight="Medium" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   controls:ToolSummaryInlines.Segments="{Binding Segments}"
+                                   Foreground="{DynamicResource Text300Brush}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard x:Name="TitleShine">
+                                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="1" To="0.45" Duration="0:0:0.8" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="TitleShine" />
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding AddedText}" Margin="4,0,0,0" FontSize="12.5"
+                                   VerticalAlignment="Center"
+                                   Typography.NumeralAlignment="Tabular"
+                                   Foreground="{DynamicResource Success000Brush}"
+                                   controls:DiffBadgeFlash.RestingBrush="Success000Brush"
+                                   controls:DiffBadgeFlash.Flash="{Binding FlashDiff}"
+                                   Visibility="{Binding AddedText, Converter={StaticResource NullToCollapsed}}" />
+                        <TextBlock Text="{Binding RemovedText}" Margin="2,0,0,0" FontSize="12.5"
+                                   VerticalAlignment="Center"
+                                   Typography.NumeralAlignment="Tabular"
+                                   Foreground="{DynamicResource Danger000Brush}"
+                                   controls:DiffBadgeFlash.RestingBrush="Danger000Brush"
+                                   controls:DiffBadgeFlash.Flash="{Binding FlashDiff}"
+                                   Visibility="{Binding RemovedText, Converter={StaticResource NullToCollapsed}}" />
+                        <TextBlock Text="Needs approval" Margin="4,0,0,0" FontSize="13"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Warning100Brush}"
+                                   Visibility="{Binding IsAwaiting, Converter={StaticResource BoolToVis}}" />
+                        <Path Style="{StaticResource DisclosureChevron}" Margin="2,1,0,0"
+                              Visibility="{Binding ShowsDisclosure, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </ToggleButton>
+                <!--
+                     The calls read as one card: an outline ring with no fill of its
+                     own, rows flush inside it and split by hairlines, which is what
+                     `epitaxy-card-outline rounded-lg overflow-clip divide-y` draws.
+                -->
+                <Border BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1"
+                        CornerRadius="10" Margin="0,8,0,0" ClipToBounds="True"
+                        Background="Transparent">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding RendersCard}" Value="True" />
+                                        <Condition Binding="{Binding IsExpanded}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <ItemsControl ItemsSource="{Binding Calls}" Focusable="False" AlternationCount="9999"
+                                  ItemsPanel="{StaticResource VirtualCallPanel}" />
+                </Border>
+
+                <!--
+                     A run whose calls coalesce into one row is drawn as that row
+                     alone (the reference's uQ): no summary sentence over it and no
+                     outline card around it, since a header reading "Read a file"
+                     above a row reading "Read Base.xaml" says it twice.
+                -->
+                <ContentPresenter Content="{Binding BareRow}"
+                                  Visibility="{Binding RendersBareRow, Converter={StaticResource BoolToVis}}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!--
+             One call's expanded body, in the reference's own order: the shell card,
+             the diff, the checklist, the file, then the generic pair — an errored
+             call reports its output first and its arguments under it, an ordinary
+             one lists its arguments and then its output. The pair scrolls inside
+             the reference's own 400px cap, and a Copy sits at the top right of the
+             body, revealed on hover the way its own body action is.
+        -->
+        <DataTemplate x:Key="ToolCallBodyTemplate" DataType="{x:Type vm:ToolCallItem}">
+            <Grid x:Name="BodyRoot" Background="Transparent" Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <!--
+                         The shell card. Inside a group it is the command alone;
+                         standing on its own it is the reference's outlined card
+                         with a header bar naming the shell it ran in.
+                    -->
+                    <Border BorderBrush="{DynamicResource BorderSoftBrush}"
+                            CornerRadius="8" ClipToBounds="True"
+                            Visibility="{Binding ShowInput, Converter={StaticResource BoolToVis}}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                        <Setter Property="BorderThickness" Value="1" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <Grid Margin="10,6"
+                                  Visibility="{Binding IsBare, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding ShellName}" FontSize="13"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Text400Brush}" />
+                                <!-- The reference's header-bar copy exists exactly when
+                                     there is no command line to hang one off -->
+                                <Button x:Name="ShellHeaderCopy" Grid.Column="1"
+                                        Style="{StaticResource MessageActionButton}"
+                                        Opacity="0" IsHitTestVisible="False"
+                                        Click="OnToolBodyCopy"
+                                        ToolTip="Copy" AutomationProperties.Name="Copy"
+                                        Visibility="{Binding ShowShellHeaderCopy, Converter={StaticResource BoolToVis}}">
+                                    <Grid Width="15" Height="15">
+                                        <Viewbox Visibility="{Binding IsBodyCopied, Converter={StaticResource InverseBoolToVis}}">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CopyIconGlyph}" />
+                                            </Canvas>
+                                        </Viewbox>
+                                        <Viewbox Visibility="{Binding IsBodyCopied, Converter={StaticResource BoolToVis}}">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CheckIconGlyph}" />
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Grid>
+                                </Button>
+                            </Grid>
+                    <Border Background="{DynamicResource Bg300Brush}" CornerRadius="8" Padding="10,4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding CommandPrompt}" Margin="0,0,8,0" VerticalAlignment="Top"
+                                       FontFamily="{DynamicResource MonoFontFamily}" FontSize="11.5"
+                                       Foreground="{DynamicResource Text500Brush}" />
+                            <controls:CodeText Grid.Column="1" Code="{Binding InputText}"
+                                               Language="{Binding SyntaxLanguage}"
+                                               Foreground="{DynamicResource Text200Brush}"
+                                               FontSize="11.5" Padding="0" MaxHeight="400" />
+                            <!-- The reference hangs the shell body's copy off the
+                                 command block rather than off the body -->
+                            <Button x:Name="CommandCopy" Grid.Column="2" VerticalAlignment="Top"
+                                    Style="{StaticResource MessageActionButton}" Margin="6,0,0,0"
+                                    Opacity="0" IsHitTestVisible="False"
+                                    Click="OnToolBodyCopy"
+                                    ToolTip="Copy" AutomationProperties.Name="Copy">
+                                <Grid Width="15" Height="15">
+                                    <Viewbox Visibility="{Binding IsBodyCopied, Converter={StaticResource InverseBoolToVis}}">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CopyIconGlyph}" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <Viewbox Visibility="{Binding IsBodyCopied, Converter={StaticResource BoolToVis}}">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CheckIconGlyph}" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Grid>
+                            </Button>
+                        </Grid>
+                    </Border>
+                            <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          Focusable="False"
+                                          Visibility="{Binding ShowCommandOutput, Converter={StaticResource BoolToVis}}">
+                                <ScrollViewer.Style>
+                                    <Style TargetType="ScrollViewer">
+                                        <Setter Property="Margin" Value="0,3,0,0" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                                <Setter Property="Margin" Value="10,3,10,10" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ScrollViewer.Style>
+                                <TextBox Text="{Binding Result, Mode=OneWay}"
+                                         Style="{StaticResource ToolOutputBox}" />
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Border>
+
+                    <!--
+                         Edits show the change itself, under the file it changed.
+                         Inside a group that is a plain path line over a bordered
+                         block; standing alone the reference wraps both in one
+                         outlined card, which is why the chrome moves outward.
+                    -->
+                    <Border CornerRadius="8" ClipToBounds="True"
+                            Visibility="{Binding BodyIsDiff, Converter={StaticResource BoolToVis}}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderBrush" Value="{DynamicResource BorderSoftBrush}" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Setter Property="Background" Value="{DynamicResource Bg300Brush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock FontSize="12">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Margin" Value="0,0,0,4" />
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding MetaIsFileRef}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                            <Setter Property="Margin" Value="10,6" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                                <Hyperlink Click="OnToolMetaFile" TextDecorations="{x:Null}"
+                                           Foreground="{DynamicResource Text400Brush}">
+                                    <Run Text="{Binding MetaFilePath, Mode=OneWay}" />
+                                </Hyperlink>
+                            </TextBlock>
+                            <Border CornerRadius="8" Padding="0,4"
+                                    Background="{DynamicResource Bg300Brush}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderSoftBrush}" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                                <Setter Property="BorderThickness" Value="0" />
+                                                <Setter Property="CornerRadius" Value="0" />
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl ItemsSource="{Binding DiffLines}" Focusable="False"
+                                                  ItemsPanel="{StaticResource VirtualLinePanel}" />
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- todo_write renders its checklist -->
+                    <ItemsControl ItemsSource="{Binding TodoRows}" Focusable="False" Margin="2,0,0,0"
+                                  ItemsPanel="{StaticResource VirtualLinePanel}"
+                                  Visibility="{Binding BodyIsTodos, Converter={StaticResource BoolToVis}}" />
+
+                    <!-- read_file renders the file through the highlighter -->
+                    <Border CornerRadius="8" ClipToBounds="True"
+                            Visibility="{Binding ShowFileResult, Converter={StaticResource BoolToVis}}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderBrush" Value="{DynamicResource BorderSoftBrush}" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Setter Property="Background" Value="{DynamicResource Bg300Brush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock FontSize="12">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Margin" Value="0,0,0,4" />
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding MetaIsFileRef}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                                <Setter Property="Margin" Value="10,6" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <Hyperlink Click="OnToolMetaFile" TextDecorations="{x:Null}"
+                                           Foreground="{DynamicResource Text400Brush}">
+                                    <Run Text="{Binding MetaFilePath, Mode=OneWay}" />
+                                </Hyperlink>
+                            </TextBlock>
+                            <Border Background="{DynamicResource Bg300Brush}" CornerRadius="8" Padding="10,8">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                                <Setter Property="CornerRadius" Value="0" />
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <controls:CodeText Code="{Binding Result}" Language="{Binding ResultLanguage}"
+                                                   Foreground="{DynamicResource Text300Brush}"
+                                                   FontSize="11.5" Padding="0" MaxHeight="400" />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- The generic pair, inside the reference's own 400px scroll -->
+                    <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Focusable="False"
+                                  AutomationProperties.Name="Tool call details"
+                                  Visibility="{Binding ShowGenericRegion, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding InputRows}" Focusable="False"
+                                          ItemsPanel="{StaticResource VirtualLinePanel}"
+                                          Visibility="{Binding ShowParamsFirst, Converter={StaticResource BoolToVis}}" />
+                            <TextBox Text="{Binding Result, Mode=OneWay}" Margin="0,3,0,0"
+                                     Style="{StaticResource ToolOutputBox}"
+                                     Visibility="{Binding ShowTextResult, Converter={StaticResource BoolToVis}}" />
+                            <ItemsControl ItemsSource="{Binding InputRows}" Focusable="False" Margin="0,3,0,0"
+                                          ItemsPanel="{StaticResource VirtualLinePanel}"
+                                          Visibility="{Binding ShowParamsLast, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!--
+                         Screenshots and other returned images: one under the other,
+                         at the reference's own 360px cap, each opening its viewer.
+                    -->
+                    <ItemsControl ItemsSource="{Binding Images}" Focusable="False" Margin="0,8,0,0"
+                                  Visibility="{Binding ImagesRideTheBody, Converter={StaticResource BoolToVis}}">
+                        <ItemsControl.ItemTemplate>
+                            <StaticResource ResourceKey="ToolResultImageTemplate" />
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- The body's Copy: the arguments and the output, one blank line apart -->
+                <Button x:Name="BodyCopy" Grid.Column="1" VerticalAlignment="Top"
+                        Style="{StaticResource MessageActionButton}" Margin="6,0,0,0"
+                        Opacity="0" IsHitTestVisible="False"
+                        Click="OnToolBodyCopy"
+                        ToolTip="Copy" AutomationProperties.Name="Copy"
+                        Visibility="{Binding ShowGenericRegion, Converter={StaticResource BoolToVis}}">
+                    <Grid Width="15" Height="15">
+                        <Viewbox Visibility="{Binding IsBodyCopied, Converter={StaticResource InverseBoolToVis}}">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CopyIconGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                        <Viewbox Visibility="{Binding IsBodyCopied, Converter={StaticResource BoolToVis}}">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CheckIconGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Grid>
+                </Button>
+            </Grid>
+            <DataTemplate.Triggers>
+                <!-- Hover-revealed, as the reference's own body action is -->
+                <DataTrigger Binding="{Binding IsMouseOver, ElementName=BodyRoot}" Value="True">
+                    <Setter TargetName="BodyCopy" Property="Opacity" Value="1" />
+                    <Setter TargetName="BodyCopy" Property="IsHitTestVisible" Value="True" />
+                    <Setter TargetName="CommandCopy" Property="Opacity" Value="1" />
+                    <Setter TargetName="CommandCopy" Property="IsHitTestVisible" Value="True" />
+                    <Setter TargetName="ShellHeaderCopy" Property="Opacity" Value="1" />
+                    <Setter TargetName="ShellHeaderCopy" Property="IsHitTestVisible" Value="True" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- One argument of an expanded row: "key: value" -->
+        <DataTemplate DataType="{x:Type services:ToolInputRow}">
+            <TextBlock TextWrapping="Wrap" Margin="0,0,0,3" FontSize="12.5"
+                       Foreground="{DynamicResource Text400Brush}"
+                       controls:ToolInputRowInlines.Row="{Binding}" />
+        </DataTemplate>
+
+        <!-- One line of a todo_write checklist -->
+        <DataTemplate DataType="{x:Type vm:TodoRowItem}">
+            <StackPanel Orientation="Horizontal" Margin="0,1">
+                <TextBlock Text="{Binding Glyph}" FontSize="12.5" Margin="0,0,7,0"
+                           Foreground="{DynamicResource Text400Brush}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Text}" FontSize="12.5" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource Text300Brush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Text500Brush}" />
+                                    <Setter Property="TextDecorations" Value="Strikethrough" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsInProgress}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Text200Brush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </DataTemplate>
+
+        <!--
+             One tool call inside a group. The reference's row is `flex self-start`:
+             it is as wide as its own sentence, so the disclosure caret sits at the
+             end of that sentence rather than at the far edge of the group card.
+             There is no spinner either - its settled slot renders nothing at all
+             while a call runs (its yS returns null), and the running state is
+             carried by the label's own shimmer.
+        -->
+        <DataTemplate x:Key="ToolRowHeaderContent" DataType="{x:Type vm:ToolCallItem}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- The verb, or the call's description conjugated for this state -->
+                <TextBlock Text="{Binding PrimaryText}" FontSize="13"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           MaxWidth="420">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource Text400Brush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Text200Brush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsFailed}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Danger100Brush}" />
+                                </DataTrigger>
+                                <!-- Awaiting approval: running wording, dimmed, no spinner -->
+                                <DataTrigger Binding="{Binding IsAwaitingApproval}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Text500Brush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <!-- The model an agent ran on, plain after the label -->
+                <TextBlock Text="{Binding ModelText}" Margin="3,0,0,0" FontSize="13"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Text400Brush}"
+                           Visibility="{Binding ModelText, Converter={StaticResource NullToCollapsed}}" />
+
+                <!-- A row waiting on the permission card says so in place of its meta -->
+                <TextBlock Text="{Binding ApprovalChipText}" Margin="3,0,0,0" FontSize="13"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Warning100Brush}"
+                           Visibility="{Binding HasApprovalChip, Converter={StaticResource BoolToVis}}" />
+
+                <!-- Meta as a link (a PR the shell opened) -->
+                <TextBlock Margin="3,0,0,0" FontSize="13" VerticalAlignment="Center"
+                           Visibility="{Binding MetaIsLink, Converter={StaticResource BoolToVis}}">
+                    <Hyperlink NavigateUri="{Binding MetaHref}" RequestNavigate="OnToolMetaLink"
+                               Foreground="{DynamicResource AccentBrush}">
+                        <Run Text="{Binding MetaText, Mode=OneWay}" />
+                    </Hyperlink>
+                </TextBlock>
+
+                <!-- Meta as the file it names, which opens where the reference opens it -->
+                <TextBlock Margin="3,0,0,0" FontSize="13" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" MaxWidth="420"
+                           Visibility="{Binding MetaIsFileRef, Converter={StaticResource BoolToVis}}">
+                    <Hyperlink Click="OnToolMetaFile" TextDecorations="{x:Null}"
+                               Foreground="{DynamicResource Text200Brush}">
+                        <Run Text="{Binding MetaText, Mode=OneWay}" />
+                    </Hyperlink>
+                </TextBlock>
+
+                <!-- Meta as plain text -->
+                <TextBlock Text="{Binding MetaText}" Margin="3,0,0,0" FontSize="13"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           MaxWidth="420"
+                           Visibility="{Binding MetaIsPlain, Converter={StaticResource BoolToVis}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource Text400Brush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Text200Brush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding MetaIsProminent}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Text200Brush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsFailed}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Danger100Brush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <!-- Stopped / Denied / Failed, after the meta as the reference has them -->
+                <TextBlock Text="{Binding StatusChipText}" Margin="3,0,0,0" FontSize="13"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding HasStatusChip, Converter={StaticResource BoolToVis}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource Text400Brush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusChipIsDanger}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Danger100Brush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <!-- The coalesced reads' ranges -->
+                <TextBlock Text="{Binding RangeText}" Margin="3,0,0,0" FontSize="13"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Text400Brush}"
+                           Visibility="{Binding RangeText, Converter={StaticResource NullToCollapsed}}" />
+
+                <!-- The settled half of the reference's own slot: +adds -dels, in
+                     tabular figures, with its settling blink when the number
+                     arrived while the reader was watching. -->
+                <TextBlock Text="{Binding AddedText}" Margin="3,0,0,0" FontSize="12.5"
+                           VerticalAlignment="Center"
+                           Typography.NumeralAlignment="Tabular"
+                           Foreground="{DynamicResource Success000Brush}"
+                           controls:DiffBadgeFlash.RestingBrush="Success000Brush"
+                           controls:DiffBadgeFlash.Flash="{Binding FlashDiff}"
+                           Visibility="{Binding AddedText, Converter={StaticResource NullToCollapsed}}" />
+                <TextBlock Text="{Binding RemovedText}" Margin="2,0,0,0" FontSize="12.5"
+                           VerticalAlignment="Center"
+                           Typography.NumeralAlignment="Tabular"
+                           Foreground="{DynamicResource Danger000Brush}"
+                           controls:DiffBadgeFlash.RestingBrush="Danger000Brush"
+                           controls:DiffBadgeFlash.Flash="{Binding FlashDiff}"
+                           Visibility="{Binding RemovedText, Converter={StaticResource NullToCollapsed}}" />
+
+                <Path Style="{StaticResource DisclosureChevron}" Margin="3,0,0,0"
+                      Visibility="{Binding IsSubagentRow, Converter={StaticResource InverseBoolToVis}}" />
+                <Path Style="{StaticResource OpenCaret}" Margin="3,0,0,0"
+                      Visibility="{Binding ShowsOpenCaret, Converter={StaticResource BoolToVis}}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ToolCallItem}">
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderBrush" Value="{DynamicResource BorderSoftBrush}" />
+                        <Setter Property="BorderThickness" Value="0,1,0,0" />
+                        <Style.Triggers>
+                            <DataTrigger Value="0"
+                                         Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}">
+                                <Setter Property="BorderThickness" Value="0" />
+                            </DataTrigger>
+                            <!-- A bare row has no card to be divided from -->
+                            <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                <Setter Property="BorderThickness" Value="0" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <!-- The group card pads each child px-2.5 py-md, not the button -->
+                <StackPanel>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Margin" Value="10,8" />
+                            <Style.Triggers>
+                                <!-- The run's own wrapper already spaces it -->
+                                <DataTrigger Binding="{Binding IsBare}" Value="True">
+                                    <Setter Property="Margin" Value="0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <!--
+                         A row expands in place, so it is a toggle - except an agent
+                         row, which opens that agent's transcript in the Background
+                         tasks pane instead. The reference's row is role="button" and
+                         drops aria-expanded on exactly those rows (ae = isAgentRow &&
+                         hasOpener), so ours is a plain Button there: a screen reader
+                         invokes it and gets the pane rather than toggling a row that
+                         never expands. ContentTemplate is explicit on both: the
+                         content is a ToolCallItem, and leaving it to the implicit
+                         template would nest this row inside itself.
+                    -->
+                    <ToggleButton IsChecked="{Binding IsExpanded}"
+                                  Style="{StaticResource TranscriptRowButton}"
+                                  HorizontalAlignment="Left"
+                                  Content="{Binding}"
+                                  ContentTemplate="{StaticResource ToolRowHeaderContent}"
+                                  AutomationProperties.Name="{Binding Description}"
+                                  Visibility="{Binding IsSubagentRow, Converter={StaticResource InverseBoolToVis}}" />
+                    <Button Style="{StaticResource TranscriptRowButton}"
+                            HorizontalAlignment="Left"
+                            Click="OnToolRowActivated"
+                            Content="{Binding}"
+                            ContentTemplate="{StaticResource ToolRowHeaderContent}"
+                            AutomationProperties.Name="{Binding Description}"
+                            Visibility="{Binding IsSubagentRow, Converter={StaticResource BoolToVis}}" />
+
+                    <TextBlock Text="{Binding Progress}" Margin="0,2,0,0" FontSize="11.5"
+                               Foreground="{DynamicResource Text400Brush}"
+                               Visibility="{Binding Progress, Converter={StaticResource NullToCollapsed}}" />
+
+                    <!-- preview_start renders the reference's inline dev-server card:
+                         thumbnail when the Browser panel could capture one, the URL,
+                         and View logs / Stop server. -->
+                    <Border Margin="0,6,0,2" CornerRadius="10" Padding="10"
+                            Background="{DynamicResource Bg300Brush}"
+                            BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1"
+                            Loaded="OnPreviewCardLoaded"
+                            Visibility="{Binding IsPreviewCard, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <Border CornerRadius="6" ClipToBounds="True" Margin="0,0,0,8"
+                                    MaxHeight="180" HorizontalAlignment="Left"
+                                    Visibility="{Binding HasPreviewThumbnail, Converter={StaticResource BoolToVis}}">
+                                <Image Source="{Binding PreviewThumbnailPath, Converter={StaticResource Thumbnail}, ConverterParameter=360}"
+                                       MaxHeight="180" Stretch="Uniform" StretchDirection="DownOnly" />
+                            </Border>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE774;" FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                           Foreground="{DynamicResource Text400Brush}" VerticalAlignment="Center"
+                                           Margin="0,0,8,0" />
+                                <TextBlock FontSize="12.5" VerticalAlignment="Center">
+                                    <Hyperlink Click="OnPreviewOpen" Foreground="{DynamicResource AccentBrush}">
+                                        <Run Text="{Binding PreviewUrl, Mode=OneWay}" />
+                                    </Hyperlink>
+                                </TextBlock>
+                                <Button Content="View logs" Style="{StaticResource GhostButton}" Padding="9,4"
+                                        FontSize="12" Margin="12,0,0,0" Click="OnPreviewViewLogs" />
+                                <Button Content="Stop server" Style="{StaticResource GhostButton}" Padding="9,4"
+                                        FontSize="12" Margin="6,0,0,0" Click="OnPreviewStop" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Bodies: one per coalesced call, stacked like the reference -->
+                    <ItemsControl ItemsSource="{Binding AllCalls}" Focusable="False"
+                                  ItemTemplate="{StaticResource ToolCallBodyTemplate}"
+                                  ItemsPanel="{StaticResource VirtualCallPanel}"
+                                  Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}" />
+
+                    <!--
+                         A lone call's images sit outside the disclosure: the
+                         reference renders them for the row rather than for the
+                         group when there is no group, so they stay visible with
+                         the row collapsed.
+                    -->
+                    <ItemsControl ItemsSource="{Binding Images}" Focusable="False" Margin="0,8,0,0"
+                                  ItemTemplate="{StaticResource ToolResultImageTemplate}"
+                                  Visibility="{Binding ImagesRideTheRow, Converter={StaticResource BoolToVis}}" />
+
+                    <!-- A subagent's own transcript, nested under its run_agent row -->
+                    <Border BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="2,0,0,0"
+                            Margin="8,4,0,2" Padding="10,2,0,2">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsExpanded}" Value="True" />
+                                            <Condition Binding="{Binding HasSubItems}" Value="True" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <ItemsControl ItemsSource="{Binding SubItems}" Focusable="False" />
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- A subagent's interim/final text inside the nested transcript -->
+        <DataTemplate DataType="{x:Type vm:SubagentTextItem}">
+            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12.5" LineHeight="18"
+                       Margin="4,3,4,5" MaxHeight="200" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource Text300Brush}" />
+        </DataTemplate>
+
+        <!-- Notices / errors -->
+        <!--
+            Assistant message footer (Code), the reference's action bar in its order:
+            Copy · Fork from here · thumbs up · thumbs down · Run in background ·
+            model · timestamp. It fades in on hover like the rest of the chrome.
+        -->
+        <DataTemplate DataType="{x:Type vm:AssistantFooterItem}">
+            <Grid x:Name="FooterRoot" Background="Transparent" Margin="0,0,0,6">
+                <StackPanel x:Name="FooterActions" Orientation="Horizontal"
+                            HorizontalAlignment="Left"
+                            Opacity="0" IsHitTestVisible="False">
+                    <Button Style="{StaticResource MessageActionButton}"
+                            ToolTip="Copy" AutomationProperties.Name="Copy response"
+                            Visibility="{Binding HasText, Converter={StaticResource BoolToVis}}"
+                            Command="{Binding CopyTurnCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Grid Width="15" Height="15">
+                            <Viewbox Visibility="{Binding IsCopied, Converter={StaticResource InverseBoolToVis}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CopyIconGlyph}" />
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Visibility="{Binding IsCopied, Converter={StaticResource BoolToVis}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource CheckIconGlyph}" />
+                                </Canvas>
+                            </Viewbox>
+                        </Grid>
+                    </Button>
+
+                    <Button Style="{StaticResource MessageActionButton}" Margin="1,0,0,0"
+                            ToolTip="Fork from here" AutomationProperties.Name="Fork from here"
+                            Command="{Binding ForkTurnCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource BranchIconGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
+                    <Button Margin="1,0,0,0"
+                            ToolTip="Good response" AutomationProperties.Name="Good response"
+                            Command="{Binding GoodTurnCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource MessageActionButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsGood}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrandBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource ThumbsUpGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
+                    <Button Margin="1,0,0,0"
+                            ToolTip="Bad response" AutomationProperties.Name="Bad response"
+                            Command="{Binding BadTurnCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource MessageActionButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBad}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrandBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource ThumbsDownGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
+                    <Button Style="{StaticResource MessageActionButton}" Margin="1,0,0,0"
+                            ToolTip="Run in background" AutomationProperties.Name="Run in background"
+                            Visibility="{Binding CanMoveToBackground, Converter={StaticResource BoolToVis}}"
+                            Command="{Binding RunTurnInBackgroundCommand, RelativeSource={RelativeSource AncestorType={x:Type views:ChatSurface}}}"
+                            CommandParameter="{Binding}">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource MessageActionGlyph}" Data="{StaticResource AgentsSimpleGlyph}" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
+                    <TextBlock Text="{Binding ModelLabel}" FontSize="11.5" Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding ModelLabel, Converter={StaticResource NullToCollapsed}}"
+                               Foreground="{DynamicResource Text500Brush}" />
+                    <TextBlock Text="·" FontSize="11.5" Margin="6,0,0,0" VerticalAlignment="Center"
+                               Visibility="{Binding HasSeparator, Converter={StaticResource BoolToVis}}"
+                               Foreground="{DynamicResource Text500Brush}" />
+                    <TextBlock Text="{Binding RelativeTime}" FontSize="11.5" Margin="6,0,0,0"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding HasTimestamp, Converter={StaticResource BoolToVis}}"
+                               Foreground="{DynamicResource Text500Brush}" />
+                </StackPanel>
+            </Grid>
+            <DataTemplate.Triggers>
+                <Trigger SourceName="FooterRoot" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="FooterActions" Property="Opacity" Value="1" />
+                    <Setter TargetName="FooterActions" Property="IsHitTestVisible" Value="True" />
+                </Trigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- A rendered visualize widget. The reference's MCP-app row is the widget
+             (its tO in c360a9e1c-DUoNQd2W.js): one button carrying the label, the
+             tool's short name in the code face and a caret, with the widget under
+             it. The label shimmers and reads "Rendering widget" until the page
+             answers the host handshake, then settles to "Widget from {server}". -->
+        <DataTemplate DataType="{x:Type vm:WidgetItem}">
+            <StackPanel Margin="0,2,0,8">
+                <ToggleButton IsChecked="{Binding IsExpanded}" Style="{StaticResource RowButton}"
+                              HorizontalAlignment="Left" Padding="4,3"
+                              AutomationProperties.Name="{Binding Label}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Label}" FontSize="13" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Text300Brush}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRendering}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard x:Name="WidgetShine">
+                                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="1" To="0.45" Duration="0:0:0.8" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="WidgetShine" />
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding ToolName}" Margin="3,0,0,0" FontSize="12.5"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   FontFamily="{DynamicResource MonoFontFamily}"
+                                   Foreground="{DynamicResource Text100Brush}" />
+                        <Path Style="{StaticResource DisclosureChevron}" Margin="3,1,0,0" />
+                    </StackPanel>
+                </ToggleButton>
+                <controls:WidgetBlock Item="{Binding}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ChapterItem}">
+            <Grid Margin="0,18,0,12" ToolTip="{Binding Summary}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Rename chapter" Click="OnRenameChapter" />
+                        <MenuItem Header="Hide chapter" Click="OnHideChapter" />
+                    </ContextMenu>
+                </Grid.ContextMenu>
+                <Border Grid.Column="0" Height="1" VerticalAlignment="Center"
+                        Background="{DynamicResource Border300Brush}" />
+                <!--
+                    Double-clicking the title turns it into a field, the way the
+                    reference's chapter heading does; Enter commits, Escape backs out.
+                -->
+                <TextBlock Grid.Column="1" Text="{Binding DisplayTitle}" Margin="10,0"
+                           FontSize="11.5" FontWeight="SemiBold"
+                           MouseLeftButtonDown="OnChapterTitleClick"
+                           Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVis}}"
+                           Foreground="{DynamicResource Text300Brush}" />
+                <TextBox Grid.Column="1" Margin="10,0" MinWidth="120"
+                         Text="{Binding DisplayTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}"
+                         AutomationProperties.Name="Chapter title"
+                         Loaded="OnChapterEditorLoaded"
+                         LostFocus="OnChapterEditorCommit"
+                         PreviewKeyDown="OnChapterEditorKey"
+                         FontSize="11.5" FontWeight="SemiBold" Padding="2,0"
+                         BorderThickness="1.5" BorderBrush="{DynamicResource AccentBrandBrush}"
+                         Background="Transparent"
+                         Foreground="{DynamicResource Text300Brush}" />
+                <Border Grid.Column="2" Height="1" VerticalAlignment="Center"
+                        Background="{DynamicResource Border300Brush}" />
+            </Grid>
+        </DataTemplate>
+
+        <!--
+            The reference's API-error card: a warning icon and headline, the
+            hint, the request id, collapsible details with their own copy
+            button, and the actions the error's category says would help.
+        -->
+        <!--
+            The reference's session-not-found card: it replaces the transcript for a
+            session whose own transcript is no longer on disk, and its three actions
+            are Import CLI sessions / Archive / Delete.
+        -->
+        <DataTemplate DataType="{x:Type vm:SessionNotFoundItem}">
+            <Border MaxWidth="480" HorizontalAlignment="Left" Margin="0,8,0,10"
+                    CornerRadius="10" Padding="16"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderMidBrush}"
+                    Background="{DynamicResource Tint1Brush}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
+                               FontSize="13.5" FontWeight="Medium"
+                               Foreground="{DynamicResource Text100Brush}" />
+                    <TextBlock Text="{Binding Body}" TextWrapping="Wrap" Margin="0,8,0,0"
+                               FontSize="12.5" LineHeight="18"
+                               Foreground="{DynamicResource Text300Brush}" />
+                    <WrapPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Content="{Binding ImportLabel}" Style="{StaticResource SecondaryButton}"
+                                Click="OnSessionNotFoundImport"
+                                Visibility="{Binding CanImport, Converter={StaticResource BoolToVis}}" />
+                        <Button Content="{Binding ArchiveLabel}" Style="{StaticResource SecondaryButton}"
+                                Margin="8,0,0,0" Click="OnSessionNotFoundArchive"
+                                AutomationProperties.Name="{Binding ArchiveName}" />
+                        <Button Content="{Binding DeleteLabel}" Style="{StaticResource SecondaryButton}"
+                                Margin="8,0,0,0" Click="OnSessionNotFoundDelete"
+                                AutomationProperties.Name="{Binding DeleteName}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ErrorCardItem}">
+            <Border MaxWidth="480" HorizontalAlignment="Left" Margin="0,8,0,10"
+                    CornerRadius="10" Padding="16"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderMidBrush}"
+                    Background="{DynamicResource Tint1Brush}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#xE7BA;" FontSize="14" Margin="0,1,8,0"
+                                   VerticalAlignment="Top"
+                                   FontFamily="{StaticResource IconFontFamily}"
+                                   Foreground="{DynamicResource Danger000Brush}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Headline}" TextWrapping="Wrap"
+                                   FontSize="13.5" FontWeight="Medium"
+                                   Foreground="{DynamicResource Text100Brush}" />
+                    </Grid>
+                    <TextBlock Text="{Binding Hint}" TextWrapping="Wrap" Margin="0,8,0,0"
+                               FontSize="12.5" LineHeight="18"
+                               Foreground="{DynamicResource Text300Brush}" />
+                    <TextBlock Text="{Binding RequestIdText}" Margin="0,8,0,0"
+                               FontSize="11.5" TextWrapping="Wrap"
+                               FontFamily="{StaticResource MonoFontFamily}"
+                               Visibility="{Binding HasRequestId, Converter={StaticResource BoolToVis}}"
+                               Foreground="{DynamicResource Text400Brush}" />
+                    <Border Margin="0,10,0,0" CornerRadius="6" Padding="10,8"
+                            Background="{DynamicResource Tint2Brush}"
+                            Visibility="{Binding DetailsExpanded, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding Details}" TextWrapping="Wrap"
+                                   FontSize="11.5"
+                                   FontFamily="{StaticResource MonoFontFamily}"
+                                   Foreground="{DynamicResource Text300Brush}" />
+                    </Border>
+                    <!-- The reference wraps this row rather than clipping it. -->
+                    <WrapPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Content="View details" Style="{StaticResource SecondaryButton}"
+                                Click="OnErrorCardToggleDetails"
+                                Visibility="{Binding HasDetails, Converter={StaticResource BoolToVis}}" />
+                        <Button Style="{StaticResource SecondaryButton}" Margin="8,0,0,0"
+                                Click="OnErrorCardCopyDetails"
+                                Visibility="{Binding HasDetails, Converter={StaticResource BoolToVis}}">
+                            <TextBlock>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Copy error details" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Copied}" Value="True">
+                                                <Setter Property="Text" Value="Copied" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+                        <Button Content="Compact" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0"
+                                Click="OnErrorCardCompact"
+                                Visibility="{Binding CompactHelps, Converter={StaticResource BoolToVis}}" />
+                        <Button Content="Rewind" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0"
+                                Click="OnErrorCardRewind"
+                                Visibility="{Binding RewindHelps, Converter={StaticResource BoolToVis}}" />
+                        <Button Content="Switch model and retry" Style="{StaticResource SecondaryButton}"
+                                Margin="8,0,0,0" Click="OnErrorCardSwitchModel" />
+                        <Button Content="Try again" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0"
+                                Click="OnErrorCardRetry"
+                                Visibility="{Binding RetryHelps, Converter={StaticResource BoolToVis}}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- The Chat surface's unfinished-turn card: what happened, and what can
+             be done about it (the reference offers Edit prompt only for a turn
+             the user stopped). -->
+        <DataTemplate DataType="{x:Type vm:ChatErrorItem}">
+            <Border CornerRadius="8" Padding="12,10" Margin="0,6,0,10"
+                    HorizontalAlignment="Stretch"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderSoftBrush}"
+                    Background="{DynamicResource HoverOverlayBrush}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="13"
+                               Foreground="{DynamicResource Text200Brush}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Edit prompt" Style="{StaticResource GhostButton}"
+                                Padding="10,3" FontSize="12" Click="OnChatErrorEditPrompt"
+                                Visibility="{Binding Interrupted, Converter={StaticResource BoolToVis}}" />
+                        <Button Content="Try again" Style="{StaticResource GhostButton}"
+                                Padding="10,3" FontSize="12" Margin="6,0,0,0"
+                                Click="OnChatErrorRetry" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- The row a compaction or a /clear leaves behind. -->
+        <DataTemplate DataType="{x:Type vm:CompactionItem}">
+            <TextBlock Text="{Binding Text}" Margin="0,10,0,10"
+                       FontSize="13" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource Text500Brush}" />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:NoticeItem}">
+            <Border CornerRadius="8" Padding="12,8" Margin="0,6,0,10"
+                    HorizontalAlignment="Left">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsError}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource Danger900Brush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12.5">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource Text300Brush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Danger000Brush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
+        </DataTemplate>
+
+        <!-- Suggestion chip -->
+        <Style x:Key="SuggestionChip" TargetType="{x:Type Button}" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="Margin" Value="4,0" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- Context-bar chip (Local / project / branch / directory) -->
+        <Style x:Key="ContextChip" TargetType="{x:Type Button}" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="Padding" Value="9,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+
+        <!-- Borderless footer control (Bypass permissions · model · effort) -->
+        <Style x:Key="FooterChip" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource RowButton}">
+            <Setter Property="Padding" Value="7,4" />
+            <Setter Property="FontSize" Value="12.5" />
+        </Style>
+
+        <!-- Diff line inside the permission card -->
+        <DataTemplate DataType="{x:Type core:DiffLine}">
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Kind}" Value="Added">
+                                <Setter Property="Background" Value="{DynamicResource Success900Brush}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Kind}" Value="Removed">
+                                <Setter Property="Background" Value="{DynamicResource Danger900Brush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding Text}" FontFamily="{DynamicResource MonoFontFamily}" FontSize="11.5"
+                           Padding="8,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource Text300Brush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Kind}" Value="Added">
+                                    <Setter Property="Foreground" Value="{DynamicResource Success000Brush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Kind}" Value="Removed">
+                                    <Setter Property="Foreground" Value="{DynamicResource Danger000Brush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Kind}" Value="Separator">
+                                    <Setter Property="Foreground" Value="{DynamicResource Text500Brush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <!-- The whole session view is the file dropzone, like the reference -->
+    <Grid AllowDrop="True"
+          PreviewDragEnter="OnSurfaceDragEnter" PreviewDragOver="OnSurfaceDragOver"
+          PreviewDragLeave="OnSurfaceDragLeave" PreviewDrop="OnSurfaceDrop"
+          Background="Transparent">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+    <!-- The reference's transcript/composer column: its max content width
+         (768/960/1280 by the Transcript width setting) inside a 32px gutter each side. -->
+    <Grid x:Name="RootGrid" MaxWidth="{DynamicResource TranscriptMaxWidth}" Margin="32,0">
+        <Grid.RowDefinitions>
+            <RowDefinition x:Name="TopSpacerRow" Height="0" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition x:Name="TranscriptRow" Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition x:Name="BottomSpacerRow" Height="0" />
+        </Grid.RowDefinitions>
+
+        <!-- Chat greeting (empty state) -->
+        <!-- Empty chat: the reference's centred figure — the mascot beside the
+             greeting and nothing else — with the first chat of all replacing it
+             with the onboarding block, which is left-aligned at the top of the
+             column where its own pt-4/px-4 puts it. The whole thing fades in on
+             the reference's own animate-empty-chat-fade. -->
+        <Grid x:Name="GreetingPanel" Grid.Row="0" Grid.RowSpan="3"
+              Visibility="Collapsed" Opacity="0"
+              SizeChanged="OnGreetingSizeChanged">
+            <StackPanel x:Name="GreetingFigure"
+                        VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                        Margin="0,0,0,34">
+                <!-- Its h2: mascot and greeting, a row at the sm: breakpoint and a
+                     column below it, which OnGreetingSizeChanged flips. -->
+                <StackPanel x:Name="GreetingRow" Orientation="Horizontal"
+                            HorizontalAlignment="Center">
+                    <controls:PokeableSpark x:Name="GreetingSpark" State="Waiting"
+                                            VerticalAlignment="Center" Margin="0,4,0,0" />
+                    <TextBlock x:Name="GreetingText"
+                               Text="What can I help you with today?"
+                               FontFamily="{StaticResource DisplayFontFamily}"
+                               FontSize="28" LineHeight="36.4" FontWeight="Medium"
+                               LineStackingStrategy="BlockLineHeight"
+                               Margin="8,0,0,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Text100Brush}" />
+                </StackPanel>
+
+                <!-- Incognito: what the chat promises, under the greeting -->
+                <TextBlock x:Name="IncognitoNotice" Visibility="Collapsed"
+                           Text="Incognito chats aren&#8217;t saved to history."
+                           HorizontalAlignment="Center" Margin="0,10,0,0" FontSize="12.5"
+                           Foreground="{DynamicResource Text500Brush}" />
+            </StackPanel>
+
+            <!-- First chat of all: the reference's onboarding paragraphs, which
+                 replace the greeting rather than joining it. Each is revealed only
+                 once the one above it has finished, and the mascot writes until the
+                 last of them lands. -->
+            <StackPanel x:Name="OnboardingPanel" Visibility="Collapsed"
+                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Margin="16,16,16,0">
+                <controls:FadeInText x:Name="OnboardingGreeting"
+                                     TextElement.FontFamily="{StaticResource DisplayFontFamily}"
+                                     TextElement.FontSize="24" LineHeight="40.8" TextElement.FontWeight="Light"
+                                     TextElement.Foreground="{DynamicResource Text100Brush}" />
+                <controls:FadeInText x:Name="OnboardingIntro" Margin="0,6,0,0"
+                                     TextElement.FontFamily="{StaticResource DisplayFontFamily}"
+                                     TextElement.FontSize="16" LineHeight="27.2"
+                                     TextElement.Foreground="{DynamicResource Text100Brush}" />
+                <controls:FadeInText x:Name="OnboardingStart" Margin="0,12,0,0"
+                                     TextElement.FontFamily="{StaticResource DisplayFontFamily}"
+                                     TextElement.FontSize="16" LineHeight="27.2"
+                                     TextElement.Foreground="{DynamicResource Text100Brush}" />
+                <controls:SparkGlyph x:Name="OnboardingSpark" State="Writing"
+                                     HorizontalAlignment="Left" Margin="16,40,0,0" />
+            </StackPanel>
+        </Grid>
+
+        <!--
+            The Code session's titlebar — the reference's `epitaxy-titlebar` (desktop
+            1.44121.4.0, `Nh` in ion-dist chunk c66fe388e-DOFZnzRG.js): the origin gutter,
+            the title with its rename editor and loading skeleton, the origin label pill,
+            then the trailing cluster. The panel itself is the window's drag region and
+            owns the fitting rules that fold the pill and the rail's toggles away.
+        -->
+        <controls:SessionTitleBarPanel x:Name="SessionHeader" Grid.Row="1" Visibility="Collapsed">
+            <!-- Its `yb` slot: 32x24, centred, holding the 18px origin glyph. -->
+            <Grid controls:SessionTitleBarPanel.Slot="Origin">
+                <Path x:Name="OriginGlyph" Width="18" Height="18" Stretch="Uniform"
+                      StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      StrokeLineJoin="Round" Stroke="{DynamicResource Text100Brush}"
+                      Data="{DynamicResource LaptopGlyph}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <!-- Its `origin-ghost`: an 18px pulsing square while the session loads. -->
+                <Border x:Name="OriginSkeleton" Width="18" Height="18" CornerRadius="4"
+                        Background="{DynamicResource HoverOverlayBrush}" Visibility="Collapsed"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+
+            <!--
+                Three things share the title slot, one at a time: the button, the rename
+                editor it swaps in, and the skeleton the reference shows while the session
+                is still loading.
+            -->
+            <Grid x:Name="SessionTitleHost" controls:SessionTitleBarPanel.Slot="Title">
+                <Button x:Name="SessionTitleButton" Style="{StaticResource SessionTitleButton}"
+                        HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Click="OnSessionTitleClick"
+                        PreviewKeyDown="OnSessionTitleKeyDown"
+                        MouseRightButtonUp="OnSessionTitleContextMenu">
+                    <TextBlock x:Name="SessionTitleText" FontSize="14" FontWeight="Medium"
+                               Foreground="{DynamicResource Text100Brush}"
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                </Button>
+                <ContentControl x:Name="SessionTitleEditorHost" Visibility="Collapsed"
+                                HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <Border x:Name="SessionTitleSkeleton" Height="20" CornerRadius="3"
+                        Background="{DynamicResource SelectedOverlayBrush}" Visibility="Collapsed"
+                        HorizontalAlignment="Left" VerticalAlignment="Center" />
+            </Grid>
+
+            <controls:SessionOriginPill x:Name="ProjectBadge"
+                                        controls:SessionTitleBarPanel.Slot="Pill" />
+
+            <!--
+                Its `xb`: `ml-auto flex shrink-0 items-center gap-1 pl-[24px]` — against the
+                right edge, on a 4px pitch, and never closer than 24px to the lead, which is
+                what the left margin buys. The gap rides the sibling that is followed by
+                something, so a hidden control takes its gap with it.
+            -->
+            <StackPanel x:Name="SessionTitleTrailing" controls:SessionTitleBarPanel.Slot="Trailing" Orientation="Horizontal"
+                        VerticalAlignment="Center" Margin="24,0,0,0">
+                <Button x:Name="AgentBadge" Style="{StaticResource PanelIconButton}"
+                        Visibility="Collapsed" Focusable="True" Margin="0,0,4,0"
+                        Foreground="{DynamicResource Accent100Brush}">
+                    <Path Style="{StaticResource PanelGlyph}" Data="{StaticResource AgentsSimpleGlyph}" />
+                </Button>
+                <panels:PanelRail x:Name="Rail" />
+                <!-- Its `Zp`: the SidebarClose glyph at its own 18px, not the rail's 15. -->
+                <Button x:Name="ArtifactExpandButton" Style="{StaticResource PanelIconButton}"
+                        Visibility="Collapsed" Click="OnArtifactExpandClick" Margin="4,0,0,0"
+                        ToolTip="Expand artifact" AutomationProperties.Name="Expand artifact">
+                    <Path Style="{StaticResource PanelGlyph}" Width="18" Height="18"
+                          Data="{StaticResource SidebarCloseGlyph}" />
+                </Button>
+                <Button x:Name="ClosePaneButton" Style="{StaticResource PanelIconButton}"
+                        Visibility="Collapsed" Click="OnClosePaneClick" Margin="4,0,0,0"
+                        ToolTip="Close pane" AutomationProperties.Name="Close pane">
+                    <Path Style="{StaticResource PanelGlyph}" Data="{StaticResource CloseGlyph}" />
+                </Button>
+            </StackPanel>
+        </controls:SessionTitleBarPanel>
+
+        <!--
+            spawn_task suggestions. The reference's own hint describes this
+            surface: its suggested follow-up tasks appear as a notification in
+            the top right, and a click spins one off or hands it to this session.
+        -->
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding TaskSuggestions}" Panel.ZIndex="20"
+                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,20,0"
+                      MaxWidth="320"
+                      Visibility="{Binding HasTaskSuggestions, Converter={StaticResource BoolToVis}}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{DynamicResource Bg000Brush}"
+                            BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1"
+                            CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.25" Color="#000000" />
+                        </Border.Effect>
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
+                                           FontSize="12.5" FontWeight="Medium"
+                                           Foreground="{DynamicResource Text100Brush}" />
+                                <Button Grid.Column="1" Content="&#xE8BB;" Click="OnDismissTaskSuggestion"
+                                        Tag="{Binding Id}" Cursor="Hand" Margin="8,-2,-2,0" Padding="4"
+                                        VerticalAlignment="Top"
+                                        Style="{StaticResource IconButton}"
+                                        FontFamily="{StaticResource IconFontFamily}" FontSize="9"
+                                        AutomationProperties.Name="Dismiss" ToolTip="Dismiss" />
+                            </Grid>
+                            <TextBlock Text="{Binding Tldr}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                       FontSize="11.5" LineHeight="17"
+                                       Foreground="{DynamicResource Text400Brush}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Content="Spin off" Click="OnStartTaskSuggestion" Tag="{Binding Id}"
+                                        Style="{StaticResource PrimaryButton}" Padding="10,4" FontSize="11.5" />
+                                <Button Content="Handle here" Click="OnHandleTaskSuggestion" Tag="{Binding Id}"
+                                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0"
+                                        Padding="10,4" FontSize="11.5" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Transcript -->
+        <!--
+            Focusable so the arrow and page keys reach it: "Scroll the transcript
+            with arrow and page keys" is the reference's own affordance, and a
+            scroll region that cannot take focus never sees a key.
+        -->
+        <ScrollViewer x:Name="TranscriptScroll" Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto"
+                      Focusable="True"
+                      Padding="0,10,8,0">
+            <!-- Browser-style drag selection across the whole transcript -->
+            <controls:TextSelectionScope x:Name="TranscriptSelection">
+                <StackPanel>
+                    <ItemsControl x:Name="TranscriptItems" ItemsSource="{Binding Transcript}"
+                                  ItemsPanel="{StaticResource VirtualTranscriptPanel}" />
+                    <!-- Turn status line: spinner · elapsed · tokens · tasks · phase label (Code) -->
+                    <controls:TurnStatusLine x:Name="StatusLine" Margin="0,6,0,14"
+                                             HorizontalAlignment="Left"
+                                             StatusLabelClicked="OnStatusLabelClicked"
+                                             TasksChipClicked="OnTasksChipClicked" />
+                    <!-- The Chat surface's own waiting line: one sentence, no clock -->
+                    <controls:ChatStatusLine x:Name="ChatStatus" />
+                </StackPanel>
+            </controls:TextSelectionScope>
+        </ScrollViewer>
+
+        <!-- Code home: greeting + usage stats card -->
+        <ScrollViewer x:Name="HomeScroll" Grid.Row="2" Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+            <StackPanel x:Name="HomePanel" Margin="0,44,0,20">
+                <StackPanel Orientation="Horizontal" Margin="2,0,0,18">
+                    <views:SpinnerGlyph Width="20" Height="20" IsSpinning="False" VerticalAlignment="Center" />
+                    <TextBlock x:Name="HomeGreetingText"
+                               Text="What's up next?"
+                               FontSize="20" FontWeight="SemiBold"
+                               Margin="11,0,0,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Text100Brush}" />
+                </StackPanel>
+                <ContentControl x:Name="HomeActionCenterHost" Focusable="False"
+                                HorizontalAlignment="Stretch" />
+                <ContentControl x:Name="StatsCardHost" Focusable="False" MaxWidth="560"
+                                HorizontalAlignment="Left" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Scroll to bottom: floating pill shown while scrolled away from the tail -->
+        <Button x:Name="ScrollToBottomButton" Grid.Row="2" Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,12" Panel.ZIndex="9"
+                Click="OnScrollToBottomClick"
+                ToolTip="Scroll to bottom"
+                AutomationProperties.Name="Scroll to bottom">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root" MinWidth="32" Height="32" CornerRadius="16"
+                            Background="{DynamicResource Bg000Brush}"
+                            BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.22" Color="#000000" />
+                        </Border.Effect>
+                        <StackPanel Orientation="Horizontal" Margin="10,0"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <!--
+                                The pill names itself once something arrived while
+                                the reader was away from the tail, which is the
+                                reference's own "New messages" indicator.
+                            -->
+                            <TextBlock x:Name="NewMessagesLabel" Text="New messages" Visibility="Collapsed"
+                                       FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource Text200Brush}" />
+                            <TextBlock Text="&#xE74B;" FontFamily="{StaticResource IconFontFamily}" FontSize="12"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource Text200Brush}" />
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource Bg200Brush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+
+        <!-- Find bar (Ctrl+F) -->
+        <Border x:Name="FindBar" Grid.Row="2"
+                Visibility="Collapsed"
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Background="{DynamicResource Bg000Brush}"
+                BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1"
+                CornerRadius="10" Padding="8,6" Margin="0,4,10,0" Panel.ZIndex="10">
+            <StackPanel Orientation="Horizontal">
+                <TextBox x:Name="FindBox" Width="180" Style="{StaticResource InputTextBox}"
+                         Padding="8,4" FontSize="12.5"
+                         TextChanged="OnFindTextChanged" PreviewKeyDown="OnFindKeyDown"
+                         AutomationProperties.Name="Find in conversation" />
+                <TextBlock x:Name="FindCount" Text="" FontSize="11.5" Margin="8,0,4,0"
+                           VerticalAlignment="Center" Foreground="{DynamicResource Text400Brush}" />
+                <Button Style="{StaticResource IconButton}" Padding="4" Click="OnFindPrevClick"
+                        AutomationProperties.Name="Previous match">
+                    <TextBlock Text="&#xE70E;" FontFamily="{StaticResource IconFontFamily}" FontSize="10" />
+                </Button>
+                <Button Style="{StaticResource IconButton}" Padding="4" Click="OnFindNextClick"
+                        AutomationProperties.Name="Next match">
+                    <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFontFamily}" FontSize="10" />
+                </Button>
+                <Button Style="{StaticResource IconButton}" Padding="4" Click="OnFindCloseClick"
+                        AutomationProperties.Name="Close find">
+                    <TextBlock Text="&#xE8BB;" FontFamily="{StaticResource IconFontFamily}" FontSize="10" />
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- Permission card (template is implicit by VM type so a null renders nothing) -->
+        <ContentControl Grid.Row="3" Content="{Binding PendingPermission}" Focusable="False">
+            <ContentControl.Resources>
+                                <DataTemplate x:Key="PermissionButtonFace" DataType="{x:Type vm:PermissionOption}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                        <Grid Margin="8,0,0,0" VerticalAlignment="Center">
+                            <Border CornerRadius="4" Opacity="0.14"
+                                    Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            <TextBlock Text="{Binding Number}" FontSize="10" Margin="5,1"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Keys}" Margin="4,0,0,0" Focusable="False"
+                                      VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="2,0,0,0">
+                                        <Border CornerRadius="4" Opacity="0.14"
+                                                Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                        <TextBlock Text="{Binding}" FontSize="10" Margin="5,1"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:PermissionPromptViewModel}">
+        <Border Background="{DynamicResource Bg000Brush}"
+                BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1"
+                CornerRadius="12" Padding="16,14" Margin="0,6,0,10">
+            <StackPanel>
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"
+                           TextWrapping="Wrap" Foreground="{DynamicResource Text100Brush}" />
+                <TextBlock Text="{Binding Detail}" FontSize="12.5" Margin="0,8,0,0"
+                           TextWrapping="Wrap" Foreground="{DynamicResource Text400Brush}"
+                           Visibility="{Binding HasDetail, Converter={StaticResource BoolToVis}}" />
+                <!-- The reference app prints the escalation reason in the same muted tone -->
+                <TextBlock Text="{Binding Warning}" FontSize="12.5" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Foreground="{DynamicResource Text400Brush}"
+                           Visibility="{Binding HasWarning, Converter={StaticResource BoolToVis}}" />
+                <Border Visibility="{Binding HasSubject, Converter={StaticResource BoolToVis}}"
+                        Background="{DynamicResource Bg300Brush}" CornerRadius="8"
+                        Padding="12,9" Margin="0,10,0,0">
+                    <TextBox Text="{Binding SubjectText, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
+                             Background="Transparent" FontFamily="{DynamicResource MonoFontFamily}" FontSize="12.5"
+                             Foreground="{DynamicResource Text100Brush}"
+                             SelectionBrush="{DynamicResource SelectionBrush}" TextWrapping="Wrap" />
+                </Border>
+                <Border Visibility="{Binding HasDiff, Converter={StaticResource BoolToVis}}"
+                        Background="{DynamicResource Bg300Brush}" CornerRadius="8"
+                        Padding="0,6" Margin="0,10,0,0" MaxHeight="220">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding DiffLines}"
+                                      ItemsPanel="{StaticResource VirtualLinePanel}" />
+                    </ScrollViewer>
+                </Border>
+                <!-- Deny alone on the left, the approvals right-aligned with the default last -->
+                <Grid Margin="0,14,0,0">
+                    <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
+                            Background="{DynamicResource FieldFillBrush}" Padding="10,6"
+                            Command="{Binding DenyOption.Command}"
+                            Content="{Binding DenyOption}"
+                            ContentTemplate="{StaticResource PermissionButtonFace}"
+                            AutomationProperties.Name="{Binding DenyOption.Label}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource GhostButton}"
+                                Background="{DynamicResource FieldFillBrush}" Padding="10,6"
+                                Visibility="{Binding HasAlwaysAllow, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding AlwaysAllowOption.Command}"
+                                Content="{Binding AlwaysAllowOption}"
+                                ContentTemplate="{StaticResource PermissionButtonFace}"
+                                AutomationProperties.Name="{Binding AlwaysAllowOption.Label}" />
+                        <Button Style="{StaticResource InvertedButton}" Margin="8,0,0,0"
+                                Command="{Binding AllowOnceOption.Command}"
+                                Content="{Binding AllowOnceOption}"
+                                ContentTemplate="{StaticResource PermissionButtonFace}"
+                                AutomationProperties.Name="{Binding AllowOnceOption.Label}" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+                </DataTemplate>
+            </ContentControl.Resources>
+        </ContentControl>
+
+        <!-- AskUserQuestion card: header chip · question · options · Other -->
+        <ContentControl Grid.Row="3" Content="{Binding PendingQuestion}" Focusable="False">
+            <ContentControl.Resources>
+                <DataTemplate DataType="{x:Type vm:QuestionPromptViewModel}">
+                    <Border Background="{DynamicResource Bg000Brush}"
+                            BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1"
+                            CornerRadius="12" Padding="16,14" Margin="0,6,0,10">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding Questions}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:QuestionViewModel}">
+                                        <StackPanel Margin="0,0,0,10">
+                                            <Border HorizontalAlignment="Left" CornerRadius="4"
+                                                    Background="{DynamicResource Bg300Brush}" Padding="7,2">
+                                                <TextBlock Text="{Binding Header}" FontSize="11"
+                                                           Foreground="{DynamicResource Text400Brush}" />
+                                            </Border>
+                                            <TextBlock Text="{Binding Text}" FontWeight="SemiBold" FontSize="14"
+                                                       Margin="0,7,0,4" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource Text100Brush}" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                            <ItemsControl ItemsSource="{Binding Options}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:QuestionOptionViewModel}">
+                                                        <Border Margin="0,4,0,0" CornerRadius="8" BorderThickness="1">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderMidBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrandBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <Button Style="{StaticResource RowButton}"
+                                                                    HorizontalContentAlignment="Stretch"
+                                                                    Padding="12,8"
+                                                                    Command="{Binding PickCommand}"
+                                                                    MouseEnter="OnQuestionOptionHover"
+                                                                    AutomationProperties.Name="{Binding Label}">
+                                                                <StackPanel HorizontalAlignment="Left">
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <TextBlock Text="●" FontSize="9" Margin="0,0,8,0"
+                                                                                   VerticalAlignment="Center"
+                                                                                   Foreground="{DynamicResource AccentBrandBrush}"
+                                                                                   Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}" />
+                                                                        <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="Medium"
+                                                                                   Foreground="{DynamicResource Text100Brush}" />
+                                                                    </StackPanel>
+                                                                    <TextBlock Text="{Binding Description}" FontSize="12" Margin="0,2,0,0"
+                                                                               TextWrapping="Wrap"
+                                                                               Foreground="{DynamicResource Text400Brush}" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBox Text="{Binding OtherText, UpdateSourceTrigger=PropertyChanged}"
+                                                     Margin="0,6,0,0" Padding="10,7" FontSize="12.5"
+                                                     Background="{DynamicResource FieldFillBrush}"
+                                                     Foreground="{DynamicResource Text100Brush}"
+                                                     BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1"
+                                                     SelectionBrush="{DynamicResource SelectionBrush}"
+                                                     AutomationProperties.Name="Other answer">
+                                                <TextBox.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="8" />
+                                                    </Style>
+                                                </TextBox.Resources>
+                                            </TextBox>
+                                                </StackPanel>
+                                                <!-- Side-by-side preview, shown when any option carries one -->
+                                                <Border Grid.Column="1" Width="360" Margin="10,4,0,0"
+                                                        Background="{DynamicResource Bg200Brush}"
+                                                        BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1"
+                                                        CornerRadius="8" MinHeight="180" MaxHeight="340"
+                                                        Visibility="{Binding HasPreviews, Converter={StaticResource BoolToVis}}">
+                                                    <controls:HtmlPreview Html="{Binding PreviewHtml}" />
+                                                </Border>
+                                            </Grid>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Grid>
+                                <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
+                                        Background="{DynamicResource FieldFillBrush}" Padding="10,6"
+                                        Command="{Binding DismissCommand}" Content="Dismiss"
+                                        AutomationProperties.Name="Dismiss question" />
+                                <Button Style="{StaticResource InvertedButton}" HorizontalAlignment="Right"
+                                        Padding="12,6" Command="{Binding SubmitCommand}" Content="Submit"
+                                        Visibility="{Binding NeedsSubmit, Converter={StaticResource BoolToVis}}"
+                                        AutomationProperties.Name="Submit answers" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ContentControl.Resources>
+        </ContentControl>
+
+        <!-- exit_plan_mode approval: the plan rendered, then Keep planning / Approve -->
+        <ContentControl Grid.Row="3" Content="{Binding PendingPlanApproval}" Focusable="False">
+            <ContentControl.Resources>
+                <DataTemplate DataType="{x:Type vm:PlanApprovalViewModel}">
+                    <Border Background="{DynamicResource Bg000Brush}"
+                            BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1"
+                            CornerRadius="12" Padding="16,14" Margin="0,6,0,10">
+                        <StackPanel>
+                            <TextBlock Text="Ready to code?" FontWeight="SemiBold" FontSize="14"
+                                       Foreground="{DynamicResource Text100Brush}" />
+                            <TextBlock Text="Jarvis wants to exit plan mode and start implementing this plan:"
+                                       FontSize="12.5" Margin="0,6,0,0" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Text400Brush}" />
+                            <Border Background="{DynamicResource Bg200Brush}" CornerRadius="8"
+                                    Padding="12,8" Margin="0,10,0,0" MaxHeight="320"
+                                    Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVis}}">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <controls:MarkdownView Markdown="{Binding PlanMarkdown}" Profile="Code" />
+                                </ScrollViewer>
+                            </Border>
+                            <TextBox Text="{Binding EditedPlan, UpdateSourceTrigger=PropertyChanged}"
+                                     Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}"
+                                     Style="{StaticResource CodeEditorTextBox}"
+                                     AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="320" MinHeight="120"
+                                     VerticalScrollBarVisibility="Auto" Margin="0,10,0,0" Padding="12,8"
+                                     AutomationProperties.Name="Edit plan" />
+                            <TextBox Text="{Binding FeedbackText, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,10,0,0" Padding="10,7" FontSize="12.5"
+                                     Background="{DynamicResource FieldFillBrush}"
+                                     Foreground="{DynamicResource Text100Brush}"
+                                     BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1"
+                                     SelectionBrush="{DynamicResource SelectionBrush}"
+                                     AutomationProperties.Name="Plan comment"
+                                     ToolTip="Add a comment — Enter sends it back and keeps planning">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding CommentCommand}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Grid Margin="0,12,0,0">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                    <Button Style="{StaticResource GhostButton}"
+                                            Background="{DynamicResource FieldFillBrush}" Padding="10,6"
+                                            Command="{Binding RejectCommand}" Content="Keep planning"
+                                            AutomationProperties.Name="Keep planning" />
+                                    <Button Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                                            Background="{DynamicResource FieldFillBrush}" Padding="10,6"
+                                            Command="{Binding EditCommand}" Content="Edit plan"
+                                            AutomationProperties.Name="Edit plan" />
+                                </StackPanel>
+                                <Button Style="{StaticResource InvertedButton}" HorizontalAlignment="Right"
+                                        Padding="12,6" Command="{Binding ApproveCommand}"
+                                        Content="Approve plan &amp; start coding"
+                                        AutomationProperties.Name="Approve plan" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ContentControl.Resources>
+        </ContentControl>
+
+        <!-- Queued messages + git banner share the pre-composer row -->
+        <StackPanel Grid.Row="4">
+        <!-- spawn_task chips: one click spins a suggestion into its own session -->
+        <Border Visibility="{Binding HasQueuedMessages, Converter={StaticResource BoolToVis}}"
+                Background="{DynamicResource Bg200Brush}"
+                BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1"
+                CornerRadius="10" Padding="10,7" Margin="0,2,0,8"
+                AutomationProperties.Name="{Binding QueuedStatus}">
+            <StackPanel>
+                <Button Click="OnQueuedHeaderClick" Cursor="Hand"
+                        Background="Transparent" BorderThickness="0" Padding="0"
+                        HorizontalContentAlignment="Stretch"
+                        AutomationProperties.Name="Collapse queued messages">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter />
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <StackPanel Orientation="Horizontal" Margin="2,0,0,4">
+                        <TextBlock Text="{Binding QueuedHeader}" FontSize="11.5"
+                                   Foreground="{DynamicResource Text200Brush}" FontWeight="Medium" />
+                        <!-- Collapsed, the reference shows the next message beside the count -->
+                        <TextBlock Text="{Binding QueuedNext}" FontSize="11.5" Margin="8,0,0,0"
+                                   MaxWidth="320" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource Text500Brush}"
+                                   Visibility="{Binding QueuedNextVisible, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock x:Name="QueueChevron" FontSize="8" Margin="6,2,0,0"
+                                   FontFamily="{StaticResource IconFontFamily}"
+                                   Foreground="{DynamicResource Text500Brush}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="&#xE76C;" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding QueueRowsVisible}" Value="True">
+                                            <Setter Property="Text" Value="&#xE70D;" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Button>
+                <ItemsControl ItemsSource="{Binding QueuedMessages}" Focusable="False"
+                              Visibility="{Binding QueueRowsVisible, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:QueuedMessageItem}">
+                            <Grid Margin="0,2,0,0" Background="Transparent"
+                                  AllowDrop="True"
+                                  PreviewMouseLeftButtonDown="OnQueuedRowMouseDown"
+                                  PreviewMouseMove="OnQueuedRowMouseMove"
+                                  DragOver="OnQueuedRowDragOver"
+                                  Drop="OnQueuedRowDrop">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <!-- The reference reveals the reorder grip beside the row
+                                     menu on hover, not down the left edge. -->
+                                <TextBlock Text="&#xE784;" FontFamily="{StaticResource IconFontFamily}" FontSize="10"
+                                           Grid.Column="2" Opacity="0"
+                                           Foreground="{DynamicResource Text500Brush}" VerticalAlignment="Center"
+                                           Margin="0,0,22,0" Cursor="SizeNS"
+                                           ToolTip="Drag to reorder"
+                                           AutomationProperties.Name="Reorder queued message">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMouseOver,
+                                                        RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                                                    <Setter Property="Opacity" Value="0.75" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Grid.ColumnSpan="2" Text="{Binding Preview}" FontSize="12.5"
+                                           Foreground="{DynamicResource Text200Brush}"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                           Margin="2,0,44,0" MaxHeight="34" TextWrapping="Wrap" />
+                                <!-- The reference's row menu: edit, send now, remove -->
+                                <Button Grid.Column="2" Style="{StaticResource IconButton}"
+                                        Click="OnQueuedRowMenuClick" Tag="{Binding}"
+                                        ToolTip="Queued message actions"
+                                        AutomationProperties.Name="Queued message actions">
+                                    <TextBlock Text="&#xE712;" FontFamily="{StaticResource IconFontFamily}" FontSize="11" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <!-- Clear all: the reference's footer under an expanded stack -->
+                <Button HorizontalAlignment="Right" Margin="0,6,2,0"
+                        Command="{Binding ClearQueuedCommand}"
+                        Background="Transparent" BorderThickness="0" Padding="2" Cursor="Hand"
+                        Visibility="{Binding QueueExpanded, Converter={StaticResource BoolToVis}}"
+                        Content="Clear all" FontSize="11.5"
+                        Foreground="{DynamicResource Danger100Brush}">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <TextBlock Text="{TemplateBinding Content}" FontSize="11.5"
+                                       Foreground="{DynamicResource Danger100Brush}" />
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+        </Border>
+        <!-- PR bar: state · #number · repo · branch · behind · ± · CI · mode · × -->
+        <ContentControl x:Name="GitBarHost" Focusable="False" />
+        </StackPanel>
+
+        <!-- Composer -->
+        <Border x:Name="ComposerBorder" Grid.Row="6"
+                Background="{DynamicResource Bg000Brush}"
+                BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1"
+                CornerRadius="14" Padding="6,4,6,4" Margin="0,0,0,4">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18" ShadowDepth="2" Opacity="0.18" Color="#000000" />
+            </Border.Effect>
+            <StackPanel>
+            <!-- Attachment chips: attached context · pasted text · images -->
+            <ItemsControl ItemsSource="{Binding ComposerAttachments}" Focusable="False" Margin="4,2,4,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:ComposerAttachment}">
+                        <Grid Margin="0,2,6,2">
+                        <!-- Attached context and pasted text stay a labelled pill -->
+                        <Border Visibility="{Binding IsImage, Converter={StaticResource InverseBoolToVis}}"
+                                Background="{DynamicResource Bg300Brush}"
+                                BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="8,4"
+                                ToolTip="{Binding Tooltip}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Glyph}" FontFamily="{StaticResource IconFontFamily}"
+                                           FontSize="11" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Text400Brush}" />
+                                <TextBlock Text="{Binding Label}" FontSize="12" Margin="6,0,0,0"
+                                           VerticalAlignment="Center" MaxWidth="220"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource Text200Brush}" />
+                                <Button Style="{StaticResource IconButton}" Padding="3" Margin="5,0,0,0"
+                                        Command="{Binding DataContext.RemoveAttachmentCommand,
+                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip="Remove attachment"
+                                        AutomationProperties.Name="Remove attachment">
+                                    <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFontFamily}" FontSize="9" />
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                        <!-- Images render as thumbnails, the way the reference composer shows them -->
+                        <Grid x:Name="ThumbRoot"
+                              Visibility="{Binding IsImage, Converter={StaticResource BoolToVis}}"
+                              ToolTip="{Binding Tooltip}">
+                            <Rectangle x:Name="ThumbRect" Height="44" Width="60" RadiusX="7" RadiusY="7"
+                                       Stroke="{DynamicResource BorderMidBrush}" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <ImageBrush ImageSource="{Binding FilePath, Converter={StaticResource Thumbnail}}"
+                                                Stretch="UniformToFill" />
+                                </Rectangle.Fill>
+                            </Rectangle>
+                            <Button x:Name="ThumbRemove" Opacity="0"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0"
+                                    Command="{Binding DataContext.RemoveAttachmentCommand,
+                                              RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip="Remove attachment"
+                                    AutomationProperties.Name="Remove attachment">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Width="16" Height="16" CornerRadius="8" Background="#B3000000">
+                                            <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFontFamily}"
+                                                       FontSize="7" Foreground="White"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </Grid>
+                        </Grid>
+                        <DataTemplate.Triggers>
+                            <Trigger SourceName="ThumbRoot" Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbRemove" Property="Opacity" Value="1" />
+                            </Trigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <controls:ComposerBox x:Name="InputBox"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         Foreground="{DynamicResource Text100Brush}"
+                         CaretBrush="{DynamicResource Text100Brush}"
+                         SelectionBrush="{DynamicResource SelectionBrush}"
+                         FontSize="14"
+                         Padding="10,9,6,9"
+                         MinHeight="40" MaxHeight="180"
+                         VerticalScrollBarVisibility="Auto"
+                         VerticalContentAlignment="Center"
+                         PreviewKeyDown="OnInputKeyDown"
+                         PreviewTextInput="OnInputTextInput"
+                         TextChanged="OnInputTextChanged"
+                         SelectionChanged="OnInputSelectionChanged"
+                         AutomationProperties.Name="Message input" />
+                <TextBlock x:Name="Placeholder"
+                           Text="Type / for commands"
+                           FontFamily="{Binding FontFamily, ElementName=InputBox}"
+                           FontSize="{Binding FontSize, ElementName=InputBox}"
+                           Margin="{Binding Padding, ElementName=InputBox, Converter={StaticResource PlaceholderInset}}"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource Text500Brush}"
+                           VerticalAlignment="Center"
+                           IsHitTestVisible="False" />
+                <!-- The reference's hint after the caret while "/" has no query
+                     yet: same font as the composer, and only when it fits. -->
+                <TextBlock x:Name="FilterGhost" Text="Type to filter"
+                           FontFamily="{Binding FontFamily, ElementName=InputBox}"
+                           FontSize="{Binding FontSize, ElementName=InputBox}" Opacity="0.75"
+                           Foreground="{DynamicResource Text500Brush}"
+                           HorizontalAlignment="Left" VerticalAlignment="Top"
+                           IsHitTestVisible="False" Visibility="Collapsed">
+                    <TextBlock.RenderTransform>
+                        <TranslateTransform x:Name="FilterGhostOffset" />
+                    </TextBlock.RenderTransform>
+                </TextBlock>
+                <TextBlock x:Name="SkillArgumentHint" Opacity="0.5"
+                           FontFamily="{Binding FontFamily, ElementName=InputBox}"
+                           FontSize="{Binding FontSize, ElementName=InputBox}"
+                           Foreground="{DynamicResource Text100Brush}"
+                           HorizontalAlignment="Left" VerticalAlignment="Top"
+                           IsHitTestVisible="False" Visibility="Collapsed">
+                    <TextBlock.RenderTransform><TranslateTransform x:Name="SkillArgumentHintOffset" /></TextBlock.RenderTransform>
+                </TextBlock>
+                <!-- Prompt history: the reference's hint inside the composer's own
+                     chin — the reverse search, or the position in the walk. -->
+                <StackPanel x:Name="HistoryHint" Grid.ColumnSpan="2" Orientation="Horizontal"
+                            VerticalAlignment="Bottom" Margin="10,0,6,2"
+                            Visibility="Collapsed">
+                    <TextBlock x:Name="HistoryHintLabel" FontSize="11.5"
+                               Foreground="{DynamicResource Text500Brush}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="HistoryHintQuery" FontSize="11.5" Margin="5,0,0,0"
+                               FontFamily="{StaticResource MonoFontFamily}"
+                               Foreground="{DynamicResource Text100Brush}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="HistoryHintKeys" FontSize="11.5" Margin="10,0,0,0"
+                               Foreground="{DynamicResource Text500Brush}" VerticalAlignment="Center" />
+                </StackPanel>
+                <!-- The reference's primary action: an ArrowUp on a brand-filled
+                     button, swapped for the secondary Stop while a turn runs. -->
+                <Button x:Name="SendButton" Grid.Column="1" Click="OnSendClick"
+                        Style="{StaticResource BrandIconButton}" Padding="7"
+                        VerticalAlignment="Center" Margin="0,0,4,0"
+                        AutomationProperties.Name="Send message">
+                    <TextBlock x:Name="SendGlyph" Text="&#xE74A;" FontFamily="{StaticResource IconFontFamily}"
+                               FontSize="13" />
+                </Button>
+            </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Composer chin, in the reference's order: + · mic · Mode · coordinator |
+             model · effort · context ring. The request-inspector dot is this port's
+             own and closes the trailing cluster, where the reference has nothing. -->
+        <Grid x:Name="ComposerFooter" Grid.Row="7" Margin="4,0,4,6">
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="AttachButton" Style="{StaticResource IconButton}" Click="OnAttachClick"
+                        ToolTip="Add files, skills, connectors, plugins"
+                        AutomationProperties.Name="Add">
+                    <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFontFamily}" FontSize="13" />
+                </Button>
+                <Button x:Name="MicButton" Style="{StaticResource IconButton}"
+                        Margin="2,0,0,0" Click="OnMicClick"
+                        ToolTip="Dictate"
+                        AutomationProperties.Name="Dictate">
+                    <TextBlock x:Name="MicGlyph" Text="&#xE720;" FontFamily="{StaticResource IconFontFamily}" FontSize="13" />
+                </Button>
+                <Button x:Name="ModeChip" Style="{StaticResource FooterChip}" Click="OnModeChipClick"
+                        Margin="2,0,0,0"
+                        AutomationProperties.Name="Permission mode">
+                    <TextBlock x:Name="ModeChipText" Text="Auto" FontSize="12.5" FontWeight="Medium" />
+                </Button>
+                <!-- Activity chips: what this conversation searched for and called -->
+                <Button x:Name="SearchesChip" Style="{StaticResource FooterChip}" Margin="4,0,0,0"
+                        Visibility="Collapsed" Click="OnSearchesChipClick"
+                        AutomationProperties.Name="Web search">
+                    <TextBlock x:Name="SearchesChipText" FontSize="12" />
+                </Button>
+                <Button x:Name="ToolCallsChip" Style="{StaticResource FooterChip}" Margin="2,0,0,0"
+                        Visibility="Collapsed" Click="OnToolCallsChipClick"
+                        AutomationProperties.Name="Tool calls">
+                    <TextBlock x:Name="ToolCallsChipText" FontSize="12" />
+                </Button>
+                <Button x:Name="CoordinatorButton" Style="{StaticResource IconButton}"
+                        Margin="2,0,0,0" Click="OnCoordinatorClick"
+                        Visibility="Collapsed"
+                        AutomationProperties.Name="Toggle coordinator mode">
+                    <TextBlock x:Name="CoordinatorGlyph" Text="&#xE99A;" FontFamily="{StaticResource IconFontFamily}" FontSize="13" />
+                </Button>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="ModelChip" Style="{StaticResource FooterChip}" Click="OnModelChipClick"
+                        AutomationProperties.Name="Model">
+                    <TextBlock x:Name="ModelChipText" Text="Choose model" FontSize="12.5" FontWeight="Medium"
+                               MaxWidth="150" TextTrimming="CharacterEllipsis" />
+                </Button>
+                <Button x:Name="EffortChip" Style="{StaticResource FooterChip}" Click="OnEffortChipClick"
+                        Margin="2,0,0,0"
+                        AutomationProperties.Name="Effort">
+                    <TextBlock x:Name="EffortChipText" Text="High" FontSize="12.5" />
+                </Button>
+                <Button x:Name="ContextPill" Style="{StaticResource IconButton}"
+                        Padding="3" Margin="3,0,0,0" VerticalAlignment="Center"
+                        Click="OnContextPillClick"
+                        Visibility="{Binding ContextUsageText, Converter={StaticResource NullToCollapsed}}">
+                    <controls:ContextRingGlyph x:Name="ContextRingGlyph" Width="12" Height="12" />
+                </Button>
+                <Button x:Name="RequestInspectorButton" Style="{StaticResource IconButton}"
+                        Padding="3" Margin="3,0,0,0" VerticalAlignment="Center"
+                        Click="OnRequestInspectorClick"
+                        ToolTip="Inspect and edit the request sent to the provider"
+                        AutomationProperties.Name="Inspect request">
+                    <Grid Width="16" Height="16">
+                        <Ellipse x:Name="StatusDot" Width="9" Height="9" StrokeThickness="1.4"
+                                 Stroke="{DynamicResource Text500Brush}" />
+                        <views:SpinnerGlyph x:Name="StatusSpinner" Width="14" Height="14"
+                                            IsSpinning="True" Visibility="Collapsed" />
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Slash-command suggestions: the reference menu's own geometry at its
+             comfortable density — 240 wide at least, 512 at most, 384 tall,
+             8px radius — anchored to the typed "/" rather than to the whole
+             box, and never flipped below it (the reference passes disableFlip). -->
+        <Popup x:Name="CommandPopup" Grid.Row="6"
+               PlacementTarget="{Binding ElementName=InputBox}"
+               Placement="Custom"
+               AllowsTransparency="True"
+               StaysOpen="True">
+            <Border x:Name="CommandPopupSurface"
+                    Background="{DynamicResource Bg000Brush}"
+                    BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="4" MinWidth="240" MaxWidth="512" MaxHeight="384">
+                <ScrollViewer x:Name="CommandScroller" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="CommandListHost" />
+                </ScrollViewer>
+            </Border>
+        </Popup>
+
+        <!-- The highlighted row's description, in the reference's floating card
+             to the right of the menu. It is deliberately dark in every theme,
+             as the reference's own always-black / always-white tokens are. -->
+        <Popup x:Name="CommandDescriptionPopup" Grid.Row="6"
+               Placement="Right" HorizontalOffset="8"
+               AllowsTransparency="True" StaysOpen="True">
+            <Border Background="#CC000000" CornerRadius="6" Padding="8,4" MaxWidth="416">
+                <StackPanel>
+                    <!-- line-clamp-[10]: ten 16px lines, and the tenth ends
+                         in an ellipsis rather than being cut mid-word. -->
+                    <TextBlock x:Name="CommandDescriptionText" Foreground="#FFFFFFFF"
+                               FontSize="12" LineHeight="16" TextWrapping="Wrap"
+                               TextTrimming="CharacterEllipsis" MaxHeight="160" />
+                    <TextBlock x:Name="CommandDescriptionSource" Foreground="#99FFFFFF"
+                               FontSize="12" LineHeight="16" TextWrapping="Wrap"
+                               Margin="0,4,0,0" Visibility="Collapsed" />
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- @-mention file/folder completion (Code surface) -->
+        <Popup x:Name="MentionPopup" Grid.Row="6"
+               PlacementTarget="{Binding ElementName=InputBox}"
+               Placement="Top"
+               AllowsTransparency="True"
+               StaysOpen="True">
+            <Border Background="{DynamicResource Bg000Brush}"
+                    BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1"
+                    CornerRadius="10" Padding="6" Margin="0,0,0,6" MinWidth="340" MaxHeight="260">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="MentionListHost" />
+                </ScrollViewer>
+            </Border>
+        </Popup>
+
+        <!-- Chat disclaimer under the composer, the reference's exact line -->
+        <TextBlock x:Name="ChatDisclaimer" Grid.Row="8" HorizontalAlignment="Center"
+                   VerticalAlignment="Top" Margin="0,6,0,2" FontSize="11"
+                   Foreground="{DynamicResource Text500Brush}"
+                   Text="Jarvis is AI and can make mistakes. Please double-check responses."
+                   Visibility="Collapsed" />
+
+        <!-- /statusline: the user's script's first stdout line, under the composer -->
+        <TextBlock x:Name="StatuslineText" Grid.Row="9" HorizontalAlignment="Left"
+                   Margin="8,0,8,4" FontSize="11.5" FontFamily="Cascadia Mono, Consolas"
+                   Foreground="{DynamicResource Text400Brush}"
+                   TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
+
+        <!-- Below-composer row: chips (empty chat) or the context bar (code) -->
+        <StackPanel x:Name="ChipsRow" Grid.Row="8" Orientation="Horizontal"
+                    HorizontalAlignment="Center" Margin="0,8,0,4" Visibility="Collapsed"
+                    VerticalAlignment="Top">
+            <Button Style="{StaticResource SuggestionChip}" Click="OnChipClick" Tag="Help me write ">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE70F;" FontFamily="{StaticResource IconFontFamily}" FontSize="12" Margin="0,0,7,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Write" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource SuggestionChip}" Click="OnChipClick" Tag="Teach me about ">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE7BE;" FontFamily="{StaticResource IconFontFamily}" FontSize="12" Margin="0,0,7,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Learn" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource SuggestionChip}" Click="OnChipClick" Tag="Help me code ">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&lt;/&gt;" FontSize="11" FontFamily="{DynamicResource MonoFontFamily}" Margin="0,0,7,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Code" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource SuggestionChip}" Click="OnChipClick" Tag="Help me plan ">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE787;" FontFamily="{StaticResource IconFontFamily}" FontSize="12" Margin="0,0,7,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Life stuff" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <!-- Context bar: Local · project · branch/worktree · directory chips · + (code, above composer) -->
+        <Grid x:Name="ContextBar" Grid.Row="5" Margin="0,0,0,8" Visibility="Collapsed">
+            <WrapPanel x:Name="ContextChips" VerticalAlignment="Center" Margin="0,0,44,0" />
+            <controls:MascotSprite Width="34" Height="26"
+                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                   Margin="0,0,2,0" />
+        </Grid>
+    </Grid>
+
+    <!-- Chat activity drawer: the reference's own detail panel for the web
+         searches and the tool calls a conversation made. -->
+    <Border x:Name="ActivityPanel" Grid.Column="1" Width="380" Visibility="Collapsed"
+            Background="{DynamicResource Bg100Brush}"
+            BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="1,0,0,0">
+        <Grid Margin="20,12,0,4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Width="24" Height="24" CornerRadius="6" BorderThickness="1"
+                        BorderBrush="{DynamicResource BorderSoftBrush}"
+                        Background="{DynamicResource Bg300Brush}">
+                    <TextBlock x:Name="ActivityPanelIcon" Text="&#xE721;"
+                               FontFamily="{StaticResource IconFontFamily}" FontSize="12"
+                               Foreground="{DynamicResource Text400Brush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock x:Name="ActivityPanelTitle" Grid.Column="1" Margin="6,0,0,0"
+                           FontSize="17" FontWeight="Medium" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Text100Brush}" />
+                <Button Grid.Column="2" Style="{StaticResource IconButton}" Margin="0,0,20,0"
+                        Click="OnCloseActivityPanel"
+                        AutomationProperties.Name="Close panel">
+                    <TextBlock Text="&#xE8BB;" FontFamily="{StaticResource IconFontFamily}" FontSize="10" />
+                </Button>
+            </Grid>
+            <TextBlock x:Name="ActivityPanelCount" Grid.Row="1" Margin="0,8,20,0"
+                       FontSize="11" Foreground="{DynamicResource Text500Brush}" />
+            <ScrollViewer x:Name="ActivityPanelScroll" Grid.Row="2"
+                          VerticalScrollBarVisibility="Auto" Margin="0,4,16,0">
+                <StackPanel x:Name="ActivityPanelHost" />
+            </ScrollViewer>
+            <!-- The drawer's other occupant: the side chat -->
+            <ContentControl x:Name="ActivityDrawer" Grid.Row="2" Margin="0,4,16,0"
+                            Visibility="Collapsed" />
+        </Grid>
+    </Border>
+
+    <!-- The side-by-side comparison view a new chat opens in when the account
+         setting asks for it. It is the whole surface while it is up, so the
+         conversation column and the drawer stand down under it. -->
+    <ContentControl x:Name="ComparisonHost" Grid.Column="0" Grid.ColumnSpan="2"
+                    Focusable="False" Visibility="Collapsed" />
+
+    <!-- Drag highlight: a plain accent outline on Code, labelled on Chat -->
+    <Border x:Name="DropOverlay" Visibility="Collapsed" IsHitTestVisible="False"
+            Margin="8" CornerRadius="12" BorderThickness="2"
+            BorderBrush="{DynamicResource AccentBrandBrush}"
+            Background="{DynamicResource HoverOverlayBrush}">
+        <TextBlock x:Name="DropOverlayLabel" Text="Drop files here to add to chat"
+                   Visibility="Collapsed"
+                   FontSize="15" FontWeight="Medium"
+                   Foreground="{DynamicResource Text200Brush}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Border>
+    </Grid>
+</UserControl>

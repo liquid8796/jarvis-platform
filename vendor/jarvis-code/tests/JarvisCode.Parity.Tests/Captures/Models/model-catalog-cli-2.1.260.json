@@ -1,0 +1,193 @@
+{
+ "claude-3-5-haiku": {
+  "family": "haiku",
+  "knowledge_cutoff": null,
+  "capabilities": []
+ },
+ "claude-haiku-4-5": {
+  "family": "haiku",
+  "knowledge_cutoff": "February 2025",
+  "capabilities": [
+   "context_management"
+  ]
+ },
+ "claude-3-5-sonnet": {
+  "family": "sonnet",
+  "knowledge_cutoff": null,
+  "capabilities": []
+ },
+ "claude-3-7-sonnet": {
+  "family": "sonnet",
+  "knowledge_cutoff": null,
+  "capabilities": []
+ },
+ "claude-sonnet-4-0": {
+  "family": "sonnet",
+  "knowledge_cutoff": "January 2025",
+  "capabilities": [
+   "context_management"
+  ]
+ },
+ "claude-sonnet-4-5": {
+  "family": "sonnet",
+  "knowledge_cutoff": "January 2025",
+  "capabilities": [
+   "context_management"
+  ]
+ },
+ "claude-sonnet-4-6": {
+  "family": "sonnet",
+  "knowledge_cutoff": "August 2025",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "adaptive_thinking",
+   "context_management"
+  ]
+ },
+ "claude-sonnet-5": {
+  "family": "sonnet",
+  "knowledge_cutoff": "January 2026",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "xhigh_effort",
+   "adaptive_thinking",
+   "mid_conv_system",
+   "context_management"
+  ]
+ },
+ "claude-opus-4-0": {
+  "family": "opus",
+  "knowledge_cutoff": "January 2025",
+  "capabilities": [
+   "context_management"
+  ]
+ },
+ "claude-opus-4-1": {
+  "family": "opus",
+  "knowledge_cutoff": "January 2025",
+  "capabilities": [
+   "context_management"
+  ]
+ },
+ "claude-opus-4-5": {
+  "family": "opus",
+  "knowledge_cutoff": "May 2025",
+  "capabilities": [
+   "context_management"
+  ]
+ },
+ "claude-opus-4-6": {
+  "family": "opus",
+  "knowledge_cutoff": "May 2025",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "adaptive_thinking",
+   "context_management"
+  ]
+ },
+ "claude-opus-4-7": {
+  "family": "opus",
+  "knowledge_cutoff": "January 2026",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "xhigh_effort",
+   "adaptive_thinking",
+   "context_management"
+  ]
+ },
+ "claude-opus-4-8": {
+  "family": "opus",
+  "knowledge_cutoff": "January 2026",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "xhigh_effort",
+   "adaptive_thinking",
+   "mid_conv_system",
+   "mid_conv_tool_change",
+   "context_management",
+   "fast_mode",
+   "lean_prompt"
+  ]
+ },
+ "claude-opus-5": {
+  "family": "opus",
+  "knowledge_cutoff": "May 2026",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "xhigh_effort",
+   "adaptive_thinking",
+   "mid_conv_system",
+   "mid_conv_tool_change",
+   "context_management",
+   "thinking_disabled_effort_cap",
+   "fast_mode",
+   "lean_prompt",
+   "refusal_fallback",
+   "opus_5_prompt_bundle"
+  ]
+ },
+ "claude-fable-5": {
+  "family": "fable",
+  "knowledge_cutoff": "January 2026",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "xhigh_effort",
+   "adaptive_thinking",
+   "rejects_disabled_thinking",
+   "mid_conv_system",
+   "mid_conv_tool_change",
+   "context_management",
+   "lean_prompt",
+   "fable_5_mitigations",
+   "refusal_fallback"
+  ]
+ },
+ "claude-fable-5-1": {
+  "family": "fable",
+  "knowledge_cutoff": "June 2026",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "xhigh_effort",
+   "adaptive_thinking",
+   "rejects_disabled_thinking",
+   "mid_conv_system",
+   "mid_conv_tool_change",
+   "per_turn_effort",
+   "context_management",
+   "lean_prompt",
+   "fable_5_mitigations",
+   "refusal_fallback",
+   "fable_5_1_prompt_bundle"
+  ]
+ },
+ "claude-mythos-5": {
+  "family": "mythos",
+  "knowledge_cutoff": "January 2026",
+  "capabilities": []
+ },
+ "claude-mythos-5-1": {
+  "family": "mythos",
+  "knowledge_cutoff": "June 2026",
+  "capabilities": [
+   "effort",
+   "max_effort",
+   "xhigh_effort",
+   "adaptive_thinking",
+   "rejects_disabled_thinking",
+   "mid_conv_system",
+   "mid_conv_tool_change",
+   "context_management",
+   "lean_prompt",
+   "fable_5_mitigations",
+   "fable_5_1_prompt_bundle"
+  ]
+ }
+}

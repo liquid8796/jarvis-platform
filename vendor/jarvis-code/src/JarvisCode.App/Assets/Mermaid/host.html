@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Jarvis mermaid renderer</title>
+<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}</style>
+<script src="mermaid.min.js"></script>
+</head>
+<body>
+<script>
+// The reference renders a mermaid fence inside its own page and injects the SVG
+// into the DOM. This page is that renderer moved into the shared engine: the
+// same mermaid build, the same config, the same sandbox iframe and its CSP, and
+// the same two extraction refusals. It returns SVG for the selectable inline
+// view and a PNG for export/fallback. Ported from ion-dist shared-12-4ZL7iq1e.js
+// (its zl and Bl), desktop 1.40609.1.0.
+(function () {
+  'use strict';
+
+  var counter = 0;
+
+  function post(result) {
+    window.__jarvisMermaidPost(JSON.stringify(result));
+  }
+
+  // Bl: mermaid's sandbox mode answers with an <iframe src="data:…;base64,…">
+  // wrapper; the diagram is the <svg> inside that document.
+  function extractSvg(markup) {
+    var match = /;base64,([^"]+)"/.exec(markup);
+    if (!match) {
+      throw new Error('mermaid sandbox render: missing data-uri iframe src');
+    }
+    var bytes = Uint8Array.from(atob(match[1]), function (c) { return c.charCodeAt(0); });
+    var doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), 'text/html');
+    var svg = doc.querySelector('svg');
+    if (!svg) {
+      throw new Error('mermaid sandbox render: no <svg> in iframe body');
+    }
+    return svg;
+  }
+
+  // The reference lets CSS size the SVG (width:100%, max-width:Npx, centred).
+  // Rasterising needs the intrinsic box instead, so the viewBox is promoted to
+  // real width/height attributes and the max-width cap dropped.
+  function intrinsicSize(svg) {
+    var box = (svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+    var width = box.length === 4 && isFinite(box[2]) && box[2] > 0 ? box[2] : 0;
+    var height = box.length === 4 && isFinite(box[3]) && box[3] > 0 ? box[3] : 0;
+    if (!width || !height) {
+      width = parseFloat(svg.getAttribute('width')) || 600;
+      height = parseFloat(svg.getAttribute('height')) || 400;
+    }
+    svg.setAttribute('width', String(width));
+    svg.setAttribute('height', String(height));
+    svg.style.removeProperty('max-width');
+    svg.style.removeProperty('width');
+    svg.style.removeProperty('height');
+    if (!svg.getAttribute('xmlns')) {
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    }
+    return { width: width, height: height };
+  }
+
+  function race(promise, ms) {
+    var timer;
+    return Promise.race([
+      promise,
+      new Promise(function (_, reject) {
+        timer = setTimeout(function () {
+          reject(new Error('mermaid render exceeded ' + ms + 'ms'));
+        }, ms);
+      })
+    ]).finally(function () { clearTimeout(timer); });
+  }
+
+  async function rasterize(svg, size, scale) {
+    var url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.outerHTML);
+    var image = new Image();
+    image.width = size.width;
+    image.height = size.height;
+    await new Promise(function (resolve, reject) {
+      image.onload = resolve;
+      image.onerror = function () { reject(new Error('mermaid raster: the diagram would not load as an image')); };
+      image.src = url;
+    });
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(size.width * scale));
+    canvas.height = Math.max(1, Math.round(size.height * scale));
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png').split(',')[1];
+  }
+
+  // zl: initialize, render into a hidden full-viewport host, and force a CSP
+  // onto the sandbox iframe the moment mermaid inserts it.
+  async function renderOne(request) {
+    mermaid.initialize(JSON.parse(request.config));
+
+    var host = document.createElement('div');
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText =
+      'position:fixed;top:0;left:0;width:100vw;height:100vh;visibility:hidden;pointer-events:none';
+    // The reference's host is the browser window's own width, and a diagram that
+    // lays out against its container reads that. This page is never as wide as
+    // the app, so the width it would have had is handed in instead.
+    if (request.viewportWidth > 0) {
+      host.style.width = request.viewportWidth + 'px';
+    }
+    document.body.appendChild(host);
+
+    var cspInjected = false;
+    var append = host.appendChild.bind(host);
+    host.appendChild = function (node) {
+      var appended = append(node);
+      if (node instanceof HTMLIFrameElement) {
+        var doc = node.contentDocument;
+        if (doc && doc.head && !doc.head.querySelector('meta[http-equiv]')) {
+          var meta = doc.createElement('meta');
+          meta.httpEquiv = 'Content-Security-Policy';
+          meta.content = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
+          doc.head.appendChild(meta);
+          cspInjected = true;
+        }
+      }
+      return appended;
+    };
+
+    var diagramId = request.scopeId + '-r' + (++counter);
+    var running = mermaid.render(diagramId, request.code, host);
+    running.catch(function () {});
+    try {
+      var rendered = await race(running, request.timeoutMs);
+      if (!cspInjected) {
+        throw new Error(
+          'mermaid sandbox render: CSP not injected via host.appendChild — iframe insertion path changed');
+      }
+      var svg = extractSvg(rendered.svg);
+      var selectableSvg = svg.outerHTML;
+      var size = intrinsicSize(svg);
+      var png = await rasterize(svg, size, request.scale);
+      return { id: request.id, ok: true, png: png, svg: selectableSvg, width: size.width, height: size.height };
+    } finally {
+      host.remove();
+    }
+  }
+
+  window.__jarvisMermaidRender = function (request) {
+    renderOne(request).then(post, function (error) {
+      post({ id: request.id, ok: false, error: String((error && error.message) || error) });
+    });
+    return true;
+  };
+
+  window.__jarvisMermaidPost(JSON.stringify({ id: 'ready', ok: true }));
+})();
+</script>
+</body>
+</html>

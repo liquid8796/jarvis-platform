@@ -1,0 +1,137 @@
+{
+ "build": "1.46388.2.0",
+ "chunk": "index.chunk-CfowDJSU.js",
+ "serverName": "Claude Code Android Emulator",
+ "wireName": "mcp__Claude_Code_Android_Emulator__control",
+ "actions": [
+  "attach",
+  "launch",
+  "screenshot",
+  "tap",
+  "swipe",
+  "touch_path",
+  "text",
+  "button",
+  "open_url",
+  "detach"
+ ],
+ "buttons": [
+  "HOME",
+  "BACK",
+  "RECENTS",
+  "LOCK"
+ ],
+ "isEnabledSource": "e=>e.sessionType===\"ccd\"&&!e.isSSH&&!t.rf()&&t.sp()&&!t.bj()&&t._D(\"claudeAndroidEmulatorAccessEnabled\")",
+ "tools": [
+  {
+   "name": "control",
+   "description": "Run, test, and visually verify Android apps on an Android emulator on this machine (emulators only — physical devices are not supported). Use this whenever the user wants to see or try their Android app — \"run my app\", \"test this on Android\", \"does this look right?\" — not only when they mention the emulator by name. If the user wants the app on their real device (\"on my phone\", \"on my device\"), build and install with your normal build tools instead, and say the live panel only shows emulators. 'attach' opens a live panel so the user can watch — when the user wants to see the app, call 'attach' FIRST, before building: it opens instantly on a running emulator; when none is running it returns an error naming the available AVDs — pass one as 'device' to 'attach' to boot it (a cold boot the user must approve). Then build the APK with gradle; 'launch' installs and starts it into the panel (it re-attaches on its own, but do not rely on that instead of the early attach). Screenshots and tap/swipe/text verification are headless and need no panel. Don't open the panel when the user only asked to build/compile or to run unit tests. Coordinates are in screenshot pixels (origin top-left) — the same space as the PNG returned by 'screenshot', whose result states its dimensions; 'attach'/'launch' also report this coordinate space. The tool maps coordinates to device pixels itself — do not rescale them.",
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "action": {
+      "type": "string",
+      "enum": [
+       "attach",
+       "launch",
+       "screenshot",
+       "tap",
+       "swipe",
+       "touch_path",
+       "text",
+       "button",
+       "open_url",
+       "detach"
+      ],
+      "description": "What to do. 'attach' opens the live emulator panel for the user — call it BEFORE you build or launch, as soon as the user wants to see the app: on a running emulator it opens immediately; when none is running it returns an error naming the available AVDs — pass one as 'device' to boot it. Do not skip the early attach because 'launch' also attaches — the panel should be open before the build starts. The panel is the user's view, not a precondition — 'screenshot' and input actions work without it. Skip it only when the user has no interest in watching; 'launch' installs an APK and starts it (it also re-attaches, but call 'attach' early rather than relying on that); 'screenshot' returns a PNG; 'tap'/'swipe'/'text'/'button' inject input; 'touch_path' performs a single-finger drag along a path; 'open_url' opens a deep link via `am start -a VIEW`; 'detach' closes the panel/stream."
+     },
+     "app_path": {
+      "type": "string",
+      "description": "For 'launch': path to the built .apk (e.g. app/build/outputs/apk/debug/app-debug.apk)."
+     },
+     "device": {
+      "type": "string",
+      "description": "Emulator name as shown in the picker — contains a space, matched exactly and case-sensitively (e.g. 'Pixel 10 Pro API 36.0') — or an adb emulator serial (e.g. 'emulator-5554'); a spaceless string is always treated as a serial. For 'attach' and 'launch' only, a configured AVD name also boots the AVD (waiting for it to come online) when it isn't already running. Defaults to the currently attached emulator, or the first booted emulator. The first use of a device asks the user for permission. Physical devices are not supported."
+     },
+     "udid": {
+      "type": "string",
+      "description": "Alias for 'device' (identical semantics). Pass at most one of 'device' / 'udid' / 'serial'."
+     },
+     "serial": {
+      "type": "string",
+      "description": "Alias for 'device' (identical semantics). Pass at most one of 'device' / 'udid' / 'serial'."
+     },
+     "bundle_id": {
+      "type": "string",
+      "description": "For 'launch': Android package id (required — e.g. 'com.example.app')."
+     },
+     "x": {
+      "type": "number",
+      "description": "Screenshot-pixel X (0 = left edge)."
+     },
+     "y": {
+      "type": "number",
+      "description": "Screenshot-pixel Y (0 = top edge)."
+     },
+     "points": {
+      "type": "array",
+      "description": "For 'touch_path': touch path samples in screenshot pixels. First point is touch-down; last is touch-up. dt_ms is the delay before that sample (0-1000, total clamped to 30s). NOTE: maps to `input motionevent` (API 29+) which resets downTime per call, so app-level fling velocity won't fire — use 'swipe' for that.",
+      "items": {
+       "type": "object",
+       "properties": {
+        "x": {
+         "type": "number"
+        },
+        "y": {
+         "type": "number"
+        },
+        "dt_ms": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "x",
+        "y"
+       ]
+      }
+     },
+     "x2": {
+      "type": "number",
+      "description": "For 'swipe': end X."
+     },
+     "y2": {
+      "type": "number",
+      "description": "For 'swipe': end Y."
+     },
+     "duration": {
+      "type": "number",
+      "description": "Seconds. For 'tap', >0.5 is a long-press. For 'swipe', the gesture duration (default 0.3)."
+     },
+     "text": {
+      "type": "string",
+      "description": "For 'text': the string to type. Printable ASCII only — unsupported characters (incl. shell metacharacters) are dropped and the count reported in the result."
+     },
+     "name": {
+      "type": "string",
+      "enum": [
+       "HOME",
+       "BACK",
+       "RECENTS",
+       "LOCK"
+      ],
+      "description": "For 'button': hardware button to press."
+     },
+     "url": {
+      "type": "string",
+      "description": "For 'open_url': URL or scheme to open via `am start`."
+     }
+    },
+    "required": [
+     "action"
+    ],
+    "additionalProperties": false
+   },
+   "alwaysLoad": true
+  }
+ ]
+}

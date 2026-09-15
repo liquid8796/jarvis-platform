@@ -1,0 +1,9 @@
+<UserControl x:Class="JarvisCode.App.Views.RoutinesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFontFamily}"
+             Background="{DynamicResource Bg100Brush}">
+    <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto">
+        <StackPanel x:Name="Host" MaxWidth="820" Margin="32,26,32,40" />
+    </ScrollViewer>
+</UserControl>

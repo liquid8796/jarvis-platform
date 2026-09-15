@@ -1,0 +1,63 @@
+<UserControl x:Class="JarvisCode.App.Views.Panels.BackgroundTasksPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!--
+            The reference pane navigates in place: opening a subagent pushes a view
+            onto this pane's own stack, so the header grows a back arrow and takes
+            the agent's description as its title.
+        -->
+        <Grid Margin="6,0,124,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="BackButton" Style="{StaticResource PanelActionButton}"
+                    Visibility="Collapsed" Click="OnBack"
+                    AutomationProperties.Name="Back to background tasks">
+                <Path Style="{StaticResource PanelSmallGlyph}" Data="{StaticResource ArrowLeftGlyph}" />
+            </Button>
+            <!--
+                The right margin above reserves the shared panel action strip, so a
+                long agent description ellipsises instead of running under it.
+            -->
+            <TextBlock x:Name="PanelTitle" Grid.Column="1" Style="{StaticResource PanelTitleText}"
+                       Text="Background tasks" Margin="6,0,0,0"
+                       TextTrimming="CharacterEllipsis" />
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <!-- The reference scrolls the whole pane and pads it on all four sides. -->
+            <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Focusable="False">
+                <StackPanel x:Name="Sections" Margin="14,0,14,14" MinWidth="220" />
+            </ScrollViewer>
+
+            <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                <Path Data="{StaticResource AgentsSimpleGlyph}" Stretch="Uniform" Width="26" Height="26"
+                      StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      StrokeLineJoin="Round" HorizontalAlignment="Center"
+                      Stroke="{DynamicResource Text500Brush}" />
+                <TextBlock x:Name="EmptyStateText" Margin="0,10,0,0" FontSize="12.5"
+                           TextAlignment="Center" TextWrapping="Wrap" MaxWidth="240"
+                           Foreground="{DynamicResource Text400Brush}" />
+            </StackPanel>
+
+            <!--
+                The pushed view. It replaces the task list rather than covering it,
+                so nothing behind it keeps taking the tick's layout work.
+            -->
+            <Grid x:Name="SubagentHost" Visibility="Collapsed" />
+
+            <!-- Screen-reader announcements for stops that finish out of view. -->
+            <TextBlock x:Name="LiveRegion" Opacity="0" IsHitTestVisible="False" Height="0"
+                       AutomationProperties.LiveSetting="Polite" />
+        </Grid>
+    </Grid>
+</UserControl>

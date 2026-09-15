@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/Jarvis.McpServer/Jarvis.McpServer.csproj" />
+  <Project Path="../shared/Jarvis.Protocol/Jarvis.Protocol.csproj" />
+  <Project Path="../tests/Jarvis.Server.Tests/Jarvis.Server.Tests.csproj" />
+</Solution>

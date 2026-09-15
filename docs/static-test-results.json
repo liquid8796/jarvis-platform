@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-14",
+  "kind": "static checks, not compilation",
+  "passed": 7,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "XML well-formedness",
+      "status": "passed",
+      "detail": {
+        "files": 16
+      }
+    },
+    {
+      "name": "Project and solution references",
+      "status": "passed",
+      "detail": {
+        "projectReferences": 24
+      }
+    },
+    {
+      "name": "New JSON parse",
+      "status": "passed",
+      "detail": {
+        "files": 8
+      }
+    },
+    {
+      "name": "JavaScript and Bash syntax",
+      "status": "passed",
+      "detail": {
+        "commands": 4
+      }
+    },
+    {
+      "name": "Baseline source SHA-256 parity",
+      "status": "passed",
+      "detail": {
+        "baselineFiles": 2047,
+        "unchangedFiles": 1931,
+        "intentionalModified": [
+          "CLAUDE.md",
+          "Directory.Build.props"
+        ],
+        "omittedOptionalFonts": 114,
+        "csharpSourcesUnchanged": 1038
+      }
+    },
+    {
+      "name": "Secret and font exclusion",
+      "status": "passed",
+      "detail": "No private key/certificate/runtime profile or font binaries in source tree."
+    },
+    {
+      "name": "Assembly version bump",
+      "status": "passed",
+      "detail": "1.0.16 / 1.0.16.0"
+    }
+  ],
+  "dotnetAvailable": false
+}

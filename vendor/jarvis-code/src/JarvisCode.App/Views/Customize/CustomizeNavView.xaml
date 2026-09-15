@@ -1,0 +1,85 @@
+<UserControl x:Class="JarvisCode.App.Views.Customize.CustomizeNavView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFontFamily}">
+    <Border Background="{DynamicResource Bg200Brush}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Back + title -->
+            <StackPanel Orientation="Horizontal" Margin="12,14,12,10">
+                <Button x:Name="BackButton" Style="{StaticResource IconButton}" Click="OnBackClick"
+                        AutomationProperties.Name="Back">
+                    <TextBlock Text="&#xE72B;" FontFamily="{StaticResource IconFontFamily}" FontSize="13" />
+                </Button>
+                <TextBlock Text="Customize" FontSize="16" FontWeight="SemiBold" Margin="8,0,0,0"
+                           VerticalAlignment="Center" Foreground="{DynamicResource Text100Brush}" />
+            </StackPanel>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="10,0,10,10">
+                <StackPanel>
+                    <Button x:Name="SkillsRow" Style="{StaticResource RowButton}" Click="OnSkillsClick"
+                            AutomationProperties.Name="Skills">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8FD;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
+                                       Width="22" TextAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock Text="Skills" Margin="9,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ConnectorsRow" Style="{StaticResource RowButton}" Click="OnConnectorsClick"
+                            AutomationProperties.Name="Connectors">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE71B;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
+                                       Width="22" TextAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock Text="Connectors" Margin="9,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="PluginsRow" Style="{StaticResource RowButton}" Click="OnPluginsClick"
+                            AutomationProperties.Name="Plugins">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xEA86;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
+                                       Width="22" TextAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock Text="Plugins" Margin="9,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="MemoryRow" Style="{StaticResource RowButton}" Click="OnMemoryClick"
+                            AutomationProperties.Name="Memory">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
+                                       Width="22" TextAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock Text="Memory" Margin="9,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Border Height="1" Background="{DynamicResource BorderSoftBrush}" Margin="4,10" />
+
+                    <!-- Personal plugins -->
+                    <Grid Margin="8,2,4,4">
+                        <TextBlock Text="Personal plugins" FontSize="11.5"
+                                   Foreground="{DynamicResource Text500Brush}" VerticalAlignment="Center" />
+                        <Button Style="{StaticResource IconButton}" Padding="3" HorizontalAlignment="Right"
+                                Click="OnAddPluginClick"
+                                AutomationProperties.Name="Add plugin" ToolTip="Add plugin">
+                            <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFontFamily}" FontSize="11" />
+                        </Button>
+                    </Grid>
+                    <StackPanel x:Name="PluginsHost" />
+
+                    <!-- Organization plugins -->
+                    <Button x:Name="OrgPluginsRow" Style="{StaticResource RowButton}" Click="OnOrgPluginsClick"
+                            Margin="0,14,0,0" AutomationProperties.Name="Organization plugins">
+                        <TextBlock Text="Organization plugins" FontSize="11.5"
+                                   Foreground="{DynamicResource Text500Brush}" VerticalAlignment="Center" />
+                    </Button>
+                    <TextBlock x:Name="OrgPluginsEmpty"
+                               Text="Plugins that are managed by your org will appear here."
+                               FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center"
+                               Foreground="{DynamicResource Text500Brush}" Margin="12,4,12,0" />
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,131 @@
+<UserControl x:Class="JarvisCode.App.Views.CodeWorkspace"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:JarvisCode.App.Views"
+             xmlns:panels="clr-namespace:JarvisCode.App.Views.Panels"
+             xmlns:controls="clr-namespace:JarvisCode.App.Controls"
+             FontFamily="{StaticResource UiFontFamily}"
+             Background="{DynamicResource Bg100Brush}">
+    <Grid>
+        <!--
+            The tile host: the conversation and every open side pane are tiles of one
+            mosaic, the way the reference app lays a Code session out. Tiles are arranged
+            from the layout tree by TileHostPanel; a pane that closes stays a child and is
+            collapsed, so a pane keeps its engine window across an open/close cycle.
+        -->
+        <controls:TileHostPanel x:Name="Tiles" AllowDrop="True">
+            <!-- Split session view: the primary Chat plus up to three more, laid out in Retile(). -->
+            <Grid x:Name="PanesGrid" controls:TileHostPanel.TileId="chat">
+                <views:ChatSurface x:Name="Chat" />
+            </Grid>
+
+            <!-- The drop indicator, drawn over the tiles while one is being dragged. -->
+            <Border x:Name="DropIndicator" controls:TileHostPanel.IsOverlay="True"
+                    Visibility="Collapsed" IsHitTestVisible="False"
+                    CornerRadius="8" BorderThickness="3"
+                    BorderBrush="{DynamicResource Accent100Brush}">
+                <Border Background="{DynamicResource Accent100Brush}" Opacity="0.12">
+                    <TextBlock x:Name="DropIndicatorLabel"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontSize="12.5" Foreground="{DynamicResource Text100Brush}" />
+                </Border>
+            </Border>
+        </controls:TileHostPanel>
+
+        <!--
+            Where the pane controls live until their tile is first opened. Collapsed, so
+            nothing here measures; each control is moved into its PaneTile exactly once.
+        -->
+        <Grid x:Name="PaneStore" Visibility="Collapsed">
+            <panels:TerminalPanel x:Name="TerminalPanel" />
+            <panels:ChangesPanel x:Name="ChangesPanel" />
+            <panels:BrowserPanel x:Name="BrowserPanel" />
+            <panels:FilesPanel x:Name="FilesPanel" />
+            <panels:PlanPanel x:Name="PlanPanel" />
+            <panels:PullRequestPanel x:Name="PullRequestPanel" />
+            <panels:RunHistoryPanel x:Name="RunHistoryPanel" />
+            <panels:SessionPanePanel x:Name="SessionPanel" />
+            <panels:TranscriptPanel x:Name="TranscriptPanel" />
+            <panels:FileViewerPanel x:Name="FileViewerPanel" />
+            <panels:EmulatorPanel x:Name="EmulatorPanel" />
+
+            <!-- Artifact -->
+            <Grid x:Name="ArtifactPanel">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="36" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="ArtifactTitle" Style="{StaticResource PanelTitleText}"
+                               Text="Artifacts" Margin="12,0,0,0" />
+                    <!-- The reference's artifact actions -->
+                    <Button x:Name="ArtifactDownload" Style="{StaticResource IconButton}" Padding="4"
+                            Margin="8,0,0,0" VerticalAlignment="Center" Click="OnArtifactDownloadClick"
+                            ToolTip="Download all" AutomationProperties.Name="Download all">
+                        <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFontFamily}" FontSize="12" />
+                    </Button>
+                    <Button x:Name="ArtifactCopyImage" Style="{StaticResource IconButton}" Padding="4"
+                            Margin="2,0,0,0" VerticalAlignment="Center" Click="OnArtifactCopyImageClick"
+                            ToolTip="Copy as image" AutomationProperties.Name="Copy as image">
+                        <TextBlock Text="&#xE8B9;" FontFamily="{StaticResource IconFontFamily}" FontSize="12" />
+                    </Button>
+                    <Button x:Name="ArtifactPrint" Style="{StaticResource IconButton}" Padding="4"
+                            Margin="2,0,0,0" VerticalAlignment="Center" Click="OnArtifactPrintClick"
+                            ToolTip="Print as PDF" AutomationProperties.Name="Print as PDF">
+                        <TextBlock Text="&#xE749;" FontFamily="{StaticResource IconFontFamily}" FontSize="12" />
+                    </Button>
+                </StackPanel>
+                <Grid Grid.Row="1">
+                    <Border CornerRadius="0,0,10,10" ClipToBounds="True">
+                        <ContentControl x:Name="ArtifactHost" Focusable="False" />
+                    </Border>
+                    <TextBlock x:Name="ArtifactEmpty"
+                               Text="No artifact yet.&#x0a;Ask the agent to render something — it publishes here with the artifact tool."
+                               FontSize="12" TextWrapping="Wrap" TextAlignment="Center"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               MaxWidth="300"
+                               Foreground="{DynamicResource Text500Brush}" />
+                </Grid>
+            </Grid>
+
+            <!-- Background tasks -->
+            <panels:BackgroundTasksPanel x:Name="RunsPanel" />
+
+            <!-- Side Chat: a toolless Chat conversation beside the code session -->
+            <Grid x:Name="SideChatPanel">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="36" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource PanelTitleText}" Text="Side Chat" Margin="12,0,0,0" />
+                    <Button Style="{StaticResource IconButton}" Padding="4" Margin="8,0,0,0"
+                            VerticalAlignment="Center" Click="OnSideChatClearClick"
+                            ToolTip="Clear side chat"
+                            AutomationProperties.Name="Clear side chat">
+                        <TextBlock Text="&#xED60;" FontFamily="{StaticResource IconFontFamily}" FontSize="11" />
+                    </Button>
+                    <Button Style="{StaticResource IconButton}" Padding="4" Margin="2,0,0,0"
+                            VerticalAlignment="Center" Click="OnSideChatWindowClick"
+                            ToolTip="Open in new window"
+                            AutomationProperties.Name="Open in new window">
+                        <TextBlock Text="&#xE8A7;" FontFamily="{StaticResource IconFontFamily}" FontSize="11" />
+                    </Button>
+                </StackPanel>
+                <views:ChatSurface x:Name="SideChat" Grid.Row="1" />
+            </Grid>
+
+            <!-- Tasks (the agent's todo list) -->
+            <Grid x:Name="TasksPanel">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="36" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource PanelTitleText}" Text="Tasks" Margin="12,0,0,0" />
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,2,12,10">
+                    <ItemsControl x:Name="TodoList" />
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

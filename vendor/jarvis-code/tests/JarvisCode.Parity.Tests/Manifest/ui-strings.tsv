@@ -1,0 +1,1642 @@
+# Strings this UI renders that the reference desktop app also ships.
+# Columns: reference message id, the source that renders it, the text.
+# The text is what THIS app renders: where it names the assistant it says
+# Jarvis, and UiBrand compares it to the reference's "Claude" wording.
+# Regenerated from the packaged Claude desktop app 1.44121.2.0.
+# Selected added/moved rows verified against installed Desktop 1.46388.3.0 on 2026-09-08.
+# JARVIS_APPROVE_UI_STRINGS=1 rewrites it.
+l7jQfhDtOr	JarvisCode.App/Services/SessionMenuModel.cs	New style…
+2635clxyay	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.Toolbar.cs	Drawing tool
+UTlLBbY88F	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.Toolbar.cs	Arrow
+WrH605g8o7	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.cs	You have unsaved marks on this image. Discarding removes them.
+XFpgi7xuL0	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.Toolbar.cs	Nothing to undo yet
+XjGbuYjsmF	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.Toolbar.cs	Black
+ZRQqPcheUz	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.Toolbar.cs	Nothing to clear yet
+jZhy9dr1Lm	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.Toolbar.cs	Nothing to redo yet
+k+yLsrlkhB	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.Toolbar.cs	Ink color
+++FFdxb8fU	JarvisCode.App/Services/BrowserCloseDialogText.cs	Close other tabs?
++0zv6gS/c6	JarvisCode.App/Controls/MarkdownView.cs	Image
++1GwJUQpT/	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Add your first plugins
++9qP4Y6XYX	JarvisCode.App/Services/SessionPullRequests.cs	open
++A0Z2qWPAJ	JarvisCode.App/Services/VendorWebFetchTool.cs	Accept
++CwN9C/QFk	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	System
++F8tiKrg+s	JarvisCode.App/Views/Panels/BrowserPanel.xaml	Annotate
++GSJTfEg3Q	JarvisCode.App/Services/CustomizePlugins.cs	The archive must contain a .claude-plugin/plugin.json manifest, or a top-level SKILL.md that declares the plugin’s components
++NKbYUQl7m	JarvisCode.App/Services/CustomizePlugins.cs	Some plugins in this marketplace have validation errors.
++U6ozcnv4r	JarvisCode.App/Services/ContextReport.cs	Type
++ZAG46kixX	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Run now
++ZLTl3VMv+	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Stop this task
++eKiV5fYXP	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Couldn’t export the configuration profile.
++g7iCcSth9	JarvisCode.App/Services/ToolRowPresentation.cs	Clicked
++iRdoEt8q3	JarvisCode.App/Services/ScheduledTaskPresentation.cs	No routines match your search and filters.
++mNq/KY/9y	JarvisCode.App/Services/SessionRowStates.cs	Using the browser
++mpYXoUDnZ	JarvisCode.App/Views/ComputerUseGrantDialog.cs	Already allowed
++mqxxzVczn	JarvisCode.App/Services/ChatComposerMenu.cs	Add to project
++vVZ/G11Zg	JarvisCode.App/Services/CustomizeConnectors.cs	Connect
++vj0U3cN/c	JarvisCode.App/Services/ToolGroupSummary.cs	edit
+/06iwcQHPz	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Large
+/4tOwTiCH6	JarvisCode.App/Services/WorkingDirectoryMenu.cs	Skip
+/8VybC9Ozs	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to run
+/8asYhS9Nu	JarvisCode.App/Views/Settings/AllowedSitesDialog.cs	That site is already allowed.
+/8y/YEy/pq	JarvisCode.App/Services/ErrorCards.cs	Request is too large
+/BJXX9tCZt	JarvisCode.App/Controls/TurnStatusLine.cs	Running tools…
+/E07QmvGZn	JarvisCode.App/Services/WorkingDirectoryMenu.cs	The GitHub CLI enables creating PRs, monitoring CI, and merging directly from the desktop app.
+/GCoTAAjMN	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Clear
+/GfNmXqa0P	JarvisCode.App/Controls/CodeBlockCard.cs	Code
+/QQeHodk3M	JarvisCode.App/Views/Settings/GeneralPage.cs	Legal
+/QXeK7VsCe	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Discard unsaved changes?
+/UUUqdefcb	JarvisCode.App/Services/ToolRowPresentation.cs	Scrolling
+/VnDMl81rh	JarvisCode.App/Services/ComparisonStrings.cs	Other
+/Z1D1eCmBA	JarvisCode.App/Views/Settings/DeveloperPage.cs	Edit config
+/Zj5Ed1O1a	JarvisCode.App/Services/ScheduleFrequencies.cs	One-time
+/af+jQ8xvW	JarvisCode.App/Services/HomeViewPresentation.cs	Mark all as read
+/bW52d0sP+	JarvisCode.App/Services/CredentialHelpers.cs	Helper run cancelled
+/bfzrIxiJT	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Tablet
+/c0GeY5Wgm	JarvisCode.App/Views/Panels/ChangesPanel.Review.cs	Commits
+/clOBU+3Bj	JarvisCode.App/Services/ScheduleFrequencies.cs	Weekly
+/e5/NcsfcF	JarvisCode.App/Services/WorkingDirectoryMenu.cs	Install the GitHub CLI
+/f6pq4oxTK	JarvisCode.App/Views/Panels/RunHistoryPanel.cs	This session wasn’t started from a routine. Open a session that a routine started to see its run history here.
+/h7nGyBKne	JarvisCode.App/Services/ErrorCards.cs	Invalid request
+/irxd4uvx/	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Simulator touch surface. Click to focus, then type to send keystrokes
+/j76w3ci+K	JarvisCode.App/Services/BrowserOriginGate.cs	navigate
+/jFmdFrLzq	JarvisCode.App/Services/SessionMenuModel.cs	Output style
+/jkMgZaQEi	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Dev server failed to start
+/qUhN4z7k8	JarvisCode.App/Services/ToolRowPresentation.cs	Merged PR
+/rHnDpPaRk	JarvisCode.App/Services/ContextBreakdown.cs	System prompt
+/vjDPeOyDm	JarvisCode.App/Views/Settings/ProviderCatalog.cs	Project ID
+/zLMeTcHxv	JarvisCode.App/Services/SessionTransfer.cs	Couldn’t find sessions in that folder. Choose the app’s data folder (its name starts with “Jarvis”).
+0AzlrbMWV9	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Manage
+0HT+IbyW6O	JarvisCode.App/Services/SidebarFilterModel.cs	Archived
+0Hhe6f5cpH	JarvisCode.App/Services/ScheduledTaskPresentation.cs	On hold
+0ICwq5Kcsu	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Last updated
+0Jh6jsTpeC	JarvisCode.App/Views/Settings/DesktopPage.cs	Jarvis will browse and interact with any website in Chrome without asking. Applies to new sessions. This setting can put your data at risk. <link>Learn more</link>
+0L2liwSugy	JarvisCode.App/Services/SessionDialogs.cs	Trust workspace
+0RGqBmxKSt	JarvisCode.App/Services/GitHubIssues.cs	Select a repository to see issues.
+0S+iNJivmx	JarvisCode.App/Services/ChatComposerMenu.cs	Add files or photos
+0TPgIp3K/q	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Browse
+0UbncvFBsL	JarvisCode.App/Controls/TerminalView.cs	Restart shell
+0ZuuhwjU4n	JarvisCode.App/Services/ToolRowPresentation.cs	Searched
+0e82oPizDE	JarvisCode.App/Services/ToolRowPresentation.cs	Typed
+0h/2FwRZQr	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Error
+0hzmTPDdkC	JarvisCode.App/Services/ErrorCards.cs	Try sending your message again.
+0j6UivF8YW	JarvisCode.App/Services/ToolGroupSummary.cs	searched
+0oLj/toqZk	JarvisCode.App/Views/Panels/PaneTile.cs	Expand
+0pbjL+qdYK	JarvisCode.App/Services/AppUpdates.cs	Relaunch anyway
+0wJ7N+noSq	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Task
+0y7bg6nA29	JarvisCode.App/Services/ChatComposerMenu.cs	Start a new project
+15YN9es16V	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Edit routine
+17VhXMB983	JarvisCode.App/Services/ScheduledTaskPresentation.cs	Invalid schedule
+18n2DsPCUH	JarvisCode.App/Services/NotificationPolicy.cs	Badge only
+1ANSUCIPCZ	JarvisCode.App/Views/Customize/CustomizeSurface.Memory.cs	Couldn’t delete this memory. Please try again.
+1B2oJwBn8a	JarvisCode.App/Controls/TextSelectionScope.cs	Open in default browser
+1H9r6yNPh+	JarvisCode.App/Views/Panels/FileViewerPanel.cs	Open in…
+1L8nF4zVoa	JarvisCode.App/Services/SessionDialogs.cs	Delete all
+1LBny5MvRa	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Stopped
+1LyFNoQ/5z	JarvisCode.App/Services/CommandPalette.cs	Open session PR
+1O5dFedyVT	JarvisCode.App/Services/GitBarPresentation.cs	CI: checks failing
+1PnN/uP0zv	JarvisCode.App/Services/ChatWelcome.cs	What can I help you with today?
+1QB/N543B1	JarvisCode.App/Services/ScheduledTemplates.cs	Watch for news or mentions of a topic, competitor, or keyword.
+1QEriVUpB3	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	No skills match your filters.
+1RWu+uzjFS	JarvisCode.App/Services/ChatActivityPanel.cs	Close panel
+1SkhnkN1zT	JarvisCode.App/Services/ScheduledTemplates.cs	Categorize your inbox and draft replies to anything urgent.
+1UMAVNcQcB	JarvisCode.App/Views/SidebarView.xaml.cs	Delete selected?
+1W4okOthcu	JarvisCode.App/Services/SessionColors.cs	Green
+1W7bgk+3po	JarvisCode.App/Services/QuickEntryShortcuts.cs	This shortcut is already in use by another app. Try a different combination.
+1XcDlY9cw2	JarvisCode.App/Services/BranchPrefixes.cs	This prefix is reserved for protected branches
+1a29Xj+qDE	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Error details were sent to Jarvis
+1a9MkcLgHx	JarvisCode.App/Views/Panels/PaneTile.cs	Press Enter to move right, or Escape to cancel.
+1iEPTMDqmi	JarvisCode.App/Services/CommandPalette.cs	General
+1kdnAB9Eoo	JarvisCode.App/Services/SettingsSearchIndex.cs	What best describes your work?
+1nV3NuMwiG	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to fetch
+1onhc0sgyt	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Your plugins
+1pyeLvf9M2	JarvisCode.App/Services/SessionDialogs.cs	Your system blocked Jarvis from running Git.
+1rcSX6fVan	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Loop stopped
+1vND0qQgVb	JarvisCode.App/Services/SessionInfo.cs	Project instructions
+1vPf0BAKqe	JarvisCode.App/Views/CodeWorkspace.xaml	Clear side chat
+1xdADWuuof	JarvisCode.App/Services/ErrorCards.cs	Session was interrupted
+1zTO8814GH	JarvisCode.App/Views/Panels/ChangesPanel.xaml	Previous finding
+2+VODHagkt	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	Add custom connector
+2+mkmXuQGF	JarvisCode.App/Services/HomeViewPresentation.cs	Dismiss session
+2/I2SuSV6O	JarvisCode.App/Services/CustomizePlugins.cs	Failed to update marketplace.
+2Ecfwv4OxH	JarvisCode.App/Services/ToolRowPresentation.cs	Updated
+2GURQYNPp3	JarvisCode.App/Services/SettingsSearchIndex.cs	Appearance
+2GplwouuqA	JarvisCode.App/Services/ToolGroupSummary.cs	the web
+2HdJ3H52A7	JarvisCode.App/Services/ChatComposerMenu.cs	Chats compact less since tools aren’t pre-loaded.
+2L6XHrHX3B	JarvisCode.App/Services/ChatComposerMenu.cs	Tools already loaded
+2N3JuXYdJ1	JarvisCode.App/Views/Panels/PlanPanel.cs	Copy plan
+2QqDU6XBF4	JarvisCode.App/Services/CommandPalette.cs	Session
+2b+XMaMHUB	JarvisCode.App/Services/PermissionModeMenu.cs	Jarvis handles permission decisions
+2bc/DsT0bW	JarvisCode.App/Services/DiagnosticReport.cs	Generate Diagnostic Report
+2bv+rpYCtw	JarvisCode.App/Views/Customize/CustomizeNavView.xaml	Plugins that are managed by your org will appear here.
+2cIH00AYRp	JarvisCode.App/Services/ErrorCards.cs	Request was blocked
+2dXigF1Pil	JarvisCode.App/Services/PlusMenuModel.cs	Add connectors
+2eHqp+TzbJ	JarvisCode.App/Services/ChatPlaceholders.cs	Reply at any time, even when Jarvis is working
+2gYfDNHsif	JarvisCode.App/Services/BranchPrefixes.cs	Use 1-40 letters, numbers, or . _ -
+2jkIk4kqLa	JarvisCode.App/Services/ChatAttachmentNotices.cs	Only PNG, JPEG, GIF, and WebP images are supported.
+2mMJRvsAg1	JarvisCode.App/Services/ChatComposerMenu.cs	Connectors
+2mj9IxUYfJ	JarvisCode.App/Services/CommandPalette.cs	Chat
+2n3WlAzStK	JarvisCode.App/Services/ErrorCards.cs	Server is temporarily limiting requests
+2uv2pR+wD2	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	daily-code-review
+2x8R7nhAVY	JarvisCode.App/Services/PluginMonitors.cs	Runs
+2ybHqnnB4O	JarvisCode.App/Views/Panels/PaneTile.cs	Move left
+3/wF0Go5Hm	JarvisCode.App/Services/PlusMenuModel.cs	Slash commands
+31wtg7KV1e	JarvisCode.App/Services/GitBarPresentation.cs	Copy branch name
+36ZWMjyZ50	JarvisCode.App/Views/Settings/GeneralPage.cs	Randomize avatar
+38d35X7TfO	JarvisCode.App/Services/CommandPalette.cs	Pin session
+3AfgKEM6TG	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Automatically approve
+3JlydTYsqY	JarvisCode.App/Services/DefaultApplication.cs	Open
+3LTMwU3z0y	JarvisCode.App/Views/Settings/ImportExportPage.cs	Import from Jarvis
+3ODqMYj5Lf	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.cs	Pen
+3QIrA8Kcif	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	SKILL.md is missing its frontmatter, so the description can’t be updated. Fix the file’s leading --- block and try again.
+3Rkb+dzIYj	JarvisCode.App/Services/OrganizationPlugins.cs	No plugin.json
+3SBJtWgrE1	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Flash the taskbar button when Jarvis needs your attention and the app isn’t focused.
+3VI9mt1zm0	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Save Changes
+3WKlYlcDGA	JarvisCode.App/Views/Customize/CustomizeNavView.xaml	Organization plugins
+3XyF4dAMbz	JarvisCode.App/Services/AppMenu.cs	Redo
+3a5wL8+hwT	JarvisCode.App/Services/ScheduledTaskPresentation.cs	Active
+3cNJSty9kF	JarvisCode.App/Services/SettingsSearchIndex.cs	Denied apps
+3cc4CtJM5h	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Light
+3fEV/vGLRF	JarvisCode.App/Services/PluginMarketplaces.cs	commands
+3hvGd81pGE	JarvisCode.App/Controls/WidgetBlock.cs	image
+3jBa7kWqT6	JarvisCode.App/Views/MainWindow.xaml.cs	Failed to process quick entry
+3kbIhS7KZS	JarvisCode.App/Controls/InlineRenameBox.cs	Untitled
+3rKljC8I57	JarvisCode.App/Services/CustomizeConnectors.cs	Paste the callback URL below
+3y9DGgura7	JarvisCode.App/Services/SessionDialogs.cs	Resume
+3yurtFS7JU	JarvisCode.App/Views/RoutinesView.xaml.cs	Next run
+40/adk8LuF	JarvisCode.App/Services/ErrorCards.cs	An image in this conversation is over 2000px. Start a new session to continue.
+43jDUDnevy	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Select a folder
+45y/pKPsUN	JarvisCode.App/Services/CustomizeDirectory.cs	Search skills, connectors, and plugins…
+47FYwba+bI	JarvisCode.App/Services/AppUpdates.cs	Cancel
+47h7Fdurec	JarvisCode.App/Views/MainWindow.xaml.cs	Show in folder
+47svuNMHCd	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Installation
+4EAtPWhM42	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Anthropic Sans
+4Eyg6psDkw	JarvisCode.App/Services/CustomizeDirectory.cs	Search connectors…
+4FdR+5IiDU	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Duplicate
+4JtC9MSOdU	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Jarvis will control this emulator and take screenshots of its entire screen.
+4JvX9ZTEQB	JarvisCode.App/Controls/ContextWindowPopup.cs	Context window
+4PQSGeQCas	JarvisCode.App/Services/CustomizePlugins.cs	Disabled
+4SJxF5T/a8	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Versions
+4U8CMvZ+SO	JarvisCode.App/Views/Panels/PullRequestPanel.cs	Open on GitHub
+4UtfB0TvB4	JarvisCode.App/Views/Settings/GeneralPage.cs	Product management
+4aL/3wWUgg	JarvisCode.App/Views/RoutinesView.xaml.cs	Local routines only run while your computer is awake and online.
+4dL9o7Uhkf	JarvisCode.App/Views/CodeWorkspace.Tiles.cs	Resize
+4l3NwSf6mB	JarvisCode.App/Services/GitBarPresentation.cs	No changes to commit
+4l6vz1/eZ5	JarvisCode.App/Controls/CodeBlockCard.cs	Copy
+4leMHNlXvY	JarvisCode.App/Services/InferenceConfigurations.cs	Couldn’t import the file. It doesn’t contain any configuration settings.
+4m2WM4MrbB	JarvisCode.App/Services/Toasts.cs	The session is already in this directory.
+4mzlmbbRYe	JarvisCode.App/Services/ChatModelMenu.cs	Search models
+4nONiiddCv	JarvisCode.App/Services/SessionMenuModel.cs	Open in
+4oif0IPXeY	JarvisCode.App/Services/ComparisonStrings.cs	Add a comment…
+4prk89gktf	JarvisCode.App/Views/Customize/ConnectorSignInDialog.cs	Start over
+4qP7MjrQfC	JarvisCode.App/Views/Settings/DeveloperPage.cs	Environment variables
+4w2mdIEQf/	JarvisCode.App/Services/ErrorCards.cs	Another program (e.g. antivirus) has a temporary lock on app files. Wait a moment and try again.
+4wkfFQ0gI1	JarvisCode.App/Services/TerminalTabs.cs	More terminals
+59puvF+dPg	JarvisCode.App/Views/ChatSurface.xaml.cs	Show current context usage
+5RLzU49/sW	JarvisCode.App/Services/ScheduledTemplates.cs	A Friday summary of what happened this week.
+5TBFjwTdcs	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to search
+5Tw3TaH5r+	JarvisCode.App/Services/SessionColors.cs	Yellow
+5VRRhWDkl9	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to edit
+5YjSObVA9A	JarvisCode.App/Services/Toasts.cs	Fork isn’t available for this session.
+5bDaqycXCM	JarvisCode.App/Services/CommandPalette.cs	star
+5cJRkpfW2y	JarvisCode.App/Services/ShortcutSheet.cs	Stop Jarvis’s response
+5huDSewExH	JarvisCode.App/Services/SettingsSearchIndex.cs	Run on startup
+5hzrmtFUvG	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Skill name
+5j4WakKa2u	JarvisCode.App/Services/ChatComposerMenu.cs	Extended thinking
+5jeq8PJZg7	JarvisCode.App/Views/AboutWindow.xaml.cs	Unknown
+5jrQWumyZf	JarvisCode.App/Services/DiagnosticReport.cs	Done
+5kK+j9pLW1	JarvisCode.App/Controls/TerminalView.cs	Restart
+5kp1IeN5nQ	JarvisCode.App/ViewModels/TranscriptItems.cs	Denied
+5lh5JiLkPH	JarvisCode.App/Views/Panels/ChangesPanel.xaml	Next finding
+5px1rJwipu	JarvisCode.App/Views/Settings/ExtensionsPage.cs	Drag .MCPB or .DXT files here to install
+5r8mwp/Cyc	JarvisCode.App/Services/AppMenu.cs	Sidebar
+5v0WkZLzRG	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Branch
+5y2qWOlFVf	JarvisCode.App/Services/ChatPlaceholders.cs	Connecting...
+5zZ44MiUDg	JarvisCode.App/ViewModels/ChatViewModel.cs	Failed to process image. You can try again.
+6/sAAh+NIB	JarvisCode.App/Services/NotificationPolicy.cs	Jarvis needs your approval to use a tool.
+60l4b+/E9u	JarvisCode.App/Views/Customize/CustomizeUi.cs	Reset filters and sort
+61u4JhQYFf	JarvisCode.App/Views/Settings/ImportExportPage.cs	From this install only. Terminal sessions aren’t included.
+62nsdyMyIO	JarvisCode.App/Views/ChatSurface.xaml	Retry
+62vTr2CsqN	JarvisCode.App/Views/Settings/GeneralPage.cs	Data science
+64Hq/+q+KI	JarvisCode.App/Services/SessionMenuModel.cs	Mark as read
+65HrbSXt9Z	JarvisCode.App/Views/Panels/BrowserPanel.xaml	Clear browsing data
+66f5bmLflK	JarvisCode.App/Views/CodeWorkspace.Tiles.cs	Open here
+672p7Kbd7U	JarvisCode.App/Services/ToolRowPresentation.cs	Scrolled
+6CbgoTb8/Z	JarvisCode.App/Services/ScheduledTaskPresentation.cs	invalid schedule
+6D4GhbsBIR	JarvisCode.App/Services/CommandPalette.cs	Toggle sidebar
+6DN2BwXOYy	JarvisCode.App/Views/Panels/ChangesPanel.xaml	Attach as context
+6FIWH+LxIO	JarvisCode.App/Views/Settings/GeneralPage.cs	e.g. keep explanations brief and to the point
+6IjSTkGhXh	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Booting…
+6Jb0AX1uQx	JarvisCode.App/Services/ChatComposerActions.cs	Start task
+6JmsGLI59u	JarvisCode.App/Services/ErrorCards.cs	Too many requests right now — try again in a moment.
+6ORByEv1yi	JarvisCode.App/Views/Panels/FileViewerPanel.cs	No files to show yet. Type to search.
+6OWS4p9SXV	JarvisCode.App/Services/ChatPlaceholders.cs	Processing...
+6PcFGrhvAS	JarvisCode.App/Services/LandingPresentation.cs	Remove from recent
+6SI3PVzMTR	JarvisCode.App/Controls/MarkdownMetrics.cs	medium
+6Su1BR8fC0	JarvisCode.App/Services/PlusMenuModel.cs	Import GitHub issue
+6TgDeF8iRs	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Add policy
+6Wj8Gjltbs	JarvisCode.App/Services/ToolRowPresentation.cs	Created PR
+6WwfTjrCl+	JarvisCode.App/Services/CustomizeMemory.cs	Paused. Existing memories are kept but won’t be read or updated in new sessions.
+6XFO/Cw7Ld	JarvisCode.App/Services/GitBarPresentation.cs	Approved
+6YuwNxOgpl	JarvisCode.App/Services/ErrorCards.cs	Add credits or update billing to continue.
+6dIxDP1C8c	JarvisCode.App/Services/ChatListSections.cs	Yesterday
+6eIovh5Zqn	JarvisCode.App/Services/ChatComposerMenu.cs	Add connector
+6i9ndqriCs	JarvisCode.App/Views/RoutinesView.xaml.cs	Search routines
+6m12Z4ECay	JarvisCode.App/Services/PermissionModeMenu.cs	Plan
+6nJ9Ok4J3q	JarvisCode.App/Services/ErrorCards.cs	Server error
+6nkMgtgBMf	JarvisCode.App/Views/Panels/FileViewerPanel.cs	You have unsaved changes. Are you sure you want to discard them?
+6oOCCLxV+t	JarvisCode.App/Services/CommandPalette.cs	Upload file
+6q3tCnkd2h	JarvisCode.App/Services/CustomizeConnectors.cs	Connecting
+6vV5oGkCFL	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Notify me when this routine finishes
+7+U8x5o7v9	JarvisCode.App/Services/SettingsSearchIndex.cs	Local MCP servers
+7+UPMnhJCX	JarvisCode.App/Services/ChatStatusLabels.cs	Authentication failed
+71dtHvbhEs	JarvisCode.App/Services/AppUpdates.cs	Wait for Jarvis
+74N95hPFV6	JarvisCode.App/Services/SessionRowStates.cs	Unread response
+74vgSJLU7n	JarvisCode.App/Services/SettingsSearchIndex.cs	Time range
+76d/OFva42	JarvisCode.App/Services/TerminalTabs.cs	Press Delete or Backspace to close the terminal
+7ATNnsYDg/	JarvisCode.App/App.xaml.cs	failed
+7F5OAaiiBU	JarvisCode.App/Services/SidePanes.cs	artifacts
+7G8vRXjEWS	JarvisCode.App/Services/GitBarPresentation.cs	Already on the base branch — check out a feature branch first
+7JGu5oG/Uu	JarvisCode.App/Services/SettingsSearchIndex.cs	Chat font
+7Ktj7zC8i7	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Your skills
+7NIewDM31E	JarvisCode.App/Services/ToolGroupSummary.cs	browsed
+7OaBnbpdtS	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Hooks
+7QF+z7vW73	JarvisCode.App/Services/QuickEntryShortcuts.cs	This shortcut combination isn’t supported. Try a different combination.
+7VOycUjyKn	JarvisCode.App/Services/ChatStatusLabels.cs	Still thinking...
+7XShzYYF6E	JarvisCode.App/Services/ToolRowPresentation.cs	Fetching
+7gIcWqlMVf	JarvisCode.App/Services/ComputerUseGrants.cs	read
+7h7rLS5u38	JarvisCode.App/Services/ShortcutSheet.cs	Jump to session
+7nRj8nxT0m	JarvisCode.App/Controls/ContextWindowPopup.cs	Memory files
+7u8pZpE6iA	JarvisCode.App/Views/ChatSurface.xaml.cs	Permissions
+7vas0HJwrr	JarvisCode.App/Services/NotificationPolicy.cs	Permission requests
+7w3FHlVG2e	JarvisCode.App/Services/ErrorCards.cs	Usage limit reached
+7xuVQAUr4r	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to write
+8+SmLs9cdn	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Can access all your files
+80g19Nu67u	JarvisCode.App/Services/GitBarPresentation.cs	View on GitHub
+81nZO9p1uy	JarvisCode.App/Services/ErrorCards.cs	Couldn’t rewind
+83Dth0tmbB	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Download .txt
+83a24xd13u	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Uploaded from file
+88OlIQOrZj	JarvisCode.App/ViewModels/TranscriptItems.cs	Context cleared
+8EiWE4PL22	JarvisCode.App/Services/ChatWelcome.cs	Incognito chats aren’t saved to history.
+8FpI47yX0n	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Search connectors
+8Gmf83x+ay	JarvisCode.App/Services/SessionMenuModel.cs	Continue in
+8JsNlucP/1	JarvisCode.App/Services/SidebarFilterModel.cs	Filter sessions
+8Q+Q5LuGum	JarvisCode.App/Services/PlusMenuModel.cs	Browse connectors
+8Rj4WgXPcB	JarvisCode.App/Controls/TextSelectionScope.cs	Copy message
+8aTg3D2NqS	JarvisCode.App/Views/Settings/AllowedSitesDialog.cs	Add URL
+8bgDMNsn/K	JarvisCode.App/Services/ErrorCards.cs	Install Git (Xcode Command Line Tools on macOS, Git for Windows on Windows, or your distro’s git package on Linux) to continue.
+8eDsN7qTfE	JarvisCode.App/Services/ErrorCards.cs	Resume imported session?
+8gYRBjGGfK	JarvisCode.App/Services/Toasts.cs	This session runs in an isolated worktree, so its directory can’t be changed. Start a new session in the other directory instead.
+8i6rbwuPhl	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Preview your app instead?
+8rxF525mYD	JarvisCode.App/Services/CustomizeConnectors.cs	No connectors to connect
+8vKv7jYrZq	JarvisCode.App/Services/AppUpdates.cs	Checking for updates...
+8w8SOeyOJA	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Attaching…
+8w8g6qgplC	JarvisCode.App/Views/Settings/DesktopPage.cs	Add app
+8z7S+zuK+m	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	Delete and re-add connectors to edit custom OAuth Client Secrets.
+8zWPf3rmUS	JarvisCode.App/Services/ScheduledTemplates.cs	Draft a few post ideas each week from the latest news in your industry.
+9+DdtuCqLw	JarvisCode.App/Views/TeachOverlayWindow.cs	Next
+94Fg25VD0N	JarvisCode.App/Controls/TextSelectionScope.cs	Select all
+95stPqCnfu	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Completed
+96GJ5wSQam	JarvisCode.App/Services/ChatComposerMenu.cs	No matches
+9904KlI+jU	JarvisCode.App/Services/SideChatStrings.cs	Branch to new chat
+9IF+UH0/HB	JarvisCode.App/Services/ErrorCards.cs	Context window was full
+9Kp4ZgNuBk	JarvisCode.App/Services/SideChatStrings.cs	Copy answer
+9N9Q8ouJYE	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Pause routine
+9O0Gdrs9M5	JarvisCode.App/Services/GitBarPresentation.cs	Merged
+9Obw6C5Mfg	JarvisCode.App/Services/SidebarFilterModel.cs	Filter
+9Q4fB13nel	JarvisCode.App/ViewModels/TranscriptItems.cs	Started session
+9QpIaEAMM6	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Delete routine?
+9SFgRxgxgm	JarvisCode.App/Services/CommandPalette.cs	Mark session as read/unread
+9TvBKZ1Zmw	JarvisCode.App/Services/CommandPalette.cs	Copy session link
+9UgOT8oCdQ	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	Only use connectors from developers you trust. Anthropic does not control which tools developers make available and cannot verify that they will work as intended or that they won’t change.
+9WRlF4R2gm	JarvisCode.App/Services/SideChatStrings.cs	Send
+9WVmruBamk	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Code appearance
+9XOcr336gf	JarvisCode.App/Views/Panels/FileViewerPanel.cs	This file can’t be saved. Its path is outside the working directory, or this is a remote session.
+9XUYQtJvwF	JarvisCode.App/Services/SettingsSearchIndex.cs	Import
+9XiW3xWqO5	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Loop
+9Z0I31VbJD	JarvisCode.App/Services/PinHints.cs	Let go
+9a+SKtXKhe	JarvisCode.App/Views/ImageLightboxWindow.cs	Screenshot
+9a2ShG0Qn9	JarvisCode.App/Views/Panels/BrowserPanel.xaml	New tab
+9aX8EHBM23	JarvisCode.App/Services/ChatStatusLabels.cs	Working through a complex response...
+9bQZ2JN+mX	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Credential helper
+9d9rQzQPVA	JarvisCode.App/Views/Panels/FilesPanel.xaml.cs	No matches in file contents
+9dx43BqWHy	JarvisCode.App/Services/EffortLevels.cs	Faster
+9knX1qH3f1	JarvisCode.App/Views/Customize/CustomizeNavView.xaml	Add plugin
+9kugsu9NjU	JarvisCode.App/Services/ChatQueue.cs	Reorder queued message
+9mNMhPpnT5	JarvisCode.App/Services/ScheduledTaskPresentation.cs	This routine was disabled because it was scheduled more than once per hour. Choose a less frequent schedule and re-enable it.
+9pivLI5CIA	JarvisCode.App/Views/MainWindow.Shell.cs	Auto mode is now Jarvis Code’s default permission mode
+9rL+46Sd/5	JarvisCode.App/Services/SettingsSearchIndex.cs	Response completions
+9t1iivhk67	JarvisCode.App/Views/Settings/ExtensionsPage.cs	Configure
+9uOFF3L8kp	JarvisCode.App/Controls/UsageStatsCard.cs	Overview
+9w/oawRjHR	JarvisCode.App/Services/SessionDialogs.cs	Delete anyway
+9wooBlZIGJ	JarvisCode.App/Services/CustomizeDirectory.cs	Name A-Z
+A/Bht8akH/	JarvisCode.App/Services/ToolRowPresentation.cs	Dragging
+A8rWfKl1gY	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Refresh marketplace
+AHQWDTo4+e	JarvisCode.App/Views/Chat/ComparisonView.cs	Thinking
+AHXAjK1m4h	JarvisCode.App/Services/CustomizeSkills.cs	Your admin
+AHqYMUJ4/h	JarvisCode.App/Services/WorkingDirectoryMenu.cs	Open cli.github.com
+ALe3ynmfbq	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Upload local plugin
+APg3TEj7rk	JarvisCode.App/Services/ShortcutSheet.cs	Focus previous split view
+ATDyLPIoxz	JarvisCode.App/Services/CommandPalette.cs	New chat
+AUdd7Fskzn	JarvisCode.App/Services/SidebarPresentation.cs	Drag or move sessions here
+AVBr13lojS	JarvisCode.App/Services/ChatComposerMenu.cs	Skills
+AXccdRjr1o	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Select a folder for this task
+AZqxFNieUw	JarvisCode.App/Services/OutputStyles.cs	Proactive
+AaJVslgu7i	JarvisCode.App/Views/Settings/ExtensionsPage.cs	Uninstall
+Ag1TzTm++9	JarvisCode.App/Services/SessionMenuModel.cs	Split view
+AgUG6bZewE	JarvisCode.App/Views/Settings/AllowedSitesDialog.cs	example.com
+Ajmo+3Cu3b	JarvisCode.App/Services/ShortcutSheet.cs	New session
+AkCxS/TH0/	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Reason
+Am+9xKZDLW	JarvisCode.App/Services/GitHubIssues.cs	Search by issue number or title
+AmB41NR69H	JarvisCode.App/Services/GitBarPresentation.cs	No changes to create a PR from
+AmpQ4SI339	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	e.g. JetBrains Mono
+Anjya1uoz1	JarvisCode.App/Services/CommandPalette.cs	Delete session
+Au4AP9NTeL	JarvisCode.App/Services/PinHints.cs	Drop here
+AxMhQrcUDC	JarvisCode.App/Services/EffortLevels.cs	High
+Az8xNsSryd	JarvisCode.App/Services/SidebarPresentation.cs	Search recents...
+B+hV/v0gp1	JarvisCode.App/Services/ErrorCards.cs	An API error occurred
+B+wjm8G8Vk	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Configurations
+B3/1ZH6UmD	JarvisCode.App/Services/BackgroundTaskPresentation.cs	No output yet
+B67GH1cK9S	JarvisCode.App/Services/ToolRowPresentation.cs	Committed
+B7SXw41vFe	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	The HTTPS address where the server accepts MCP requests, for example https://mcp.example.com/mcp.
+B7SuK4Lkp1	JarvisCode.App/Services/ScheduledTemplates.cs	Inbox triage
+B7cbq5Vnac	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Select a folder to see project-scoped plugins and install plugins at the project level.
+B7mFKhsnuX	JarvisCode.App/Services/CustomizeSkills.cs	.zip or .skill file must include a SKILL.md file
+BEKApZtIyI	JarvisCode.App/Views/CodeWorkspace.xaml	Print as PDF
+BFOhqZZRe9	JarvisCode.App/Services/CommandPalette.cs	Project
+BJLP9ggU0M	JarvisCode.App/Services/AppMenu.cs	File
+BKqmFzMJfx	JarvisCode.App/Services/InferenceConfigurations.cs	Couldn’t import the file. It isn’t valid JSON.
+BMAvVC8vIA	JarvisCode.App/Views/ChatSurface.xaml	Expand artifact
+BPnT3TVya+	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Small
+BTu5Yx926X	JarvisCode.App/Services/ChatQueue.cs	Queued message actions
+BWpuKlRSA1	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Update
+BXrr+6MfHk	JarvisCode.App/Views/Panels/FilesPanel.xaml.cs	Match actions
+BY343C3tWs	JarvisCode.App/Services/ComparisonStrings.cs	Change
+Bb7iLWtweK	JarvisCode.App/Controls/TextSelectionScope.cs	Couldn’t save image.
+Bc5ZcFJDPE	JarvisCode.App/Services/ErrorCards.cs	You’ve reached your usage limit. Try again after your limit resets.
+Bcu/8vmAuY	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Responsive
+BeNH4k5JPv	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	Remote MCP server URL
+BkpBqHHTdb	JarvisCode.App/Services/OutputStyles.cs	Learning
+BonFmr6O3r	JarvisCode.App/Services/ChatComposerActions.cs	Stop Jarvis response
+BootstrapHdrKeyPh	JarvisCode.App/Services/ModelDiscovery.cs	Authorization
+BpM+iSIqxC	JarvisCode.App/Services/ErrorCards.cs	Something went wrong. Try again in a moment. If it persists, check {statusUrl}.
+BpuMwRROLB	JarvisCode.App/Services/SessionDialogs.cs	Delete group
+BqDdI890tk	JarvisCode.App/Controls/UsageStatsCard.cs	Active days
+Bqu87FoC66	JarvisCode.App/Services/ComputerUseGrants.cs	command
+BwJC4PMIXE	JarvisCode.App/Views/Panels/RunHistoryPanel.cs	Couldn’t load run history
+BwJC5IVgSg	JarvisCode.App/Services/ComparisonStrings.cs	Memory off
+BxVqgx1N4R	JarvisCode.App/Services/SettingsSearchIndex.cs	Allowed sites
+Bzy/54I5zQ	JarvisCode.App/Views/RoutinesView.xaml.cs	Manual only
+C2KvkQvJR0	JarvisCode.App/Controls/UsageStatsCard.cs	Longest streak
+C2iTEHtK//	JarvisCode.App/Services/ScheduledTaskPresentation.cs	Paused
+C62zFeJXuO	JarvisCode.App/Views/Settings/DeveloperPage.cs	Open extensions folder
+C6UYRcZHCt	JarvisCode.App/Services/ChatStatusLabels.cs	Gathering my thoughts, be right there...
+CD9YaN3oTh	JarvisCode.App/Services/HomeViewPresentation.cs	Needs input
+CFLhTeXdtP	JarvisCode.App/Services/SessionDialogs.cs	Trust this workspace?
+CN/B/k3dCh	JarvisCode.App/Services/ErrorCards.cs	Connection lost
+CNXQN5zp9z	JarvisCode.App/Controls/CodeBlockCard.cs	Copy code
+CO0if1A1Xg	JarvisCode.App/Views/CodeWorkspace.Tiles.cs	Side by side
+CRtN3j3747	JarvisCode.App/Services/LandingPresentation.cs	Work in an isolated copy of the repository
+CVL1+tDm9Z	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Setting up preview
+CZwl8X2D85	JarvisCode.App/Views/Settings/DeveloperPage.cs	Advanced options
+CapHOIPauL	JarvisCode.App/Services/SettingsSearchIndex.cs	Keep computer awake
+Cbk48hFSAh	JarvisCode.App/Services/ErrorCards.cs	Jarvis Code can’t run inside another Jarvis Code session. Close the outer session to continue.
+ClSk6cFhAb	JarvisCode.App/Views/Settings/UsagePage.cs	input + output tokens
+Cn96kADMAi	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	Shown in the connectors list.
+CnieZL5Zdt	JarvisCode.App/Services/Toasts.cs	Couldn’t rewind this session. Your message is back in the composer.
+Cnm0QAkWnp	JarvisCode.App/Services/GitBarPresentation.cs	Queued
+CoWpJWiYVJ	JarvisCode.App/Services/SettingsSearchIndex.cs	Instructions for Jarvis
+Cox9P9F9a5	JarvisCode.App/Services/ScheduledTaskPresentation.cs	This name is reserved. Choose a different name.
+Cp+wdwlq61	JarvisCode.App/Services/CustomizeSkills.cs	Skill files must have a .skill, .zip, or .md file extension.
+Cqp4C6aPD2	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Worktree
+Cs33xZFR6o	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Narrow
+D2W6fLXiNK	JarvisCode.App/Services/GatedPromptSections.cs	worktree
+D3idYvSLF9	JarvisCode.App/Services/AppMenu.cs	Settings
+D4ZSZJLOdx	JarvisCode.App/ViewModels/TranscriptItems.cs	Compacted session
+D7jTww3yOv	JarvisCode.App/Services/SettingsSearchIndex.cs	Transcript text size
+D90Mq4jCm6	JarvisCode.App/Services/ChatModelMenu.cs	Loading models…
+D9OqV7EIr6	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Automatically archive local sessions after a period of no activity. Sessions that are running or have background work are never archived, and a worktree with uncommitted changes is kept on disk.
+DDvPN+i/t2	JarvisCode.App/Views/Customize/CustomizeNavView.xaml	Personal plugins
+DGQ+GomQem	JarvisCode.App/Services/ChatQueue.cs	This message will be removed from the queue and won’t be sent.
+DPJjsItBww	JarvisCode.App/App.xaml.cs	scheduled
+DQ5oNTYoYA	JarvisCode.App/Services/SessionDialogs.cs	Archive older sessions?
+DZD8YsN2QY	JarvisCode.App/Services/ToolRowPresentation.cs	Searching web
+DZwrOk9TjA	JarvisCode.App/Services/ErrorCards.cs	Approve this folder in the trust prompt to continue.
+DauzyWMEs/	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Firewall allowlist
+Dbc6XaCcol	JarvisCode.App/Views/RoutinesView.xaml.cs	Routines
+DeiP4y7uJ2	JarvisCode.App/Services/CustomizeSkills.cs	Anthropic
+Dh+usMpc6F	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Jarvis looked and found no dev server in this project.
+Dind0+Krct	JarvisCode.App/Views/RoutinesView.xaml.cs	Sort routines
+DrFn3Jpzg4	JarvisCode.App/Services/WidgetLinkPrompt.cs	This link contains embedded credentials, which may be an attempt to disguise its destination. You will actually be sent to:
+DrWmuvNLrm	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Task file not found or has unexpected format.
+DtTW4+f603	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Your organization
+DueauMIubu	JarvisCode.App/Services/BackgroundTaskPresentation.cs	No output captured.
+DxgBSXpyP2	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Color scheme
+E+U2BsD3U/	JarvisCode.App/Services/CustomizePlugins.cs	This marketplace exceeds size or plugin count limits.
+E3oB+tM0Ou	JarvisCode.App/Services/AppMenu.cs	Browser
+E4l5E2QoYp	JarvisCode.App/Services/NotificationPolicy.cs	Jarvis is asking you to choose between options.
+E7tHZPJmaR	JarvisCode.App/Services/GitBarPresentation.cs	Creating PR…
+EBLZNOCP+Y	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Add a plugin to your workspace from a .zip or .plugin archive.
+EBcT1W1KuZ	JarvisCode.App/Services/GitBarPresentation.cs	Create PR
+ECF6jab1G0	JarvisCode.App/Views/Settings/GeneralPage.cs	Founder
+EEDYq58zfP	JarvisCode.App/Services/ScheduledTemplates.cs	Content ideas
+EJ2npX/PZq	JarvisCode.App/Services/CredentialHelpers.cs	Couldn’t run the helper
+ELAzKPrwsU	JarvisCode.App/Services/AppUpdates.cs	Update anyway
+EQpfkSbt5q	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Finished
+EUNZRB0Gmy	JarvisCode.App/Services/SettingsSearchIndex.cs	Import history
+EUpITgeyu3	JarvisCode.App/Services/SessionDialogs.cs	Delete session?
+EWfxXrA85v	JarvisCode.App/Views/Panels/PaneTile.cs	Arrow keys move the tile. Perpendicular arrows preview a split; press Enter to commit or Escape to cancel.
+EWw/tKINJT	JarvisCode.App/Controls/RequestInspectorPopup.cs	Apply
+EXoZxGhXPy	JarvisCode.App/Services/PlusMenuModel.cs	Manage plugins
+EYIw2MRv0g	JarvisCode.App/Views/SidebarView.xaml.cs	Clear selection
+EYOanHZfsA	JarvisCode.App/Services/ShortcutSheet.cs	Open effort selector
+EcAvDUnycA	JarvisCode.App/Services/TerminalTabs.cs	Rename terminal
+EfvQ82FapJ	JarvisCode.App/Views/Panels/PullRequestPanel.cs	Copy commit SHA
+Eg11ZYmdyO	JarvisCode.App/Services/CustomizeConnectors.cs	Reconnect
+EgUEciyz8W	JarvisCode.App/Services/CustomizeDirectory.cs	Search plugins…
+EhwIrebMl0	JarvisCode.App/Services/CustomizeSkills.cs	Plugin name
+EiRUHyMEJ7	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Add a valid name and description before saving.
+Ej5f9tjtu2	JarvisCode.App/Services/ChatWelcome.cs	Where do you want to start?
+Ek0ZOtz8EI	JarvisCode.App/Controls/TextSelectionScope.cs	Pin as chapter
+EmFCpBoR7n	JarvisCode.App/Services/TerminalTabs.cs	New terminal
+Ep5aBa3gJK	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Add your first connectors
+Ess7TkMY61	JarvisCode.App/Services/SettingsSearchIndex.cs	Unhide apps when Jarvis finishes
+EtIpiwYn4p	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Upload plugin
+Eur4uQr0Rv	JarvisCode.App/Services/DiagnosticReport.cs	Collecting diagnostics…
+EvZs0lGwN4	JarvisCode.App/Views/MainWindow.xaml.cs	Other routines were already running.
+Evq5SUhAih	JarvisCode.App/Services/Toasts.cs	Creating worktree…
+EzPwFL58mI	JarvisCode.App/Services/WorkingDirectoryMenu.cs	Installation failed. Visit cli.github.com to install manually.
+F+8WeTDjcM	JarvisCode.App/Services/ShortcutSheet.cs	Toggle Browser
+F+HPyMF0cw	JarvisCode.App/Services/ToolRowPresentation.cs	Running agent
+F/6VqPBLCE	JarvisCode.App/Services/ContextReport.cs	Server
+F4gyn3vRX6	JarvisCode.App/Views/SidebarView.xaml.cs	Clear filters
+F6VR/g3dnO	JarvisCode.App/Views/RoutinesView.xaml.cs	This routine couldn’t be found.
+FAZpmxbq/W	JarvisCode.App/Services/SettingsSearchIndex.cs	Allow bypass permissions mode
+FDOma9euX0	JarvisCode.App/Services/ToolRowPresentation.cs	Edited
+FEEJsdW3QE	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Disable plugin
+FGl0QHAcOI	JarvisCode.App/App.xaml.cs	artifact
+FIEdqIul1I	JarvisCode.App/Controls/TurnStatusLine.cs	Compacting session…
+FMS4p1H0TF	JarvisCode.App/Services/AppMenu.cs	Find
+FNwANhurYA	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Shared
+FRELxEyMIb	JarvisCode.App/Services/ErrorCards.cs	Your organization’s access has been disabled. Contact your admin.
+FX0tSA4AY5	JarvisCode.App/Views/Panels/PullRequestPanel.cs	Checks
+FaSxxaqdE1	JarvisCode.App/Services/ShortcutSheet.cs	Toggle file list in changes
+FazwRldA7z	JarvisCode.App/Services/ChatTurnNotices.cs	Try again
+FgG7d+eCOU	JarvisCode.App/Services/SidebarFilterModel.cs	Last activity
+FgydNeoT78	JarvisCode.App/Services/AppMenu.cs	View
+FhYnU4Hl8w	JarvisCode.App/Services/VisualizeWidgetStrings.cs	Widget from {server}
+FiwV/oi580	JarvisCode.App/Services/ReadAloud.cs	Read aloud
+FkJOlqTS3s	JarvisCode.App/Services/ToolRowPresentation.cs	Rebasing onto
+Fm3M+yFIbr	JarvisCode.App/Views/Settings/GeneralPage.cs	Finance
+Fpzokz4hB3	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Copy error log
+FrNSbqbfYZ	JarvisCode.App/Services/ErrorCards.cs	Ask Jarvis to continue, or break the task into smaller steps.
+Ftw1T1s2Vd	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Enable plugin
+Fv1ZSzMOV6	JarvisCode.App/Services/GitBarPresentation.cs	Closed
+FyGldNBVoJ	JarvisCode.App/Services/ToolGroupSummary.cs	recalled
+G/yZLul6P1	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Remove
+G1lCCCnQ7Z	JarvisCode.App/Services/ChatWelcome.cs	Welcome! I’m Jarvis.
+G2R0WCfPzl	JarvisCode.App/Views/RoutinesView.xaml.cs	Create templated routines that can be kicked off on schedule, by API, or webhook.
+G6en+ZMAgk	JarvisCode.App/Services/ChatPlaceholders.cs	Address these review comments
+G78VsfMO6Q	JarvisCode.App/Services/ErrorCards.cs	Response exceeded the output limit
+G8Y9UEzh+n	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to run agent
+GAHVEi8lHA	JarvisCode.App/Services/AppMenu.cs	Terminal
+GAp1moSplB	JarvisCode.App/Services/CustomizePlugins.cs	Project (shared)
+GBnvl1JpeB	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Agents
+GDROPb/gVs	JarvisCode.App/Views/Settings/DesktopPage.cs	Any request Jarvis makes to access these apps is automatically rejected. Jarvis may still affect them indirectly through actions in allowed apps.
+GGXnM3Ivof	JarvisCode.App/Views/ChatSurface.xaml	Dictate
+GKiFIjKY9P	JarvisCode.App/Services/ToolGroupSummary.cs	edited
+GQvqkI1lyL	JarvisCode.App/Services/ScheduleFrequencies.cs	Weekdays
+GSCabmSClo	JarvisCode.App/Controls/ContextWindowPopup.cs	MCP tools
+GU9R5JHqzX	JarvisCode.App/Services/SessionMenuModel.cs	Move to group
+GVkVQAl/Q1	JarvisCode.App/Services/ChatComposerMenu.cs	Plugins
+GWEGVdQi8W	JarvisCode.App/ViewModels/TranscriptItems.cs	Copy as quote
+GWtmtuCmOx	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Mobile
+GX8+SGUXDd	JarvisCode.App/Services/SideChatStrings.cs	read-only
+GbG5yHYTaV	JarvisCode.App/Controls/TextSelectionScope.cs	Copy link
+Gby3Qfrc81	JarvisCode.App/Services/ErrorCards.cs	Bypass permissions was blocked
+Gf91FB33wB	JarvisCode.App/Services/ToolGroupSummary.cs	todos
+Gpyvi6evkT	JarvisCode.App/Services/QuickEntryShortcuts.cs	Delete
+GqKOYaLyWk	JarvisCode.App/Views/Settings/GeneralPage.cs	e.g. when learning new concepts, I find analogies particularly helpful
+Gqg1vCmoAx	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	No plugins match your filters.
+GrnZDNX+lX	JarvisCode.App/Views/Settings/ProviderCard.cs	Saved.
+GuzaTVtDDI	JarvisCode.App/Services/CommandPalette.cs	duplicate
+Gwj5DxdL0R	JarvisCode.App/Services/Toasts.cs	Adding worktree…
+Gxk66QH6Qu	JarvisCode.App/Services/CredentialHelpers.cs	Helper returned a valid credential
+H/r5m64n8M	JarvisCode.App/Services/SessionMenuModel.cs	Move down
+H0RbcUK573	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Repeats
+H3oYjWIz/4	JarvisCode.App/Services/GitBarPresentation.cs	CI: all checks skipped
+H3qJK7c+Lg	JarvisCode.App/Services/CustomizePlugins.cs	Most used by me
+H5+gMSkrHn	JarvisCode.App/Services/TerminalTabs.cs	Close other terminals
+H6MofyWVUA	JarvisCode.App/Services/RoutineApprovals.cs	Remove approval
+H8/E8tHbV2	JarvisCode.App/Services/DesktopExtensions.cs	extensions
+H9p6AMqSlk	JarvisCode.App/Services/ErrorCards.cs	This session’s working folder no longer exists. Choose a different folder or start a new session.
+HAlOn1ZsuY	JarvisCode.App/Services/CustomizePlugins.cs	Name
+HC0OdPtRvg	JarvisCode.App/Views/Settings/DeveloperPage.cs	This server is managed by an extension
+HElwNPiecu	JarvisCode.App/Controls/TextSelectionScope.cs	Unpin chapter
+HFpcGWCIwR	JarvisCode.App/Services/ErrorCards.cs	Not enough disk space
+HH/bLSGM/Y	JarvisCode.App/Views/Settings/GeneralPage.cs	Jarvis can choose to notify you about important updates from a Code session.
+HIOQDyFAjX	JarvisCode.App/Views/Settings/DesktopPage.cs	No apps denied. Add an app to automatically reject Jarvis’s requests for it.
+HLZ9CCz32R	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Credentials
+HO922/quOT	JarvisCode.App/App.xaml.cs	Copy details
+HPgoR+gGXd	JarvisCode.App/Services/ToolRowPresentation.cs	Fetched
+HVOVcW54d6	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Test connectivity
+HWE0OVebZ5	JarvisCode.App/Services/SidebarFilterModel.cs	Folder
+HWWSQ/N0ve	JarvisCode.App/Services/SidebarFilterModel.cs	Group by
+HcKBhf6Q5g	JarvisCode.App/Controls/UsageStatsCard.cs	Favorite model
+HcYTMML52V	JarvisCode.App/Services/SessionMenuModel.cs	Ungrouped
+HdQHSS9FIj	JarvisCode.App/Services/Toasts.cs	Checking out worktree files… (large repositories may take a while)
+HfRYBfuQQR	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Choose a different folder…
+HgYuL6Ytaf	JarvisCode.App/Services/DiagnosticReport.cs	Export to file
+HkK3Rtn68P	JarvisCode.App/Services/SessionDialogs.cs	New group
+HoJebfnZvq	JarvisCode.App/Services/DeepLinks.cs	folder
+HqBcYorHBN	JarvisCode.App/Views/Settings/GeneralPage.cs	Operations
+HqPKrAKR7j	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Close tab
+HqlBRpo6tx	JarvisCode.App/Services/AppUpdates.cs	Relaunch to update
+HsVXDb0rpK	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	On latest version
+Hz3uf5n9Ga	JarvisCode.App/Views/ChatSurface.xaml	Jarvis is AI and can make mistakes. Please double-check responses.
+I+Zso8YEWw	JarvisCode.App/Services/DeepLinks.cs	resume
+I1DHEXQk5F	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.cs	Rectangle
+I2d1vG35dZ	JarvisCode.App/Views/Settings/GeneralPage.cs	Marketing
+I3b4hnFnDd	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Version
+I5NMJ8llIi	JarvisCode.App/Views/Panels/PanelRail.xaml	More
+IIsWYh1P1K	JarvisCode.App/Views/Customize/CustomizeSurface.Directory.cs	Upload a file to replace this skill’s contents.
+IOJv7Fvf16	JarvisCode.App/Views/Settings/ExtensionsPage.cs	Browse extensions
+ITAocR/OSW	JarvisCode.App/ViewModels/ChatViewModel.cs	Pasted text
+ITKx9JrwYo	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Your changes have been saved. Jarvis needs to relaunch to start using them.
+IV/+/51PZA	JarvisCode.App/Views/Panels/FilesPanel.xaml.cs	No matching files
+IYBR/J+nuA	JarvisCode.App/Views/ChatSurface.xaml	Drop files here to add to chat
+IZDUJqbvDr	JarvisCode.App/Services/ErrorCards.cs	Computer went to sleep
+IZHNmcjcmo	JarvisCode.App/Services/ShortcutSheet.cs	Send in a forked session (local sessions)
+IbhegydpU9	JarvisCode.App/Services/ShortcutSheet.cs	Toggle terminal
+IbrSk1x1M4	JarvisCode.App/Views/ChatSurface.xaml	Learn
+Ibwvo0KR+6	JarvisCode.App/Services/GitBarPresentation.cs	CI: all checks passed
+IdGJer/vk4	JarvisCode.App/Views/Settings/GeneralPage.cs	Software engineer
+IdbbmBW/5/	JarvisCode.App/Services/ToolRowPresentation.cs	Amending commit
+IeOHqi8Fbf	JarvisCode.App/Services/OrganizationPlugins.cs	Ask each time
+IfE0if3ytt	JarvisCode.App/Services/ToolRowPresentation.cs	Searching
+Im5AhwhiV1	JarvisCode.App/Services/CustomizeConnectors.cs	Not connected
+Imx87bFvln	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Preview server stopped
+IpWmHJ3bpY	JarvisCode.App/Services/ScheduledTemplates.cs	Daily briefing
+Is0vIr0bWl	JarvisCode.App/Services/ErrorCards.cs	The request couldn’t be completed.
+ItwZi5jzE0	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Manage Jarvis Code plugins, agents, hooks, and connectors.
+IvjoDSPGEQ	JarvisCode.App/Services/CustomizeConnectors.cs	Connected
+IwRaId+4hv	JarvisCode.App/Services/ToolRowPresentation.cs	Taking screenshot
+Iwq9kYk9je	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Dev server detected. This command runs in your shell when the preview starts.
+IzCVhGdYVc	JarvisCode.App/Views/Settings/ExtensionsPage.cs	More options
+J04k/BN8KL	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Description must be under 1024 characters
+J1rj3Exw6V	JarvisCode.App/Views/Settings/DeveloperPage.cs	Developer docs
+J2D0+ihfKQ	JarvisCode.App/Services/SessionMenuModel.cs	Mark as completed
+J8PEX2S4/1	JarvisCode.App/Services/CredentialHelpers.cs	Helper produced no output
+J8cAGGisOh	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Needs attention
+J9JF+pOi5Y	JarvisCode.App/Services/SessionDialogs.cs	Start session
+JMac376k3s	JarvisCode.App/Services/ReleaseNotes.cs	Show all
+JOfHjTLD++	JarvisCode.App/Services/VisualizeWidgetStrings.cs	Rendering widget
+JXIo4vFvLS	JarvisCode.App/Services/ErrorCards.cs	This session’s conversation history is no longer on disk. You can keep working here — sending your message will start a fresh session in this folder.
+JYzePgBUTo	JarvisCode.App/ViewModels/ChatViewModel.cs	change
+JgfBO3wXf3	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Search skills and plugins
+JiMBqP+f6o	JarvisCode.App/Services/ScheduledTaskPresentation.cs	No routines match your search.
+Jj5UsNkTxk	JarvisCode.App/Services/ErrorCards.cs	Locked by another program
+JkS37H8PlA	JarvisCode.App/Services/AppMenu.cs	Undo
+JqiqNj0Ooi	JarvisCode.App/App.xaml.cs	Something went wrong
+JsOnt26X3G	JarvisCode.App/Services/Toasts.cs	Something went wrong. Try again, or run /mcp in the terminal for details.
+JuT1yhTfY2	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Automatically archive desktop sessions when the associated pull request is merged or closed. Archiving also removes the session’s worktree and deletes its branch once the pull request is merged. Work that isn’t pushed is kept.
+K1Geta3vjp	JarvisCode.App/Services/SettingsSearchIndex.cs	Branch prefix
+K1SJkY1ozI	JarvisCode.App/Services/CommandPalette.cs	Unarchive session
+K2y4rXHFJK	JarvisCode.App/Services/GitBarPresentation.cs	Jarvis is working — wait for the turn to finish
+K4O03zh0vo	JarvisCode.App/Views/RoutinesView.xaml.cs	New task
+K4tFmM/Itx	JarvisCode.App/Services/Toasts.cs	Couldn’t go back to that message. Use Rewind on the message instead.
+K7AkdLoAj6	JarvisCode.App/Services/ChatListSections.cs	Show
+K9q4XwLJd2	JarvisCode.App/Services/SessionInfo.cs	MCP servers
+KG1v87kZ0F	JarvisCode.App/Views/Settings/ImportExportPage.cs	Nothing new to import
+KHW1vrxi6i	JarvisCode.App/Services/ToolRowPresentation.cs	Pushing
+KIfwgXQ5wV	JarvisCode.App/Services/BrowserCloseDialogText.cs	Stop servers
+KV/9HvLgtb	JarvisCode.App/Services/NotificationPolicy.cs	Questions
+KZVLRZPNPH	JarvisCode.App/Services/ChatQueue.cs	Collapse queued messages
+Kb4W+aA0T3	JarvisCode.App/Services/ShortcutSheet.cs	Toggle changes
+KdVmrUkqzA	JarvisCode.App/Services/CommandPalette.cs	remove
+KfDUBH9lwR	JarvisCode.App/Services/GitBarPresentation.cs	Working directory
+KgA+vPbgQ2	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Upload a skill
+Kj+LfxNZ7r	JarvisCode.App/Services/ScheduleFrequencies.cs	Hourly
+Kjopb5UhrC	JarvisCode.App/Views/Settings/ImportExportPage.cs	Remove all imports?
+KkT91N01lp	JarvisCode.App/Controls/TextSelectionScope.cs	Send to side chat
+KlvXB/iSa4	JarvisCode.App/Services/DiagnosticReport.cs	Recent error and warning log lines
+Km7x3vvEGf	JarvisCode.App/Views/AboutWindow.xaml	Get support
+KmkyXXggLE	JarvisCode.App/Services/ScheduledTaskPresentation.cs	This routine was disabled because its cron expression is invalid. Edit the schedule and re-enable it.
+KpLCzKNIwz	JarvisCode.App/Services/ToolGroupSummary.cs	suggested
+KtZV9pULgo	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Connection
+L+gTSub4gg	JarvisCode.App/Services/SessionRowStates.cs	Awaiting answer
+L+wTwYXlQg	JarvisCode.App/Services/BrowserCloseDialogText.cs	Stop server
+L2K9FWna7U	JarvisCode.App/Services/ErrorCards.cs	There isn’t enough free disk space to set up a worktree for this session. Free up disk space and try again.
+L3orNe9gpJ	JarvisCode.App/Services/SettingsSearchIndex.cs	Draw attention on notifications
+L7ojGjAGFG	JarvisCode.App/Services/ErrorCards.cs	Enable extra usage in Settings, or switch to a model with standard context.
+LDulFUXMWF	JarvisCode.App/Services/ToolRowPresentation.cs	Edited PR
+LLAlcSpEZT	JarvisCode.App/Services/ErrorCards.cs	Connection went idle
+LMfxrfmStP	JarvisCode.App/Services/CredentialHelpers.cs	Helper ran, but its output isn’t a usable credential
+LQOsG3yWng	JarvisCode.App/Services/SettingsSearchIndex.cs	Code permission requests
+LQiIjZex33	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Skip all approvals
+LVtmXkLpi0	JarvisCode.App/Services/CommandPalette.cs	clone
+Lb7Gv7SxXp	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Links from Jarvis open in the built-in browser instead of your default browser.
+LbEKsTNS/j	JarvisCode.App/Views/Settings/ImportExportPage.cs	Import sessions from
+Lc72GmPP25	JarvisCode.App/Views/ChatSurface.xaml.cs	Start a new conversation
+LgK8MKTG04	JarvisCode.App/Services/CustomizeConnectors.cs	This connector has no tools available
+LgbKvU/n17	JarvisCode.App/Services/ComparisonStrings.cs	Comment
+LgkdiZ92a8	JarvisCode.App/Services/SettingsSearchIndex.cs	Open links in built-in browser
+Lt8a1TXkmR	JarvisCode.App/Services/HomeViewPresentation.cs	Ready for review
+LugtSxHcwh	JarvisCode.App/Services/GitBarPresentation.cs	Create draft PR
+Lv0zJuL1jH	JarvisCode.App/Views/Panels/RunHistoryPanel.cs	Details
+LzD3TVpXVC	JarvisCode.App/Views/CodeWorkspace.Tiles.cs	Unified
+M+0PT+zBPq	JarvisCode.App/Services/ErrorCards.cs	Extra usage is required
+M/TDplXStW	JarvisCode.App/Services/NotificationPolicy.cs	Banners
+M/kxbdKKjv	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Preview HTML
+M1fJAb8qse	JarvisCode.App/Controls/CodeBlockCard.cs	Open in terminal
+M1glAkJ8dR	JarvisCode.App/Services/ToolRowPresentation.cs	Dragged
+M59JhXXku8	JarvisCode.App/Services/PermissionModeMenu.cs	Manual
+MBqBb4XNI5	JarvisCode.App/Services/OrganizationPlugins.cs	Ask once per session
+MBuEiuUDhF	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Upload a plugin
+MCt5e8xpx8	JarvisCode.App/Services/ChatStatusLabels.cs	A bit longer, thanks for your patience...
+MGmJmmBWlu	JarvisCode.App/Services/CustomizePlugins.cs	Last edited
+MHBNNaX0vZ	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Dream
+MHHIKnYir+	JarvisCode.App/Services/ChatQueue.cs	Discard queued message?
+MJ2jZQxQnT	JarvisCode.App/Views/Settings/UsagePage.cs	Total
+MK/UUklPeE	JarvisCode.App/Views/Customize/CustomizeSurface.xaml.cs	Skills teach Jarvis to do a task exactly the way you want, every time.
+MOK/yKIpYX	JarvisCode.App/Services/ToolRowPresentation.cs	Reading
+MQrAwjjefp	JarvisCode.App/Services/ChatWelcome.cs	You’re incognito
+MS0kN6eQX8	JarvisCode.App/Services/ErrorCards.cs	An image in this conversation is over 2000px. Rewind to remove it, or start a new session.
+MSAzF5WZ27	JarvisCode.App/Views/Settings/ImportExportPage.cs	Import…
+MSsFqCg6Gh	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Where to store Git worktrees for isolated coding sessions.
+MX7oP1jC5U	JarvisCode.App/Services/CommandPalette.cs	Jump to previous prompt
+MZWV60Fq3N	JarvisCode.App/Services/CommandPalette.cs	Incognito chat
+Ma0wJFlsrr	JarvisCode.App/Services/SessionMenuModel.cs	VS Code
+McpBuiltinGithubScope	JarvisCode.App/Services/ComputerUseExtras.cs	Access
+McpBuiltinServerWebSearchOpt	JarvisCode.App/Services/ChatActivityPanel.cs	Web search
+MfFrIX0mxC	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.cs	Discard your annotations?
+MgdnPiJHcj	JarvisCode.App/Views/Settings/DebugPanel.cs	Response
+MhxIirP/cf	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Settings default
+MmCWh6jT3C	JarvisCode.App/Services/Toasts.cs	Link copied to clipboard.
+Mn8BAEIrHk	JarvisCode.App/Controls/UsageStatsCard.cs	Current streak
+MnpUD7ksb+	JarvisCode.App/Views/ChatSurface.xaml	View details
+MqeiuvdLd7	JarvisCode.App/Services/ScheduledTaskPresentation.cs	{count, plural, one {# run} other {# runs}}
+MtJVtxlGU4	JarvisCode.App/Views/Settings/GeneralPage.cs	e.g. I primarily code in Python (not a coding beginner)
+Mtd9LOXvVD	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Timeout
+MyIJbrHxpk	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Contents
+MyneLjoq5y	JarvisCode.App/Services/SessionBulkActions.cs	Bulk actions for older sessions
+N0Xxd96Qs/	JarvisCode.App/Services/ScheduledTemplates.cs	A short brief before each meeting on your calendar, covering attendees, context, and agenda.
+N2IrpMDHDB	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Confirm
+N2bqd9kL1X	JarvisCode.App/Services/ToolRowPresentation.cs	Typing
+N7J0UltgLB	JarvisCode.App/Views/RoutinesView.xaml.cs	New routine
+NACfNicI6z	JarvisCode.App/Controls/TurnStatusLine.cs	Stopping…
+NAJOCQ+6Ax	JarvisCode.App/Services/Toasts.cs	Couldn’t archive this session. Try again.
+NAidKbB0vi	JarvisCode.App/Services/SettingsSearchIndex.cs	Notifications
+NDm507NaPL	JarvisCode.App/Services/ToolGroupSummary.cs	a command
+NE0iIW0+xg	JarvisCode.App/Views/ChatSurface.xaml	Life stuff
+NEnFExY5bP	JarvisCode.App/Services/ErrorCards.cs	Couldn’t switch branches
+NHI5eIky7V	JarvisCode.App/Services/GitBarPresentation.cs	Repository and pull request controls
+NJWsttItt/	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Clear browsing data?
+NM8QNWcvYK	JarvisCode.App/Services/DiagnosticReport.cs	App version, OS, and system info
+NNBHaPuMiG	JarvisCode.App/Services/LandingPresentation.cs	Search branches…
+NP61jfdUET	JarvisCode.App/Services/ErrorCards.cs	This worktree no longer links back to its repository, usually because the folder was moved or renamed. Run git worktree repair inside the folder, then try again.
+NW7ap/Glsq	JarvisCode.App/Services/CustomizePlugins.cs	Project (personal)
+NXI/XLSYwc	JarvisCode.App/Services/PermissionModeMenu.cs	Auto
+NYTGIbSNz5	JarvisCode.App/Services/SessionDialogs.cs	Got it
+NbCdfW9bJf	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Search settings
+NgcLgMejq0	JarvisCode.App/Services/SidebarFilterModel.cs	Show empty groups
+NkIrMvD+5k	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Test script
+NmeFuYeAG8	JarvisCode.App/Services/ToolGroupSummary.cs	task
+NmqT1fS5GD	JarvisCode.App/Services/ScheduledTaskPresentation.cs	configuration rejected
+NpgeK1NYiO	JarvisCode.App/Services/ChatTurnNotices.cs	Jarvis’s response was interrupted.
+NsTmZ4s6sv	JarvisCode.App/Composition/AppServices.cs	code
+NtWJTAiYRo	JarvisCode.App/Views/Settings/DesktopPage.cs	Prevent your computer from idle-sleeping while Jarvis is open so scheduled tasks can run. Your display can still turn off. Closing the laptop lid will still put it to sleep.
+NuymVHsb1A	JarvisCode.App/Services/ComparisonStrings.cs	Save
+NwUAfHUQN1	JarvisCode.App/Services/ChatPlaceholders.cs	Or reply directly…
+O2GVivD//g	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Rename…
+O2tb5KUxpc	JarvisCode.App/ViewModels/PermissionPromptViewModel.cs	Allow once
+O3Y8n43UY/	JarvisCode.App/Services/PluginMonitors.cs	Shell command
+O79Wpvj4f5	JarvisCode.App/Views/ChatSurface.xaml	New messages
+O8rEfJhp62	JarvisCode.App/Views/ChatSurface.xaml	Rewind
+O91g4R8kGm	JarvisCode.App/Services/ScheduledTaskPresentation.cs	This one-time routine has run. Set a new schedule to run it again.
+OBGEVHifJw	JarvisCode.App/Services/ToolRowPresentation.cs	Cherry-picking
+ODHt3FQYSl	JarvisCode.App/Services/Toasts.cs	Rewind isn’t available for this session.
+ODzSENH0LC	JarvisCode.App/Services/PermissionModeMenu.cs	Permission mode couldn’t be changed. You can try again.
+OE85HVAYEM	JarvisCode.App/Services/SidePanes.cs	runs
+OE94n1C20m	JarvisCode.App/Services/AdvisorTool.cs	description
+OIHwK7PmyT	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Played when an OS banner is shown.
+OK51DumP3V	JarvisCode.App/Services/ErrorCards.cs	Git isn’t working
+OOujErWXBR	JarvisCode.App/Services/ToolRowPresentation.cs	Proposed plan
+ORGv1Q6rL/	JarvisCode.App/Services/ToolRowPresentation.cs	Created
+ORcS+jTUP7	JarvisCode.App/Views/Settings/ProviderCard.cs	Testing…
+OSbNg+1qqF	JarvisCode.App/Views/ChatSurface.xaml	Good response
+OZ/0PxiRz0	JarvisCode.App/Services/ShortcutSheet.cs	Toggle Files
+Ob0SfWYaP8	JarvisCode.App/Services/DiagnosticReport.cs	Network reachability for inference and MCP hosts
+ObojkXu2Us	JarvisCode.App/Services/ShortcutSheet.cs	Previous sidebar tab
+OcHw9o00qo	JarvisCode.App/Services/SessionMenuModel.cs	Go to routine
+OcN2GyDiz5	JarvisCode.App/Services/SessionDialogs.cs	Session not found on disk
+Od/KpJ6PLI	JarvisCode.App/Services/ToolRowPresentation.cs	Creating PR
+Odekiu5jzQ	JarvisCode.App/Services/GitBarPresentation.cs	Open repository on GitHub
+OeLR8n4Oc4	JarvisCode.App/Views/Panels/BrowserPanel.xaml	Type a URL
+Oem48/OL9U	JarvisCode.App/Services/ReviewFindings.cs	Fixes applied
+OhKmM9WJAw	JarvisCode.App/Services/CustomizePlugins.cs	Repository access failed. The repository may have been made private or is no longer accessible.
+OhXU1lP/03	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Available (will boot)
+OhgOkHumT3	JarvisCode.App/Views/Panels/FilesPanel.xaml	Clear filter
+Oi9LAY6C5H	JarvisCode.App/Services/ChatListSections.cs	Rename chat
+OjKD8Jtn5k	JarvisCode.App/Services/PermissionModeMenu.cs	Create a plan before making changes
+Okt7cSOonY	JarvisCode.App/Views/ChatSurface.xaml.cs	Some images were too large to attach. Maximum size is 30 MB.
+OnbqrEib9h	JarvisCode.App/Services/DesktopExtensions.cs	Downloads
+OohXzciA2D	JarvisCode.App/Services/CommandPalette.cs	Quick actions
+OrbaFJJ4qE	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	This connector will use SSE transport, which is being deprecated. If you maintain this server, consider switching to streamable HTTP. You can change transport under Advanced on the next step.
+OrzZiyVwtN	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Font for the Jarvis Code interface — menus, sidebar, and chat.
+OtsPuOcaGS	JarvisCode.App/Services/GitBarPresentation.cs	View PR
+P14hSdhluX	JarvisCode.App/Services/ScheduledTaskPresentation.cs	unrecognized reason
+P1QHV0AhYD	JarvisCode.App/Controls/TurnStatusLine.cs	Thinking…
+P6EE/aQ7SS	JarvisCode.App/Views/Settings/UsagePage.cs	Tokens
+P7PLVjLe4f	JarvisCode.App/Services/SidebarFilterModel.cs	Date
+P8VaBs+MJW	JarvisCode.App/Services/ErrorCards.cs	Git is required
+P9HUGvEpCU	JarvisCode.App/Services/CommandPalette.cs	Fork session
+P9JVjX9xh0	JarvisCode.App/Services/CommandPalette.cs	trash
+P9krt9r0RG	JarvisCode.App/Services/ToolGroupSummary.cs	view
+PAeSx+Lgcv	JarvisCode.App/Services/GitBarPresentation.cs	Change directory
+PEZU0p9nAQ	JarvisCode.App/Views/Settings/GeneralPage.cs	Researcher
+PGl4CaxlOx	JarvisCode.App/Views/Settings/ImportExportPage.cs	Export sessions from
+PHokHwV6mR	JarvisCode.App/Services/CustomizePlugins.cs	Install for project (shared)
+PHx7oHc7eF	JarvisCode.App/Services/PermissionModeMenu.cs	Bypass permissions
+PI4TLCbnTJ	JarvisCode.App/Services/SettingsSearchIndex.cs	integrations
+PO+0DdDIId	JarvisCode.App/Services/SidePanes.cs	Background tasks
+PQoBWCb1C7	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Read your clipboard
+PQy14pRnLi	JarvisCode.App/Services/GitBarPresentation.cs	Commit changes
+PSiaaVYiAT	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Wide
+PSrLJoAtCY	JarvisCode.App/Services/DesktopExtensions.cs	DESKTOP
+PUtELeH1Zb	JarvisCode.App/Services/SessionDialogs.cs	Execution allowed by:
+PXiJ+nljd4	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Connectors let Jarvis work with your team’s tools and data.
+PYWls5W28p	JarvisCode.App/Services/ChatComposerActions.cs	Interrupt
+PeLLG7+T77	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Yours
+PfYxQ/woKi	JarvisCode.App/Services/AppUpdates.cs	Update didn’t complete
+Pj8J8VQe9d	JarvisCode.App/Services/GitBarPresentation.cs	No pull request
+PpIQsaWAR2	JarvisCode.App/Services/ArtifactTool.cs	Artifact
+Pq3xtXwwXq	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.cs	Ellipse
+PrQBgWRxHp	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Upload one skill file at a time.
+PrsfFM1lyK	JarvisCode.App/Services/ScheduledTaskPresentation.cs	No routines match these filters.
+PvMfiitQFC	JarvisCode.App/Services/ErrorCards.cs	Unexpected output from Jarvis Code
+PxS6DC8f1B	JarvisCode.App/Services/ErrorCards.cs	This request triggered safety guardrails. Rephrase your prompt or rewind to continue.
+Q0i80C5Kdh	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Enable routine
+Q3dfP+fWbN	JarvisCode.App/Services/SettingsSearchIndex.cs	System tray
+Q8Qw5BZ1VA	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Description
+Q8Ygr2drci	JarvisCode.App/Services/RoutineApprovals.cs	Approvals you grant during a run appear here.
+QCwBia3EUK	JarvisCode.App/Services/Toasts.cs	Running your WorktreeCreate hook…
+QDKj3LFiKc	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Disable auto verify
+QGVI63s1dJ	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Agent
+QHhNtxVPGF	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.cs	Line
+QIM4RpVmXz	JarvisCode.App/Services/CustomizePlugins.cs	Install for project (personal)
+QLgFP/nsOF	JarvisCode.App/Services/ToolRowPresentation.cs	Listing
+QNA3Xyh0bg	JarvisCode.App/Services/CommandPalette.cs	Unpin session
+QQn35wmkye	JarvisCode.App/Services/ToolGroupSummary.cs	used
+QUZ3AHt6q7	JarvisCode.App/Services/PluginMonitors.cs	No command is declared for this monitor.
+QV452S92ib	JarvisCode.App/Services/ToolGroupSummary.cs	viewed
+QW+Q5NHmeF	JarvisCode.App/Services/ChatQueue.cs	Clear all
+QaPCg4iuU0	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Page couldn’t be saved. Try again.
+Qask1i8TzH	JarvisCode.App/Controls/TextSelectionScope.cs	Copy path
+QesC5nGO2a	JarvisCode.App/Services/ToolRowPresentation.cs	Cleared todos
+Qfb02UEU5e	JarvisCode.App/Services/BrowserCloseDialogText.cs	the dev server
+QfdbSIr/ZZ	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Stop this server
+QhT5HdB9mD	JarvisCode.App/Controls/TurnStatusLine.cs	Waiting for Jarvis…
+QjkP0Miq3L	JarvisCode.App/Services/ToolRowPresentation.cs	upload
+QkJXbQOXt/	JarvisCode.App/Services/SidebarFilterModel.cs	Custom groups
+Qnlg85UWK0	JarvisCode.App/Services/ScheduledTemplates.cs	What needs your attention today across calendar, email, and messages.
+QrhIREWrLd	JarvisCode.App/Controls/ContextWindowPopup.cs	Custom agents
+QsoYB0RZ5/	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Code font family
+R26rZsfoB/	JarvisCode.App/Views/ChatSurface.xaml.cs	Switched transcript view to Thinking
+R3gDnh35T5	JarvisCode.App/Services/ErrorCards.cs	Session history unavailable
+R6bmgzv6Xs	JarvisCode.App/Services/ToolRowPresentation.cs	Pressing key
+R7lGMpHRnf	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Failed to remove marketplace.
+R80S8qXW6a	JarvisCode.App/Services/GitHubIssues.cs	Import issue
+R9hnARYgER	JarvisCode.App/Services/ChatStatusLabels.cs	Still working on it, stand by...
+RANC4/S/j1	JarvisCode.App/Services/ChatComposerActions.cs	Stop response
+RB7sV7Qx0v	JarvisCode.App/Services/CustomizeSkills.cs	That name is reserved. Choose a different one.
+RBcB9hrW2h	JarvisCode.App/Services/TerminalTabs.cs	press right arrow to close
+RCKklDYDtX	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	New configuration
+RFCwI6lJ1a	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Starting…
+RG7DQpwgjC	JarvisCode.App/Services/SessionDialogs.cs	Archive anyway
+RLloCeiLx7	JarvisCode.App/Views/ChatSurface.xaml.cs	Describe a task or ask a question
+RMQ2k+uAzJ	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Remove marketplace?
+RP2YaJ5c92	JarvisCode.App/Services/ScheduleFrequencies.cs	Use 0 for Sunday (7 isn’t supported here).
+RQkPiKgTVZ	JarvisCode.App/Services/SettingsSearchIndex.cs	usage
+RUeQv+oLoZ	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Skill upload failed. Check the file format and try again.
+RWMhdOt5gm	JarvisCode.App/Views/MainWindow.xaml	Drag to resize
+RXpxPUwfNq	JarvisCode.App/Views/Panels/BrowserPanel.xaml	Forward
+RanLi3PXWa	JarvisCode.App/Services/AppUpdates.cs	Downloading update...
+RbFAl7UGmp	JarvisCode.App/Services/ChatComposerMenu.cs	project
+RcwnGykX6v	JarvisCode.App/Services/DiagnosticReport.cs	Crash report filenames
+RdqsITWRJU	JarvisCode.App/Services/AppUpdates.cs	Waiting for Jarvis to finish — the app will relaunch automatically.
+RfG2KsHAez	JarvisCode.App/Services/SettingsSearchIndex.cs	Computer use
+Rfvi9/BMNS	JarvisCode.App/Services/SessionTransfer.cs	Last 30 days
+Rgn/ECPTTN	JarvisCode.App/Views/Settings/GeneralPage.cs	Student
+RjC73UNiUg	JarvisCode.App/Services/ErrorCards.cs	This chat is too long to continue. Start a new chat.
+RpqjOZsF2J	JarvisCode.App/ViewModels/TranscriptItems.cs	Needs approval
+Rr8GkqDMMd	JarvisCode.App/Services/CustomizeConnectors.cs	Desktop
+Rw7iI7vYlr	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Disable
+S/pwZSpM4o	JarvisCode.App/Services/ErrorCards.cs	Blocked by your organization’s policy
+S57QRBGXKz	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Filter by
+S5RsEfxZU7	JarvisCode.App/App.xaml.cs	chat
+S8snIefvgB	JarvisCode.App/Services/ToolRowPresentation.cs	Updating
+SB06zE0IeR	JarvisCode.App/Services/ShortcutSheet.cs	Select menu item
+SC13b1B3bp	JarvisCode.App/Services/CommandPalette.cs	hide
+SFPButrDnD	JarvisCode.App/Services/ShortcutSheet.cs	Fork session (local sessions)
+SHC19EXDV4	JarvisCode.App/Services/SessionMenuModel.cs	Fork
+SJ2nyiVhRr	JarvisCode.App/Views/ChatSurface.xaml	Switch model and retry
+SKeCK+7hmh	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Local sessions
+SQ90AL2I8v	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Commands
+SR19nKO/BD	JarvisCode.App/App.xaml.cs	Desktop app
+SUYgJ2XuFk	JarvisCode.App/Services/SideChatStrings.cs	Ask a quick question…
+SVwJTM5AmL	JarvisCode.App/Services/SessionMenuModel.cs	Export
+ScRq37Oq7S	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Running
+Sf+ebwMYFz	JarvisCode.App/Services/ShortcutSheet.cs	Close pane
+Sjo1P40Dgp	JarvisCode.App/Services/InferenceConfigurations.cs	Custom
+SlUJMzpXH0	JarvisCode.App/Services/CustomizeSkills.cs	by you
+SoaDca4p4O	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Click only
+SsD9TTwUkB	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Server name
+StcK672jB9	JarvisCode.App/Views/MainWindow.xaml.cs	Library
+StvyQfdEqi	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Let Jarvis run multiple agents in parallel for complex tasks. Workflows can use a lot of your usage limit quickly.
+SuJjHnT9jE	JarvisCode.App/Services/SettingsSearchIndex.cs	Enable computer use
+SyLxv/L2hM	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Reading your project files. This can take a moment.
+Sytz6lzZcT	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Edit files
+Sz6LtfD7Fs	JarvisCode.App/Services/SessionDialogs.cs	More sessions with uncommitted changes will follow.
+T7z5SKWO2K	JarvisCode.App/Views/Settings/DesktopPage.cs	When Jarvis has full control of your screen, apps hidden during a task are restored when Jarvis stops.
+T9ycmKgh1s	JarvisCode.App/Views/Settings/DesktopPage.cs	Automatically start Jarvis when you log in to your computer.
+TBI/iQ4tDp	JarvisCode.App/Services/InferenceConfigurations.cs	Couldn’t read the selected file.
+TBOtXkHUES	JarvisCode.App/Controls/TurnStatusLine.cs	Thinking some more…
+TBvKNM6xbZ	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to propose plan
+TDaF6JVgG6	JarvisCode.App/Controls/ToastHost.cs	Dismiss
+TFF5TqdaAt	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Write to your clipboard
+TJi5P+EdNN	JarvisCode.App/Services/ErrorCards.cs	An image couldn’t be read. Rewind to remove it and try a different format.
+TJo5E6JuIN	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Preview
+TLOm++7Rz1	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Remote agent
+TQakOWx/s6	JarvisCode.App/Services/ChatComposerMenu.cs	Load tools when needed
+TR4NZQsAzg	JarvisCode.App/Views/Settings/ProviderCatalog.cs	us-east-1
+TRhvKflygs	JarvisCode.App/Services/EffortLevels.cs	Higher effort means more thorough responses, but takes longer and uses your limits faster.
+TTGppGDK7U	JarvisCode.App/Services/ShortcutSheet.cs	Open session in split view
+TTa1svrgng	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Marketplace options
+TXpOBiuxud	JarvisCode.App/Views/Customize/CustomizeNavView.xaml	Customize
+TcNnUVP8Mw	JarvisCode.App/Services/CredentialHelpers.cs	Error running the helper
+TdTXXf940t	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Learn more
+TeRcbe3fhr	JarvisCode.App/Services/MermaidRenderer.cs	directory
+ThNigTmqaZ	JarvisCode.App/Services/CustomizeDirectory.cs	Not installed
+Tjr16aUcJa	JarvisCode.App/Views/Settings/GeneralPage.cs	Reduced
+TmqQS2M3WB	JarvisCode.App/Services/ChatTurnNotices.cs	Edit prompt
+TqSTI0/TZI	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Enable
+TrS+kwadjI	JarvisCode.App/Views/Settings/DeveloperPage.cs	No servers added
+TtfNhgtojm	JarvisCode.App/Services/ChatStatusLabels.cs	Compacting our conversation so we can keep chatting...
+TyXv3b/srR	JarvisCode.App/Views/Panels/PaneTile.cs	Press Enter to move down, or Escape to cancel.
+U2Sq22ozHB	JarvisCode.App/Services/ErrorCards.cs	Organization access is disabled
+U2glLvTvfJ	JarvisCode.App/Services/ScheduledTaskPresentation.cs	This routine was automatically disabled. Review your settings and re-enable it.
+U61ykZuFEU	JarvisCode.App/Services/ErrorCards.cs	Your context window is full
+UBMzPFn5JP	JarvisCode.App/Services/CustomizePlugins.cs	All plugins
+UDwAurwLUj	JarvisCode.App/Services/ToolRowPresentation.cs	Cherry-picked
+UF+Rd596kj	JarvisCode.App/Views/Settings/DesktopPage.cs	Remove from deny list
+UGFm6qD2UT	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	No skills match your search
+UKxoV8UIxo	JarvisCode.App/Services/HomeViewPresentation.cs	Welcome back
+UMbBzoLVFz	JarvisCode.App/Views/Panels/PaneTile.cs	Move
+UNN3FvEfk9	JarvisCode.App/Views/Panels/FileViewerPanel.cs	Find in file
+UNcFp+is2w	JarvisCode.App/Services/ScheduledTemplates.cs	Or start from a template
+UY3SnwUIrB	JarvisCode.App/Services/CustomizePlugins.cs	missing
+UYlPDbWMZe	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Add marketplace
+UZL1EHHrJQ	JarvisCode.App/Services/ErrorCards.cs	Server was temporarily limiting requests
+UbYpqntJlc	JarvisCode.App/Views/Settings/SettingsPanels.cs	Add your own
+UcMOyoVqDG	JarvisCode.App/Controls/TextSelectionScope.cs	Attach selection as context
+Ug9lgdRJy3	JarvisCode.App/Services/CommandPalette.cs	All chats
+Uu3DS2OciX	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Partners
+UvbnChKxAd	JarvisCode.App/Services/SessionDialogs.cs	Git was blocked
+UvugapWhRy	JarvisCode.App/Services/PermissionModeMenu.cs	Accepts all permissions
+UxTJRaKagI	JarvisCode.App/Services/HomeViewPresentation.cs	Projects
+V02rUvAsBz	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Stop requested…
+V0eXqTFDC+	JarvisCode.App/Services/SettingsSearchIndex.cs	Dynamic workflows
+V1UrPNM96z	JarvisCode.App/Views/CodeWorkspace.xaml	Download all
+V22724PpOf	JarvisCode.App/Services/CustomizeDirectory.cs	Installed
+V39qk5WLAX	JarvisCode.App/Services/PinHints.cs	Drag to pin
+V45V2dwaf/	JarvisCode.App/Controls/UsageStatsCard.cs	Total tokens
+V52jNnY+6M	JarvisCode.App/Services/CustomizePlugins.cs	Enabled
+V6KB5jTQPD	JarvisCode.App/Services/ToolRowPresentation.cs	Amended commit
+V72EhnbTFu	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	Advanced settings
+V7cUPvWFo3	JarvisCode.App/Services/ChatListSections.cs	Starred
+VA/Z1SW3vH	JarvisCode.App/Services/ChatListSections.cs	Hide
+VCQX6dLcRo	JarvisCode.App/Services/SessionDialogs.cs	Archive all
+VFHHgvHN/0	JarvisCode.App/Controls/WidgetBlock.cs	left
+VJ5vi2nLRk	JarvisCode.App/Services/SessionDialogs.cs	Send a message to start fresh in this directory.
+VKZ/U8vAsk	JarvisCode.App/Services/EffortLevels.cs	Effort
+VKfWR3F5qV	JarvisCode.App/Views/ChatSurface.xaml.cs	Recommended
+VT/e+bRysY	JarvisCode.App/Services/Toasts.cs	Forking session…
+VVkeaJI969	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Shut-down devices boot automatically.
+VY4eKypwEh	JarvisCode.App/Views/Settings/AllowedSitesDialog.cs	No allowed sites yet.
+VZOiVMXn0z	JarvisCode.App/Services/AppUpdates.cs	Untitled session
+Va2aVQRIyJ	JarvisCode.App/Services/SettingsSearchIndex.cs	Archive inactive sessions
+Vebvte+Plj	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Running…
+Vgxy3nLApS	JarvisCode.App/Views/MainWindow.xaml.cs	beta
+VnXp8ZIfSy	JarvisCode.App/Services/SettingsSearchIndex.cs	Avatar
+VpI85fYgDp	JarvisCode.App/Views/Panels/PaneTile.cs	Press Enter to move up, or Escape to cancel.
+VuEfHe2rAF	JarvisCode.App/Services/ScheduledTaskPresentation.cs	This routine was disabled because its configuration is no longer valid. Review your settings and re-enable it.
+VvhQDpcjjd	JarvisCode.App/Services/SessionDialogs.cs	Jarvis Code may read, write, or execute files in this folder. Only proceed if you trust this workspace.
+VwapsmdMes	JarvisCode.App/Services/ChatListSections.cs	Star
+VyskH97ewJ	JarvisCode.App/Views/MainWindow.xaml.cs	Jarvis finished a task
+VzzYJkHnLP	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Create
+W+znbCrCL6	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Open folder
+W/V6+Y+Vy2	JarvisCode.App/Views/SidebarView.Rows.cs	Collapse
+W41+8Xj7fP	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Copy hostnames
+W4SaxYXWRk	JarvisCode.App/Views/Panels/RunHistoryPanel.cs	Local
+W6nwjoOm/V	JarvisCode.App/Services/CustomizeSkills.cs	Draft
+W8pMCdh9hq	JarvisCode.App/Services/HomeViewPresentation.cs	What’s up next?
+WBvq3HlPae	JarvisCode.App/Services/QuickEntryShortcuts.cs	Set shortcut
+WD5ZeePJtf	JarvisCode.App/Services/LandingPresentation.cs	Add another folder
+WEhuQZAqE6	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Created by you
+WIm4/6845I	JarvisCode.App/Services/CommandPalette.cs	Archive session
+WJQkVdn/y/	JarvisCode.App/Views/Settings/GeneralPage.cs	Consultant
+WZ2fCj8VUf	JarvisCode.App/Services/ToolRowPresentation.cs	Proposing plan
+Wb/3E+ALRw	JarvisCode.App/Services/ErrorCards.cs	Check your internet connection, VPN, or proxy and try again.
+WfilIVhF24	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	No plugins match your search
+WmvWnaWOZv	JarvisCode.App/Services/CredentialHelpers.cs	The script was cancelled before it produced a credential.
+WvygrXzhax	JarvisCode.App/Services/GitBarPresentation.cs	Add a GitHub remote to create a pull request
+Wy/pjxrXEI	JarvisCode.App/Views/Settings/GeneralPage.cs	Human resources
+X+EIjDhedR	JarvisCode.App/Services/LandingPresentation.cs	Select folder for local session
+X561tiaU8d	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Add to library
+XAocKcPfld	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Use this
+XDbEJBLE7c	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	OAuth Client Secret (optional)
+XGCqQr5N6O	JarvisCode.App/Services/ErrorCards.cs	An image couldn’t be read. Start a new session to continue.
+XHlB3yiFsK	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Preview server stopped. Loop stopped
+XLcM6WHfQR	JarvisCode.App/Services/ChatPlaceholders.cs	How can I help you today?
+XMVuZLSpSV	JarvisCode.App/Services/PermissionModeMenu.cs	Jarvis can modify or delete files without asking
+XTHxOYpOlm	JarvisCode.App/Services/SessionDialogs.cs	Discard draft?
+XTce7I09Ix	JarvisCode.App/Services/ToolRowPresentation.cs	Pressed key
+XX62e3XXEw	JarvisCode.App/Services/InferenceConfigurations.cs	Couldn’t import the file. It’s too large.
+XdyHypM9Kr	JarvisCode.App/Views/Customize/CustomizeSurface.Directory.cs	Plugin couldn’t be installed. Try again.
+Xf/4QSBM7N	JarvisCode.App/Services/ErrorCards.cs	Service was busy
+XhQzMztrwF	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Give Jarvis role-level expertise with plugins. Add them from Discover, or create your own.
+Xi10IU6+Wf	JarvisCode.App/Styles/Base.xaml	Search
+XlUYcfsF5A	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Save cookies, local storage, and login sessions for Browser tabs across app restarts. Shared uses the same data for every session in a project. Separate gives each session its own copy, so sessions never see each other’s logins.
+XnimdQTczU	JarvisCode.App/Services/QuickEntryShortcuts.cs	Windows
+Xo6PHAAyUE	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Prefix added to branch names for both local and cloud sessions
+XpqTgrgGwh	JarvisCode.App/Services/SessionDialogs.cs	Back
+XvzAaDqIQy	JarvisCode.App/Services/ShortcutSheet.cs	Previous session
+XwG/Ofv63F	JarvisCode.App/Services/ErrorCards.cs	Connection problem
+Xx0WZVz8QS	JarvisCode.App/Services/ChatComposerActions.cs	Send message
+XzejZSc1R2	JarvisCode.App/Services/SessionMenuModel.cs	New window
+Y/k+I6BL+g	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	weekly-status-report
+Y5zRLWgCMP	JarvisCode.App/Services/ChatListSections.cs	Unstar
+YAeW6K6mK9	JarvisCode.App/Services/ChatPlaceholders.cs	Listening...
+YCnSYwcr5T	JarvisCode.App/Views/Panels/PullRequestPanel.cs	No description provided.
+YDAEYXedWv	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Check for updates
+YGEqf9X//O	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Try a different term, or browse the Directory for plugins to add.
+YH6HDgRDy4	JarvisCode.App/Views/MainWindow.Shell.cs	Install Git
+YHS8McfgFb	JarvisCode.App/Views/ChatSurface.xaml	Type to filter
+YOg0eeIzq6	JarvisCode.App/Services/ErrorCards.cs	Image is too large
+YPDlCjhMWu	JarvisCode.App/Services/ShortcutSheet.cs	Next session
+Yjk5Ow/k5f	JarvisCode.App/Services/SidebarFilterModel.cs	Date created
+YlYBASRBOt	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Bypass all permission checks and let Jarvis work uninterrupted. This works well for workflows like fixing lint errors or generating boilerplate code. Letting Jarvis run arbitrary commands is risky and can result in data loss, system corruption, or data exfiltration (e.g., via prompt injection attacks). <link>See best practices for safe usage</link>
+YmslQPt7DE	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Cron expression
+YpVoLgjsW6	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Monitor
+YrPQCpC/JN	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	View only
+YtFTtANjPw	JarvisCode.App/Services/WidgetLinkPrompt.cs	Open link
+YtxGgOZEIf	JarvisCode.App/Services/PlusMenuModel.cs	Connecting…
+Yu4b4MikiR	JarvisCode.App/Services/ErrorCards.cs	Jarvis Code crashed several times in a row right after starting, so automatic restarts are paused for this session. This is usually caused by security or anti-cheat software interfering with Jarvis Code on this machine. Send a message to try again.
+YyAB/Ltrj7	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Stopping server…
+Yyp8xwgnUo	JarvisCode.App/Services/CustomizeConnectors.cs	Reconnecting…
+YzhKoa+aW/	JarvisCode.App/Services/LandingPresentation.cs	Open folder…
+Z3EDd9nO/N	JarvisCode.App/Controls/UsageStatsCard.cs	Sessions
+Z3o8vwfzpy	JarvisCode.App/Views/Settings/ExtensionsPage.cs	No extensions installed
+Z80jEUPH0j	JarvisCode.App/Services/BrowserPaneTools.cs	interactive
+ZDJQqQOaUQ	JarvisCode.App/Views/Customize/CustomizeSurface.Directory.cs	Nothing to show here yet.
+ZON8uMn14w	JarvisCode.App/Views/Settings/UsagePage.cs	tokens
+ZPwwWsc6Zx	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Upload
+ZQM6zd1lim	JarvisCode.App/Services/ErrorCards.cs	Service is busy
+ZQbg514qOb	JarvisCode.App/Services/AppMenu.cs	Paste
+ZRMqH+j2yz	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Test model discovery
+ZW+myQkZ/P	JarvisCode.App/Views/Settings/GeneralPage.cs	Design
+ZXp0z1T7ZD	JarvisCode.App/Views/Settings/SettingsDialog.xaml.cs	Features
+ZbqbfcKDqr	JarvisCode.App/Views/Settings/DesktopPage.cs	Import & export
+ZcatbDJOHm	JarvisCode.App/Controls/WidgetBlock.cs	permissions
+Zejj2Gw5fy	JarvisCode.App/Services/ChatComposerMenu.cs	github
+ZhkFBG4biD	JarvisCode.App/Views/Settings/GeneralPage.cs	Get notified when Jarvis has finished a response. Useful for long-running tasks.
+ZkRz7R1Seg	JarvisCode.App/Services/ErrorCards.cs	This message was blocked by your organization’s policy. Rephrase your message or rewind to continue.
+ZkoFS9dckA	JarvisCode.App/Services/ErrorCards.cs	An attachment is too large. Start a new session to continue.
+ZloVmgwt+/	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Attach an emulator so Jarvis can see your app
+ZmlNQ3tlH0	JarvisCode.App/Views/Panels/PullRequestPanel.cs	Activity
+Zx2+7F8Kf5	JarvisCode.App/Services/CustomizeConnectors.cs	Invalid URL format
+aA8bDwsPeJ	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.cs	Text
+aCdAsIsVv0	JarvisCode.App/Controls/CodeBlockCard.cs	Copy to clipboard
+aFCUCfaD+M	JarvisCode.App/Services/NotificationPolicy.cs	Jarvis finished and is waiting for your input.
+aH4De2Y20k	JarvisCode.App/Services/ContextReport.cs	Source
+aJ/bsXEcQA	JarvisCode.App/Views/ChatSurface.xaml	Drag to reorder
+aL/o54ZWx3	JarvisCode.App/Services/SessionDialogs.cs	Delete session with uncommitted changes?
+aPEQXwjGlz	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to ask a question
+aS2YDxiDxN	JarvisCode.App/Views/Panels/FileViewerPanel.cs	This file changed on disk since you started editing.
+aSBYhpo0v4	JarvisCode.App/Services/SessionDialogs.cs	Rename group
+aTaOpCB71M	JarvisCode.App/Services/ChatComposerMenu.cs	Take a screenshot
+aWpBzjCXKS	JarvisCode.App/Controls/ThinkingCell.cs	Show more
+aYOIpE5dSG	JarvisCode.App/Services/ShortcutSheet.cs	Attach file or terminal selection as context
+aa5U+myN31	JarvisCode.App/Services/SettingsSearchIndex.cs	Code font
+acrOozm08x	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	Continue
+afBTrbaItm	JarvisCode.App/Services/JarvisBrowserUploadTools.cs	fetch
+an0pvn8kP5	JarvisCode.App/Services/ComputerUseExtras.cs	terminal
+aqmm1uyoAR	JarvisCode.App/Services/BackgroundTaskPresentation.cs	workflow
+awiUcrPYT7	JarvisCode.App/Services/ErrorCards.cs	Worktree needs repair
+b2WfwmtX9G	JarvisCode.App/Views/CodeWorkspace.xaml	Open in new window
+bDeD1Pt66Y	JarvisCode.App/Services/CredentialHelpers.cs	The script exited cleanly but wrote nothing to stdout. Check that it prints the credential.
+bEcZ6fpLCi	JarvisCode.App/Views/Panels/PaneTile.cs	Press Enter to move left, or Escape to cancel.
+bFyGbsT4no	JarvisCode.App/Services/ErrorCards.cs	Your WorktreeCreate hook failed
+bGAabei9rU	JarvisCode.App/Services/ScheduledTemplates.cs	Weekly review
+bHpXg4fi5p	JarvisCode.App/Controls/SyntaxHighlighter.cs	event
+bI5sBrO/8H	JarvisCode.App/Services/SessionDialogs.cs	Not now
+bTBJTYxUYl	JarvisCode.App/Services/EffortLevels.cs	Smarter
+bV+YmcFCEb	JarvisCode.App/Services/SessionInfo.cs	Default model
+bVyjM1r2f9	JarvisCode.App/Services/CommandPalette.cs	Search or start a session
+bZ2we54tf0	JarvisCode.App/Services/TerminalTabs.cs	Terminal output attached to chat
+bZrPgwc8Bf	JarvisCode.App/Services/ErrorCards.cs	An attachment is too large. Remove it and try again.
+bccR5hvTMm	JarvisCode.App/Services/SettingsSearchIndex.cs	Create as draft
+bdcMGyaa/s	JarvisCode.App/Services/CommandPalette.cs	Open menu
+bgaD2WmUjn	JarvisCode.App/Services/TerminalTabs.cs	Terminal tabs
+blWvagsLt7	JarvisCode.App/Controls/UsageStatsCard.cs	Models
+bmH8vfWbiu	JarvisCode.App/Services/ErrorCards.cs	A shell hook or tool wrote unexpected output. Check your shell startup files and Jarvis Code hooks for stray stdout writes.
+bsjJzNmRIB	JarvisCode.App/Views/Panels/ChangesPanel.xaml	Expand changes
+bw9cO04ME0	JarvisCode.App/Views/MainWindow.xaml.cs	Session exported
+bx+Ne2nP0J	JarvisCode.App/Services/ErrorCards.cs	Workspace trust needed
+c+OAnBWakK	JarvisCode.App/Services/CommandPalette.cs	routines
+c0MU9uo4b8	JarvisCode.App/Controls/TextSelectionScope.cs	Save image
+c0o/FekLJX	JarvisCode.App/Views/Settings/DesktopPage.cs	Let Jarvis take control of your screen, mouse, and keyboard to work in the apps you allow.
+c8nvms5K2+	JarvisCode.App/Views/Settings/GeneralPage.cs	Sales
+cCo24IaMcn	JarvisCode.App/Services/ChatComposerMenu.cs	files
+cDI5qjzuAw	JarvisCode.App/Services/CustomizePlugins.cs	A temporary error occurred during sync. You can retry.
+cE4HfwyEyr	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Discover
+cF7acD3DLi	JarvisCode.App/Services/ErrorCards.cs	That point in the conversation couldn’t be found. Send your message again to continue the session.
+cJT9hml5Dm	JarvisCode.App/Services/SettingsSearchIndex.cs	Browser tools
+cO6aDeabcR	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Don’t keep
+cP0Y5KKITA	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Add your first skills
+cQX5Wv5op+	JarvisCode.App/Views/ChatSurface.xaml	View logs
+cSp9Qor4f4	JarvisCode.App/Services/WidgetLinkPrompt.cs	Open external link
+cTu8n/bXEG	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Failed
+cU7ff1IrXY	JarvisCode.App/Services/SettingsSearchIndex.cs	Worktree location
+cVNr84aM0u	JarvisCode.App/Services/PlusMenuModel.cs	Import Linear issue
+cXAlMRerxW	JarvisCode.App/Services/CommandPalette.cs	Scheduled
+cZNSizCtNf	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Choose emulator
+ccFJHoHceh	JarvisCode.App/Views/Settings/DesktopPage.cs	Quickly open Jarvis from anywhere.
+ccXLViZC/1	JarvisCode.App/Views/Customize/CustomizeSurface.Directory.cs	Category
+ccd.color.blue	JarvisCode.App/Services/SessionColors.cs	Blue
+ccd.color.cyan	JarvisCode.App/Services/SessionColors.cs	Cyan
+ccd.color.orange	JarvisCode.App/Services/SessionColors.cs	Orange
+ccd.color.pink	JarvisCode.App/Services/SessionColors.cs	Pink
+ccd.color.purple	JarvisCode.App/Services/SessionColors.cs	Purple
+cplMpMqMud	JarvisCode.App/Services/CustomizeSkills.cs	Current version
+cq1JnuAYj4	JarvisCode.App/Services/PermissionModeMenu.cs	Jarvis will read, edit, and execute files without asking — including potentially destructive commands. Only use this in isolated or disposable environments.
+cqZqGKbHSZ	JarvisCode.App/Services/ComposerHistory.cs	cancel
+cqx+RdJnHp	JarvisCode.App/Services/ChatComposerMenu.cs	Manage connectors
+ctWkktQM0M	JarvisCode.App/Services/SideChatStrings.cs	Ask on the side without touching the main chat. Jarvis sees the full context, and nothing here is added to it.
+cyIE9KNInJ	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Relaunch Jarvis?
+d1uESJO+TH	JarvisCode.App/Services/BundledSkills.cs	Assets
+d8fOml2Guz	JarvisCode.App/Controls/WidgetBlock.cs	data
+dC3u7ZxCFj	JarvisCode.App/Services/CustomizeDirectory.cs	Most popular
+dHnm6QZ1uO	JarvisCode.App/Services/AndroidEmulatorMessages.cs	Couldn't find `adb`. Install Android SDK platform-tools (or set ANDROID_HOME).
+dO30tIcNbM	JarvisCode.App/Services/GitBarPresentation.cs	CI: checks in progress
+dOGweUbyRk	JarvisCode.App/Services/ChatPlaceholders.cs	Reconnecting...
+dRgDU8kd+k	JarvisCode.App/Services/CustomizeConnectors.cs	Needs authentication
+dUFzeVqhPP	JarvisCode.App/Views/CodeWorkspace.Tiles.cs	Diff layout
+dUFzeVqhPP	JarvisCode.App/Views/Panels/ChangesPanel.Review.cs	Diff layout
+dUxyza4PYQ	JarvisCode.App/Views/Panels/PullRequestPanel.cs	Reviews
+dVx3yznM2C	JarvisCode.App/Services/ComparisonStrings.cs	Memory
+dXg7Jx2B7E	JarvisCode.App/Views/ChatSurface.xaml.cs	Switched transcript view to Normal
+daydqAm7At	JarvisCode.App/Services/SidebarFilterModel.cs	Filter (active)
+dc92M21iVj	JarvisCode.App/Services/Toasts.cs	Network (UNC) paths can’t be used as a session working directory.
+dgqhUM6BxJ	JarvisCode.App/Services/AppMenu.cs	Changes
+dgqhUM6BxJ	JarvisCode.App/Views/Panels/ChangesPanel.Review.cs	Changes
+djGqYEVUQz	JarvisCode.App/Views/Settings/ImportExportPage.cs	Export sessions
+djJp6cHQ6H	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	History
+djZCU5enGS	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Skipped
+djlSOrMy6I	JarvisCode.App/App.xaml.cs	settings
+doPT7U8q21	JarvisCode.App/Services/ChatComposerMenu.cs	Search projects
+dqliJPGcDN	JarvisCode.App/Services/Toasts.cs	Couldn’t unarchive this session. Try again.
+drJdjjprFp	JarvisCode.App/Services/ChatQueue.cs	Send now
+du1laW45Py	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Never
+dv4SpB8M8J	JarvisCode.App/Views/Settings/ImportExportPage.cs	No imports yet
+dvR1KZnysT	JarvisCode.App/Services/ErrorCards.cs	Billing issue
+e7MZONhk6R	JarvisCode.App/Services/CredentialHelpers.cs	Credential parsed, with warnings
+e8cL7QKtK5	JarvisCode.App/Controls/TerminalView.cs	Ask about this
+eA0XYEy4Tt	JarvisCode.App/Services/SidebarPresentation.cs	No active sessions
+eFsJ8k8yFm	JarvisCode.App/Controls/MarkdownView.cs	Show Image
+eI3zYFFnpz	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Inside project
+eMV1kF66ej	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Set a custom monospace font for code and terminal.
+eUGZST3s0y	JarvisCode.App/Services/GitHubIssues.cs	No issues match your search.
+eW5eoWkxy3	JarvisCode.App/Services/SidePanes.cs	Artifacts
+eZ5nPbhsce	JarvisCode.App/Services/OrganizationPlugins.cs	No organization plugins found
+edMG4OG9Cl	JarvisCode.App/Services/CommandPalette.cs	Jump to next prompt
+efpm3UbtJs	JarvisCode.App/Views/Customize/CustomizeSurface.Directory.cs	All sources
+egKQwMcf7q	JarvisCode.App/Views/Panels/EmulatorPanel.cs	No emulators found. Create one in Android Studio
+eiaPxp89eC	JarvisCode.App/Views/Panels/ChangesPanel.xaml	Add comment
+ejEGdxSUGs	JarvisCode.App/Services/QuickEntryShortcuts.cs	Home
+ek1mCn6mYb	JarvisCode.App/Services/GitBarPresentation.cs	Changes requested
+elCQufA21z	JarvisCode.App/Services/BrowserCloseDialogText.cs	Keep running
+eoNgAKwa5b	JarvisCode.App/Services/SidebarPresentation.cs	Session actions
+eqFbgzuZFe	JarvisCode.App/Services/SidebarPresentation.cs	Pinned
+euSJFm/tIZ	JarvisCode.App/Views/Customize/ConnectorSignInDialog.cs	Failed to connect. Click to retry.
+ew8PW2k7VZ	JarvisCode.App/Services/Toasts.cs	Nothing to rewind to yet
+ey8qSOVqul	JarvisCode.App/Services/CommandPalette.cs	restore
+f/RPdup9RQ	JarvisCode.App/Services/LandingPresentation.cs	Add folder to session
+f1QIeO4iKI	JarvisCode.App/Views/ChatSurface.xaml.cs	working
+f4q9dz3ZyZ	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	This configuration has changes that haven’t been saved. They will be lost.
+f7JoMbaMVQ	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to run skill
+fBG/GeW9Uc	JarvisCode.App/Views/Settings/UsagePage.cs	Cost
+fBg+7V6ZhY	JarvisCode.App/Services/CommandPalette.cs	Navigation
+fHClqd2+bS	JarvisCode.App/Views/ChatSurface.xaml	Type / for commands
+fHYa53hBDq	JarvisCode.App/Views/Panels/FilesPanel.xaml.cs	File actions
+fKywfBeGXX	JarvisCode.App/Services/CredentialHelpers.cs	The credential parsed, but the script wrote to stderr. Review the output below.
+fM7xZh2bri	JarvisCode.App/Services/ToolGroupSummary.cs	updated
+fRd2AgZgal	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Save version
+fT7uaunC4U	JarvisCode.App/ViewModels/ChatViewModel.cs	completed
+fUVnSG9oB2	JarvisCode.App/Services/ToolRowPresentation.cs	Ran agent
+fVIi0h0uIb	JarvisCode.App/Services/SettingsSearchIndex.cs	Allow all browser actions
+fcVZ0DPiHS	JarvisCode.App/Services/AppUpdates.cs	Please quit and reopen Jarvis
+fdCS5/bISp	JarvisCode.App/Services/AppMenu.cs	Reload
+fe2GgpDxRl	JarvisCode.App/Controls/TextSelectionScope.cs	Attach message as context
+fePHJHbbrp	JarvisCode.App/Services/BrowserPaneCdp.cs	features
+fg0STV1kTX	JarvisCode.App/Services/ShortcutSheet.cs	Toggle side chat
+fgBg6M20SL	JarvisCode.App/Services/GitBarPresentation.cs	Branch name copied to clipboard.
+fgplxJ+y/1	JarvisCode.App/Services/NotificationPolicy.cs	idle
+fhg5qjBRoA	JarvisCode.App/Services/GitBarPresentation.cs	Merge conflicts
+fkSSFYJUk3	JarvisCode.App/Services/SidePanes.cs	Pull request
+fp6GeCfjaf	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Import configuration
+fqGy//t5Zq	JarvisCode.App/Services/SettingsSearchIndex.cs	Transcript width
+ftDYZo4V2C	JarvisCode.App/Services/SessionMenuModel.cs	Unarchive
+fvUq68E+Fz	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Detach emulator
+fxBXV4btFa	JarvisCode.App/Services/CredentialHelpers.cs	Bare token output, parsed cleanly.
+fxDkZG/wGs	JarvisCode.App/Services/GitBarPresentation.cs	Branch hasn’t been pushed to GitHub
+g4j6UWSXgd	JarvisCode.App/Services/PlusMenuModel.cs	This folder doesn’t have a GitHub remote
+g73wlJea9A	JarvisCode.App/Services/HomeViewPresentation.cs	Pull requests
+g9V4FkgMI8	JarvisCode.App/Services/AndroidEmulatorMessages.cs	action
+gAR0atqpRn	JarvisCode.App/Services/HomeViewPresentation.cs	Working
+gBQYlCWES+	JarvisCode.App/Services/CommandPalette.cs	Search actions
+gBRKIesLiL	JarvisCode.App/Views/Panels/RunHistoryPanel.cs	Something went wrong fetching this routine’s runs. Close and reopen the pane to retry.
+gBkpzKfMuN	JarvisCode.App/Services/ErrorCards.cs	Git is installed but failed to start, usually because of a configuration file it can’t read. The error below explains what to do next.
+gDnidCSeXf	JarvisCode.App/Services/ToolGroupSummary.cs	write
+gFpafVw2/r	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Sites where Jarvis can use its Browser tools without a permission prompt.
+gHKP1RM6u6	JarvisCode.App/Services/ScheduleFrequencies.cs	Schedules must run at most once per hour.
+gL86bv7Uv2	JarvisCode.App/Services/SessionDialogs.cs	Group name
+gO0xyMt3jR	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Reconnect all
+gO2f8pKWqg	JarvisCode.App/Views/Panels/ChangesPanel.xaml	Re-run review
+gO6Ri0QD54	JarvisCode.App/Services/TerminalTabs.cs	Close terminal
+gOlRs6Sayp	JarvisCode.App/Views/MainWindow.xaml.cs	Jarvis is waiting for your input
+gSU+cM2i4N	JarvisCode.App/Services/BrowserOriginGate.cs	Allow for this session
+gW0A/Cahyw	JarvisCode.App/Views/Settings/UsagePage.cs	No turns in this time range have a cost estimate
+gXDe98/Cqy	JarvisCode.App/Services/CommandPalette.cs	New session with current settings
+gcXG4edAhu	JarvisCode.App/Views/Settings/ImportExportPage.cs	Export…
+gjBiyjshwX	JarvisCode.App/Services/GitHubIssues.cs	Loading...
+gkvdf7tU5r	JarvisCode.App/Services/ChatComposerMenu.cs	No projects yet
+gnLv4FyUc0	JarvisCode.App/Services/SessionDialogs.cs	Counting sessions older than a week…
+gyxqABc0/g	JarvisCode.App/Views/Settings/GeneralPage.cs	Scientist
+h2kOgf50w3	JarvisCode.App/Views/Settings/DeveloperPage.cs	Add and manage MCP servers that you’re working on. 
+h6OxmI/In0	JarvisCode.App/Services/ShortcutSheet.cs	Focus next split view
+hDI+JMUhFd	JarvisCode.App/Services/SidebarFilterModel.cs	Sort by
+hGQqkUBDZ1	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Schedule
+hLphZYtEL1	JarvisCode.App/Services/ChatComposerMenu.cs	Chats compact more often since tools are always there.
+hLvJaSoyCY	JarvisCode.App/Views/Panels/ChangesPanel.xaml	working tree
+hMzcSqn09p	JarvisCode.App/Controls/UsageStatsCard.cs	Messages
+hRpt8Vo/fn	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Separate
+hX5PAbCTOR	JarvisCode.App/Services/CommandPalette.cs	No results found
+hjpZ5o8ssT	JarvisCode.App/Services/PermissionModeMenu.cs	Bypass all permissions?
+hm+ePxl4t2	JarvisCode.App/Services/CustomizeConnectors.cs	URL must start with ‘https’
+hmKJSoIQ4a	JarvisCode.App/Services/DiagnosticReport.cs	Preview contents
+hmuUKcivQ5	JarvisCode.App/Services/ErrorCards.cs	This request triggered safety guardrails. Switch models to continue.
+houbuT7wdh	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Skill files couldn’t be loaded. Close this dialog and try again.
+hrgo+EleAn	JarvisCode.App/Services/SessionDialogs.cs	Archive
+hsvAwBKpgC	JarvisCode.App/Views/TeachOverlayWindow.cs	Working…
+htu3nz1Y5z	JarvisCode.App/Services/CredentialHelpers.cs	Helper timed out
+htvX+Z11l+	JarvisCode.App/Services/BrowserOriginGate.cs	Deny
+hu2PDDBCub	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Maximum width of the transcript and composer columns.
+hwL7a0I9HE	JarvisCode.App/Views/Settings/GeneralPage.cs	Engineering
+hxPm8s77hY	JarvisCode.App/Services/GitBarPresentation.cs	Path copied to clipboard.
+i6tXLlSSPC	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	Stop this loop
+i7myjSMARe	JarvisCode.App/Views/ChatSurface.xaml	Run in background
+iEfZH5cyl6	JarvisCode.App/Controls/EffortSliderPopup.cs	About effort
+iIeVwABUWb	JarvisCode.App/Services/ChatListSections.cs	Older
+iJ0f0MP5kz	JarvisCode.App/Services/SessionDialogs.cs	Checking for uncommitted changes…
+iKKWKBxt8H	JarvisCode.App/Views/Panels/PlanPanel.cs	No plan yet
+iMGl038nIV	JarvisCode.App/Services/ChatStatusLabels.cs	Request failed
+iNJomVPxVD	JarvisCode.App/Services/ToolGroupSummary.cs	a plan
+iNkqgKucb+	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Skills teach Jarvis how you work. Add them from Discover, or create your own.
+iO5xbpEi/V	JarvisCode.App/Services/ScheduleFrequencies.cs	Invalid cron expression. Check the format (for example: 0 9 * * *).
+iU/FXRryGJ	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Detect dev server
+iU9U2cwW9G	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Enable schedule
+iXNbPfQDIZ	JarvisCode.App/Services/SessionMenuModel.cs	Rename
+iXpep1vGVo	JarvisCode.App/Services/LandingPresentation.cs	Recent
+iZxcZQIRst	JarvisCode.App/Services/DebugCommand.cs	Turn on debug logging and investigate problems
+idMrSFp0DS	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Jarvis can start dev servers, open a live preview, and verify code changes with screenshots, snapshots, and DOM inspection.
+ie/Tbp2rnv	JarvisCode.App/Services/CustomizeDirectory.cs	Recently updated
+iojWyMM0eV	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Enable auto verify
+isEpzl+um7	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Your other windows will be hidden, then restored when Jarvis is done.
+itPgxdbBzC	JarvisCode.App/Views/Settings/GeneralPage.cs	Profile
+iubKfx5Rzl	JarvisCode.App/Views/ChatSurface.xaml.cs	Open settings
+ixZGrkWmBz	JarvisCode.App/Services/ToolRowPresentation.cs	Committing
+j2hlcpE79k	JarvisCode.App/Services/SettingsSearchIndex.cs	Browser use
+j4gDC1/jbD	JarvisCode.App/Services/ErrorCards.cs	This chat is too long to continue. Compact it to summarize earlier messages and keep going, rewind to an earlier point, or start a new chat.
+j7WSfaqwyX	JarvisCode.App/Services/CustomizeSkills.cs	Unsaved changes
+jBQAwvukAZ	JarvisCode.App/Services/SessionMenuModel.cs	Unarchiving…
+jCe2wOHGc2	JarvisCode.App/Services/GitBarPresentation.cs	View diff
+jE0ewcVoC8	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Review the skill contents before adding to your library.
+jGTFVKPV2+	JarvisCode.App/Views/ChatSurface.xaml.cs	Type / for skills
+jKWkgYpA3L	JarvisCode.App/Services/SessionDialogs.cs	Commit as WIP
+jNIBwpm8K2	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	This skill contains additional files or metadata that can’t be edited here. Use Replace to upload a new version.
+jNSi3V9hUE	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Working folder
+jNai7bvfRf	JarvisCode.App/Views/Settings/ImportExportPage.cs	Remove all
+jRANBdPli0	JarvisCode.App/Views/ChatSurface.xaml	Edit message
+jU4z+3Uk7+	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Model discovery
+jUg1nkf4I3	JarvisCode.App/Services/SessionTransfer.cs	That’s this app’s own data folder. Choose a different one.
+jYzulNKPgZ	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Remove plugin?
+jabB4CFkPh	JarvisCode.App/Services/HomeViewPresentation.cs	Unread
+jcaOQvQtmx	JarvisCode.App/Views/Customize/CustomizeSurface.xaml.cs	Give Jarvis role-level expertise with plugins.
+jd5qR1RcUF	JarvisCode.App/Services/ChatStatusLabels.cs	Rate limit reached
+jfV+ocDr6I	JarvisCode.App/Services/CustomizePlugins.cs	Already up to date.
+jjZlgbxsMW	JarvisCode.App/Controls/SyntaxHighlighter.cs	filter
+jlXY1qCwxf	JarvisCode.App/Controls/TextSelectionScope.cs	Rewind to here
+jm/spnRSn+	JarvisCode.App/Views/MainWindow.Shell.cs	Reset
+jrgiDtsEgq	JarvisCode.App/Services/SettingsSearchIndex.cs	Create pull requests automatically
+jsBzHH0H/K	JarvisCode.App/Services/PlusMenuModel.cs	Add image
+jtnMqE0m1F	JarvisCode.App/Services/ToolRowPresentation.cs	Merging
+jx/3VXd3FF	JarvisCode.App/Services/ToolRowPresentation.cs	Searched web
+jxubBzwOJF	JarvisCode.App/Services/Toasts.cs	Couldn’t create the pull request. Try again.
+jy2PPtxFyr	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Incomplete
+jzGUNdu5Zs	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Upload skill
+jztaow6Wm4	JarvisCode.App/Views/Settings/GeneralPage.cs	Educator
+k3uHjv4lto	JarvisCode.App/ViewModels/ChatViewModel.cs	Attached context
+k9qHCCLPA5	JarvisCode.App/Views/Panels/FileViewerPanel.cs	Download file
+kCZBrb3hBQ	JarvisCode.App/Views/ChatSurface.xaml	Compact
+kDEj60CmLq	JarvisCode.App/Services/EffortLevels.cs	Extra high
+kDl9O2T8pK	JarvisCode.App/Services/ChatTurnNotices.cs	Jarvis couldn’t finish this response. Try again in a moment.
+kNX7UtF75g	JarvisCode.App/Services/ToolRowPresentation.cs	Running skill
+kQAf2d9u+x	JarvisCode.App/Services/CommandPalette.cs	Select
+kZqxEvVpFT	JarvisCode.App/Views/Settings/GeneralPage.cs	Anthropic Serif
+kb/xewgjJn	JarvisCode.App/Controls/CodeBlockCard.cs	Run in terminal
+kcQzEk8MkX	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Close other tabs
+kdoUubpNNW	JarvisCode.App/Services/AppUpdates.cs	Jarvis is still working
+khjKGjoVqR	JarvisCode.App/Views/Panels/FileViewerPanel.cs	View source
+kjqTjJbwtK	JarvisCode.App/Services/PlusMenuModel.cs	Add folder
+kmJEqpMcAS	JarvisCode.App/Services/SettingsSearchIndex.cs	Notification sound
+ku+mDU6MeW	JarvisCode.App/Services/SidebarFilterModel.cs	State
+l+9K3+xXLT	JarvisCode.App/Services/ErrorCards.cs	This message was blocked by your organization’s policy.
+l0/dX2gLlN	JarvisCode.App/Services/ChatStatusLabels.cs	Pondering, stand by...
+lD+yXSOyZ+	JarvisCode.App/Services/RequestPreview.cs	messages
+lFh9slwhSO	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Import configuration…
+lJXR2xnt7F	JarvisCode.App/Services/SettingsSearchIndex.cs	Chart metric
+lKjjJ7PIFW	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Custom…
+lKv8ex1Pyg	JarvisCode.App/Services/PermissionModeMenu.cs	Default
+lNkHsi7ue9	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Pending policies
+lOiJkROzUk	JarvisCode.App/Services/ComposerHistory.cs	Search history:
+lOsEqiSVhm	JarvisCode.App/Services/WidgetLinkPrompt.cs	You’re leaving Jarvis to visit an external link:
+lS33z2iqX0	JarvisCode.App/Services/CustomizeSkills.cs	.md file must contain skill name and description formatted in YAML
+lTbEMtrItw	JarvisCode.App/Views/Panels/PreviewAnnotationOverlay.cs	Annotate image
+lWgYy5XIBQ	JarvisCode.App/Services/GitBarPresentation.cs	Open pull request
+lWwW3BF7Wa	JarvisCode.App/Services/ChatQueue.cs	Edit in composer
+lYgHzdY14t	JarvisCode.App/Services/ToolRowPresentation.cs	Making a plan
+laFkSQ77MY	JarvisCode.App/Services/SessionDialogs.cs	Delete group?
+ldzIirO24u	JarvisCode.App/Services/LandingPresentation.cs	No branches match.
+lfYALmQol/	JarvisCode.App/Services/ChatListSections.cs	Untitled chat
+lhgVxsFBsr	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Save screenshot
+lkUuGjfbaq	JarvisCode.App/Services/LandingPresentation.cs	Select folder…
+lnaWo/vCHM	JarvisCode.App/Views/Settings/ProviderCatalog.cs	Region
+lr3QX/nctD	JarvisCode.App/Services/OrganizationPlugins.cs	Always allow
+lrAaaIXO5H	JarvisCode.App/Services/ErrorCards.cs	Image couldn’t be processed
+lyTJBLZPN5	JarvisCode.App/Views/Settings/AllowedSitesDialog.cs	Localhost is always allowed.
+m/y1EQvAmY	JarvisCode.App/Services/ScheduledTaskTools.cs	in less than a minute
+m2HmaAcnCf	JarvisCode.App/Views/Settings/GeneralPage.cs	Reduce animation in streaming responses and other interface elements.
+m3wERcFmTF	JarvisCode.App/Services/CliSessionImporter.cs	projects
+m4vqJl0/FT	JarvisCode.App/Services/SidePanes.cs	Files
+m7qEK6haCz	JarvisCode.App/Services/ScheduledTaskPresentation.cs	{count, plural, one {# routine} other {# routines}}
+mDQIwqx51v	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	Routines only run while your computer is awake and online.
+mHVfgdsDNh	JarvisCode.App/Services/CustomizeConnectors.cs	http://localhost:…/callback?code=…
+mJN/znKMzN	JarvisCode.App/Services/SessionMenuModel.cs	Explorer
+mKYq32tOvI	JarvisCode.App/Services/RoutineApprovals.cs	All websites
+mKa7pZ2uHR	JarvisCode.App/Services/ErrorCards.cs	This session was imported. Resuming lets Jarvis act on its history — only continue if you trust where it came from.
+mKbWqS2HCv	JarvisCode.App/Services/ChatPlaceholders.cs	Jarvis is speaking...
+mMtbgpWMWK	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Description cannot contain XML tags
+mOFG3Ky7NA	JarvisCode.App/Services/TeachMode.cs	Start
+mOzN+6yGec	JarvisCode.App/Controls/TurnStatusLine.cs	Almost done thinking…
+mRg/83TFli	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Can run commands on your computer
+mVkTZZgH2a	JarvisCode.App/Services/CustomizeConnectors.cs	Plugin
+mWKPwaLaI3	JarvisCode.App/Services/SessionTransfer.cs	Everything
+mWeluWc6jS	JarvisCode.App/Services/GitBarPresentation.cs	Open branch on GitHub
+mash/vpxVG	JarvisCode.App/Services/ChatQueue.cs	Discard queued message
+md4QkbfaZg	JarvisCode.App/Services/OrganizationPlugins.cs	never
+meM5PqNkcV	JarvisCode.App/Views/Settings/ExtensionsPage.cs	Failed to open the extension file.
+mgYBYoL6zD	JarvisCode.App/Services/SessionTransfer.cs	Last 90 days
+mgqxMEpXYU	JarvisCode.App/Views/MainWindow.xaml.cs	Open the run to see what happened.
+mjO4YzD0aa	JarvisCode.App/Services/CustomizePlugins.cs	Install for me
+mrOnjMzgC4	JarvisCode.App/Services/PermissionModeMenu.cs	Mode
+mvdlXjfNEZ	JarvisCode.App/Controls/InlineRenameBox.cs	Session name
+mwI28BmyO4	JarvisCode.App/Views/Settings/DeveloperPage.cs	stopped
+mwPB1dkcoS	JarvisCode.App/Services/DiagnosticReport.cs	Report exported
+mwkH3y7hv1	JarvisCode.App/Services/ScheduledTaskPresentation.cs	schedule too frequent
+n+hbOpkFec	JarvisCode.App/Views/RoutinesView.xaml.cs	Only on this computer
+n2uO4zTmwR	JarvisCode.App/Services/WidgetLinkPrompt.cs	This link contains an internationalized domain name that may be deceptive. The domain appears as:
+n3JzWEcKY3	JarvisCode.App/Services/SessionDialogs.cs	This draft hasn’t been sent. Start a session from it, or discard it?
+n3tYs1H3AQ	JarvisCode.App/Services/ErrorCards.cs	Folder not found
+n43/KMHgLD	JarvisCode.App/Services/ToolRowPresentation.cs	Clicking
+nBQeVvSeP7	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	When Jarvis pushes changes to a branch, it automatically opens a pull request without asking first. Applies to remote sessions only.
+nGZEz6M5RL	JarvisCode.App/Views/Settings/UsagePage.cs	No usage yet
+nKQRbs00nP	JarvisCode.App/Services/ChatQueue.cs	[Image]
+nLRlc1fy5/	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Current branch
+nPX61KkXA8	JarvisCode.App/Services/CredentialHelpers.cs	Helper was terminated before exit
+nWcwwjH6U2	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	System sound
+nZAVyUccg2	JarvisCode.App/Services/ErrorCards.cs	Commit or stash changes, or check your repository for issues like a missing branch, locked files, or Git LFS setup.
+nZCHBxEAlK	JarvisCode.App/Services/SessionDialogs.cs	Keep editing
+nb2FlN/G2m	JarvisCode.App/Services/SettingsSearchIndex.cs	Extensions
+nc7BrwYVL+	JarvisCode.App/Views/Settings/DeveloperPage.cs	Arguments
+ngIzbjIFxF	JarvisCode.App/Services/ChatListSections.cs	Delete chat
+nmpevlUATU	JarvisCode.App/Services/ChatQueue.cs	Discard
+noxLT++z8y	JarvisCode.App/Views/Panels/ChangesPanel.xaml	Apply fixes
+nqrh9gXo0z	JarvisCode.App/Services/ShortcutSheet.cs	Next sidebar tab
+nso3MjkMl+	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Scope
+nuWB/LxYc6	JarvisCode.App/Services/CustomizeConnectors.cs	Waiting for browser…
+o1HpUu35GN	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Set a model first
+o1vbhoU9pV	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Policy
+o76PKBGVE1	JarvisCode.App/Services/CredentialHelpers.cs	Script terminated before producing a credential.
+o96GILnoRP	JarvisCode.App/Services/CommandPalette.cs	Rename session
+oDN5M68TGT	JarvisCode.App/Services/SessionMenuModel.cs	New group…
+oIGoNawMHy	JarvisCode.App/Services/SessionMenuModel.cs	Open PR
+oKQHGunEG3	JarvisCode.App/Services/ScheduledTaskPresentation.cs	Auto-disabled
+oMOLgYnZwB	JarvisCode.App/Services/ChatStatusLabels.cs	Server is busy
+oOjg/lEpEi	JarvisCode.App/Services/HomeViewPresentation.cs	CI failing
+oSuR6WVQY6	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Create a skill
+oV1pS7VmeK	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Viewport
+oaW03ZISnE	JarvisCode.App/Controls/UsageStatsCard.cs	Peak hour
+olFpIK4IG+	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	When you add plugins to your marketplace, they will appear here.
+on79ZcGd72	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Configure third-party inference
+ongyurE3Er	JarvisCode.App/Services/ShortcutSheet.cs	Close session
+opNVQCTN4x	JarvisCode.App/Services/SessionMenuModel.cs	Unpin
+opbsFWGEr+	JarvisCode.App/Services/BranchSwitch.cs	Couldn’t update the working tree.
+oqLBKi5SPg	JarvisCode.App/Views/Settings/AllowedSitesDialog.cs	Jarvis can use its Browser tools on these sites without a permission prompt. Remove a site to be asked again. Only Manual and Accept edits modes, and financial sites, prompt per site.
+orLknm0ofx	JarvisCode.App/Views/CodeWorkspace.xaml.cs	Scan
+ov1s7+MDus	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to read
+ovJ26CKo4Q	JarvisCode.App/Services/EffortLevels.cs	Medium
+oyLSggYpFh	JarvisCode.App/Views/Settings/GeneralPage.cs	Writer
+p0Vi703w32	JarvisCode.App/Services/ErrorCards.cs	Sign in again to continue.
+p0a72nIBLb	JarvisCode.App/Services/SettingsSearchIndex.cs	Interface font
+p1P+hQq6tY	JarvisCode.App/Controls/RequestInspectorPopup.cs	Request
+p4l9m92DsT	JarvisCode.App/Views/ChatSurface.xaml	Scroll to bottom
+p556q3ugKt	JarvisCode.App/Controls/CodeBlockCard.cs	Copied
+p5LNtBKZns	JarvisCode.App/Views/Settings/SettingsPanels.cs	Not set
+p80c+8yxXP	JarvisCode.App/Services/ToolRowPresentation.cs	Merging PR
+p9MPkbVUdx	JarvisCode.App/Services/ChatPlaceholders.cs	Reply…
+pA6Y4LJoM2	JarvisCode.App/Views/Settings/GeneralPage.cs	Healthcare
+pALIdjJYLX	JarvisCode.App/Services/CommandPalette.cs	Close
+pBQ5bdyqop	JarvisCode.App/Services/ToolRowPresentation.cs	Editing
+pDwcmquZvM	JarvisCode.App/Services/SessionTransfer.cs	No sessions in this range
+pH8cogFQ6I	JarvisCode.App/Services/ErrorCards.cs	Folder path is too long
+pK2OjPNSYl	JarvisCode.App/Services/ShortcutSheet.cs	Select element in Browser
+pTf0SERrpT	JarvisCode.App/Views/Customize/CustomizeSurface.Connectors.cs	Filter by status
+pUe25MEkoL	JarvisCode.App/Services/AndroidEmulator.cs	Booted
+pVImFITpnT	JarvisCode.App/Services/ShortcutSheet.cs	Open mode menu
+pctifE0z+X	JarvisCode.App/Services/ToolRowPresentation.cs	Editing PR
+peAO9i33I+	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Back to browsing
+pmIAmFOt1l	JarvisCode.App/Services/NotificationPolicy.cs	Task complete
+prmuxzYOJh	JarvisCode.App/Services/Toasts.cs	Rewind is unavailable while Jarvis is working
+psuGulikXK	JarvisCode.App/Views/Customize/CustomizeSurface.Memory.cs	Use memory in sessions
+pu9H1Nruwc	JarvisCode.App/Services/ChatQueue.cs	Remove from queue
+pv1lF7n7cd	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Workflow
+q1WWIreT3a	JarvisCode.App/Views/Scheduled/ScheduledDetail.cs	In progress
+q2/2k27Kto	JarvisCode.App/Services/PermissionModeMenu.cs	Accept edits
+q46BGEPp13	JarvisCode.App/Views/Settings/ChatGptSessionCard.cs	Test connection
+q47AaW/siS	JarvisCode.App/Services/JarvisBrowserInspectTools.cs	applied
+q5Xl0MIdUj	JarvisCode.App/Views/CodeWorkspace.xaml.cs	Verify
+q8XCKBJ8hC	JarvisCode.App/Controls/TurnStatusLine.cs	Still thinking…
+qCcDQ3Zz4w	JarvisCode.App/Services/ChatComposerMenu.cs	Tool access
+qDoBGOvP+z	JarvisCode.App/Services/SessionDialogs.cs	Delete older sessions?
+qG/0dfQrsm	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Look at the commits from the last 24 hours. Summarize what changed, call out any risky patterns or missing tests, and note anything worth following up on.
+qI54ltfccK	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	Delete and re-add connectors to edit custom OAuth Client IDs.
+qRE/x3PA9a	JarvisCode.App/Services/GitHubIssues.cs	Something went wrong. You can try again.
+qTZ3+//6gH	JarvisCode.App/Services/DesktopExtensions.cs	icon
+qUJTsTFu1b	JarvisCode.App/Services/OrganizationPlugins.cs	Blocked
+qha/thgxcv	JarvisCode.App/Services/ToolRowPresentation.cs	Started planning
+qj1uhzynub	JarvisCode.App/Services/CustomizeConnectors.cs	Disconnect
+qj3ov3DBkm	JarvisCode.App/Services/ToolRowPresentation.cs	Pushed
+qjMB66sXZ2	JarvisCode.App/Controls/TextSelectionScope.cs	Fork from here
+qm/eL5Y8Fl	JarvisCode.App/Services/ChatPlaceholders.cs	Something else
+qpCNNJoawH	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Open auto-created pull requests as drafts instead of ready for review.
+qvDLYhu/w2	JarvisCode.App/Services/ErrorCards.cs	Jarvis Code refused to start in bypass permissions mode on this machine. The session has been switched to Accept edits. Send your message again to continue.
+qyJtWyZ0yt	JarvisCode.App/Controls/ThinkingCell.cs	Show less
+qyQ7t4RyYE	JarvisCode.App/Services/BrowserPaneTools.cs	search
+r6P7kLapjf	JarvisCode.App/Services/ChatStatusLabels.cs	Contemplating, stand by...
+r6mPiSOBq7	JarvisCode.App/Services/Toasts.cs	Session unarchived
+r8UhFrWBXI	JarvisCode.App/Views/Settings/ProviderCatalog.cs	us-east5
+r8YSLkTFDi	JarvisCode.App/Views/Settings/ExtensionsPage.cs	Installed on your computer
+r9D6v2AI3X	JarvisCode.App/Services/ToolRowPresentation.cs	Listed
+rELDbByu8U	JarvisCode.App/Views/CodeWorkspace.Tiles.cs	Refresh
+rLTunFSwyh	JarvisCode.App/Services/CommandPalette.cs	Searching deeper...
+rNidobGrrc	JarvisCode.App/Services/ErrorCards.cs	You don’t have access to this resource — check your permissions.
+rPnNlOLQy9	JarvisCode.App/Views/RoutinesView.xaml.cs	Search routines…
+rQ64lmFSSJ	JarvisCode.App/Views/Settings/ProviderCatalog.cs	Access key ID
+rQcYK3TGb8	JarvisCode.App/Services/GitBarPresentation.cs	Manually create PR
+rS2iOWRASM	JarvisCode.App/Views/Customize/CustomConnectorDialog.cs	OAuth Client ID (optional)
+rXG3ZXPf3u	JarvisCode.App/Services/Toasts.cs	The session is in the new directory, but its history may not survive an app restart.
+rYnIBwQDBd	JarvisCode.App/Services/DiagnosticReport.cs	Diagnostic Report
+rZ1B/OLmT7	JarvisCode.App/Views/Panels/PaneTile.cs	Move right
+rbGZreukMl	JarvisCode.App/Services/SessionDialogs.cs	Import CLI sessions
+rcZ8QdQjDl	JarvisCode.App/Services/SessionDialogs.cs	Archive session with uncommitted changes?
+rhPs8UtdHq	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	tool name
+rhSI1/3g21	JarvisCode.App/Views/ChatSurface.xaml.cs	Model
+riw/yc06Nq	JarvisCode.App/Views/Settings/DesktopPage.cs	Beta
+rlOV31zhNT	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Mobile simulators
+rrGMSxQd9S	JarvisCode.App/Views/RoutinesView.xaml.cs	Set up
+rw+BezBPAV	JarvisCode.App/Services/ToolRowPresentation.cs	Updated todos
+s+j6yEtVLW	JarvisCode.App/Services/PromptModelProfile.cs	claude-opus-4
+s3+O5jyM3P	JarvisCode.App/Services/SettingsSearchIndex.cs	Dark code theme
+s7ltlVoslP	JarvisCode.App/Services/ChatQueue.cs	1 message queued. Will send after the current response.
+s8jW+Dp1Mx	JarvisCode.App/Services/GitHubIssues.cs	No issues you’re involved with here. Search to find any issue.
+sEKrl8WYH8	JarvisCode.App/Services/ElectronPaneSession.cs	found
+sEcfVaSh1G	JarvisCode.App/Services/PlusMenuModel.cs	Connect GitHub in Settings or run gh auth login
+sFXw3+Ca5d	JarvisCode.App/Services/SessionMenuModel.cs	Transcript view
+sKUDkSdrnL	JarvisCode.App/Services/DiagnosticReport.cs	Your managed configuration (secrets redacted)
+sLnDObsise	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Discard Changes
+sNY4nxDm3U	JarvisCode.App/Services/SessionRowStates.cs	Idle
+sS8FoqSAw8	JarvisCode.App/Services/ToolRowPresentation.cs	Rebased onto
+sSRWkTrDlY	JarvisCode.App/Services/ToolRowPresentation.cs	Ran skill
+sT1hOrU7rl	JarvisCode.App/Services/ErrorCards.cs	Windows limits a process’s starting folder to 260 characters. Open this project from a shorter path to start a session.
+sV2v5LjRpX	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Instructions
+sYDsuxbWJx	JarvisCode.App/Services/QuickEntryShortcuts.cs	This shortcut is reserved for common actions. Try a different combination.
+scjLYJp/kr	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Remove policy
+sjfw113DWS	JarvisCode.App/Services/SettingsSearchIndex.cs	What should Jarvis call you?
+slIZF8X6Sk	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	+ Add server policy
+snui0/aY9U	JarvisCode.App/Services/CcdSessionMgmtTools.cs	agent
+soCLV+LRQi	JarvisCode.App/Views/CodeWorkspace.xaml.cs	Checklist
+ss6kleQsM3	JarvisCode.App/Controls/RequestInspectorPopup.cs	Reset to default
+st0obAAYGy	JarvisCode.App/Services/ScheduledTemplates.cs	Monitor a topic
+st9QnC8LFC	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Create with Jarvis
+sy7vzf+1SO	JarvisCode.App/Services/CommandPalette.cs	Scheduled tasks
+symZDPdXlt	JarvisCode.App/Controls/TextSelectionScope.cs	Copy code block
+t/jcuCN7Eo	JarvisCode.App/Views/MainWindow.xaml.cs	The previous run was still in progress.
+t0Nu0XQ0sA	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	This will remove the marketplace from your list.
+t0eCW57c4v	JarvisCode.App/Views/Settings/ExtensionsPage.cs	Allow Jarvis to directly interact with apps, data, and tools on your computer.
+tCOYplCDsH	JarvisCode.App/Services/CommandPalette.cs	Command menu
+tFFMkFDBMO	JarvisCode.App/Services/ReadAloud.cs	Pause
+tIBKrv7ywy	JarvisCode.App/Services/SidebarFilterModel.cs	Show PR status
+tM90hqjWj0	JarvisCode.App/Services/SessionRowStates.cs	Awaiting input
+tMkmSMInmR	JarvisCode.App/Services/LandingPresentation.cs	Branch to start from
+tOdNiYuuag	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Dark
+tPrRgPHF6R	JarvisCode.App/Views/Settings/DesktopPage.cs	Keep Jarvis running in the system tray.
+tRF6CXCuTR	JarvisCode.App/Views/Panels/PlanPanel.cs	Jarvis writes the plan here as it explores. Keep chatting.
+tRloa3+Odj	JarvisCode.App/Services/GitBarPresentation.cs	More PR options
+tS1eQb8Kqr	JarvisCode.App/Views/Panels/BackgroundTasksPanel.xaml.cs	View transcript
+tWkQ2JF/jQ	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Author
+tZKbSCxm4Q	JarvisCode.App/Views/Settings/ImportExportPage.cs	Saves to your Downloads folder
+tZVZ3l/SAS	JarvisCode.App/Services/ErrorCards.cs	Model isn’t available
+tb1OJygJ7I	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Applies once a plugin ships an MCP server with this name.
+tb9rWAryya	JarvisCode.App/Views/RoutinesView.xaml.cs	No routines yet.
+tibq2MpiPM	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Background work appears here
+tmBrqrH59S	JarvisCode.App/Services/Toasts.cs	The directory couldn’t be trusted. Nothing was changed.
+tnEMvwSDlT	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Add skill
+tr6dgLEgW4	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to search web
+ttYrbOOOyy	JarvisCode.App/Services/ErrorCards.cs	The response was interrupted when your computer went to sleep and may be incomplete. Try sending your message again.
+tuJiA0ZNUD	JarvisCode.App/Views/ChatSurface.xaml	Bad response
+twBGxrOFSV	JarvisCode.App/Views/Settings/GeneralPage.cs	Dyslexic friendly
+tzMNF3+M+M	JarvisCode.App/Services/SidebarFilterModel.cs	Status
+u0vWz2o/ZK	JarvisCode.App/Controls/TerminalView.cs	Shell exited.
+u1pmp+DI3F	JarvisCode.App/Controls/TurnStatusLine.cs	Thinking more…
+u6rppWwk42	JarvisCode.App/Services/Toasts.cs	Couldn’t change the session directory.
+u8oAvUFG3c	JarvisCode.App/Services/ErrorCards.cs	Switch to a different model from the model picker to continue.
+uAswEIOvGS	JarvisCode.App/Services/PermissionModeMenu.cs	Automatically accept all file edits
+uC6YGusWki	JarvisCode.App/Services/ComputerUseGlow.cs	Jarvis is using your computer
+uFBCXebiAB	JarvisCode.App/Services/ScheduleFrequencies.cs	Use numeric fields only (for example 1 for Monday). Named days/months and the ? L W # symbols aren’t supported here.
+uFdvq050AB	JarvisCode.App/Services/CustomizeSkills.cs	Names can only contain lowercase letters, numbers, and hyphens.
+uGOETn5bfV	JarvisCode.App/Services/ChatComposerMenu.cs	Could not capture screen.
+uH8HYmwhVt	JarvisCode.App/Services/ErrorCards.cs	Nested session
+uKJpFgIFUc	JarvisCode.App/Services/CommandPalette.cs	Command palette options
+uL2l9Ldbtx	JarvisCode.App/Services/SettingsSearchIndex.cs	Persist sessions
+uMhpKeySlx	JarvisCode.App/Services/SessionMenuModel.cs	Color
+uNrBqFbR2v	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Unlisted tools stay user-controlled. Policy is keyed by server name and applies even if the plugin is later updated.
+uOLtTPkHWk	JarvisCode.App/Services/CustomizeDirectory.cs	Search skills…
+uQDRsYlg+S	JarvisCode.App/Views/MainWindow.Shell.cs	Later
+uSQ/bLKBIp	JarvisCode.App/Views/Customize/CustomizeSurface.OrgPlugins.cs	Tool policy
+uScJvDfyGZ	JarvisCode.App/Services/PermissionModeMenu.cs	Always ask before making changes
+uTR9Wyzw/s	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Duplicate…
+uY5OjtEg/e	JarvisCode.App/Services/PlusMenuModel.cs	Browse plugins
+ubmFc8rrea	JarvisCode.App/Views/Customize/CustomizeSurface.Directory.cs	Install
+ufa5QA7ilZ	JarvisCode.App/Services/EffortLevels.cs	Ultracode
+uhiTNkWfe3	JarvisCode.App/Services/CustomizeConnectors.cs	Failed to connect
+uiBsm/q1Ed	JarvisCode.App/Views/RoutinesView.xaml.cs	Set up manually
+uiDspPthq0	JarvisCode.App/Services/ShortcutSheet.cs	Pin / unpin session
+uq0XGsVCwE	JarvisCode.App/Services/CommandPalette.cs	Open model menu
+v/2uXgIFVT	JarvisCode.App/Services/SessionDialogs.cs	Add directory
+v3zZT7zmnm	JarvisCode.App/Services/DiagnosticReport.cs	Log lines are scrubbed for file paths, email addresses, IP addresses, and API tokens before packaging. Message content is never included.
+v7i2fnB2+A	JarvisCode.App/Views/Settings/DesktopPage.cs	General desktop settings
+vCeNCCZA+t	JarvisCode.App/Services/BackgroundTaskPresentation.cs	Bash
+vDeb4m8eLy	JarvisCode.App/Services/ToolGroupSummary.cs	started
+vGCX7TawR+	JarvisCode.App/Services/ErrorCards.cs	The response stream stopped before finishing — try again in a moment.
+vLAPJDu9y6	JarvisCode.App/Services/SessionMenuModel.cs	Mark as unread
+vYu8a1H923	JarvisCode.App/Services/DiagnosticReport.cs	This report contains:
+vbISyh+BUD	JarvisCode.App/Controls/TextSelectionScope.cs	Open in Browser pane
+vf5UJg2a2l	JarvisCode.App/Services/CustomizeConnectors.cs	No connected connectors
+vg7ixeSm+z	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	(not installed)
+viYlTEIt6w	JarvisCode.App/Services/ScheduledTaskPresentation.cs	already ran
+vikR8aVphg	JarvisCode.App/Services/SettingsSearchIndex.cs	Light code theme
+vu4q0xfmTW	JarvisCode.App/Services/ErrorCards.cs	Access denied
+vuCXR4HhzH	JarvisCode.App/Services/SessionDialogs.cs	Stash changes
+vuTg/99D1y	JarvisCode.App/Views/CodeWorkspace.Tiles.cs	Show files
+vuZo4Ort2/	JarvisCode.App/Views/Customize/CustomizeSurface.Memory.cs	No memories yet. Jarvis will add entries here as you work together.
+vubkA9rTty	JarvisCode.App/Services/ToolRowPresentation.cs	reply
+vwxMsyPVYx	JarvisCode.App/Services/AndroidEmulator.cs	file
+vzTwYo0bzB	JarvisCode.App/Views/Panels/FilesPanel.xaml.cs	Type after ? to search file contents
+vzYPVXl4by	JarvisCode.App/Services/CommandPalette.cs	Keyboard shortcuts
+w11OKNs56D	JarvisCode.App/Services/PreviewTools.cs	running
+w1A4zeclNH	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Size of the conversation transcript text.
+w9vq02ApZJ	JarvisCode.App/Services/CommandPalette.cs	favorite
+wA4FIMmtlS	JarvisCode.App/Services/ChatListSections.cs	Recents
+wGupzniHso	JarvisCode.App/Services/ShortcutSheet.cs	Panes
+wL4tzYmGIm	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Your instructions start with a --- frontmatter block. Remove it — the name and description fields above become the frontmatter.
+wL7VAE/fRX	JarvisCode.App/Services/CommandPalette.cs	Actions
+wLCEuvbSge	JarvisCode.App/Views/Settings/SettingsDialog.xaml.cs	No matches.
+wQoMx7gPNw	JarvisCode.App/Views/Panels/PullRequestPanel.cs	Review changes
+wS5Ru7ip+A	JarvisCode.App/Services/ComposerHistory.cs	cycle
+wSZR47Y5kj	JarvisCode.App/Views/ChatSurface.xaml	Submit
+wVl7+yA9C3	JarvisCode.App/Services/SessionDialogs.cs	Download Git
+wZ+WLSqfnJ	JarvisCode.App/Views/Panels/RunHistoryPanel.cs	Not a scheduled run
+wbsq7OdxnV	JarvisCode.App/Views/Settings/SettingsDialog.xaml.cs	Usage
+wdKoWlVN+G	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Edit with Jarvis
+weftE7Eekg	JarvisCode.App/Views/Settings/GeneralPage.cs	Clear avatar
+wkLubrQz2W	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Try a different term, or browse the Directory to find new skills.
+wl6vXYrxQW	JarvisCode.App/Services/SettingsSearchIndex.cs	Quick Entry keyboard shortcut
+wmFdwsKtFc	JarvisCode.App/Services/SessionMenuModel.cs	Move up
+wpSJrTIFJu	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Configuration name
+wqnv5NOX0Z	JarvisCode.App/Services/ReviewFindings.cs	Applying fixes…
+wt2OTGsj0k	JarvisCode.App/Services/ChatStatusLabels.cs	Ruminating on it, stand by...
+wtOt83XrGz	JarvisCode.App/Services/SettingsSearchIndex.cs	Code notifications
+wwn0pRsf6i	JarvisCode.App/Services/SessionDialogs.cs	Discard uncommitted changes?
+wwxeIp0xi9	JarvisCode.App/Views/Settings/GeneralPage.cs	e.g. ask clarifying questions before giving detailed answers
+wxBR7bytpr	JarvisCode.App/Services/Toasts.cs	Image copied to clipboard.
+wyZHvZZhj5	JarvisCode.App/Controls/TextSelectionScope.cs	Copy message as Markdown
+wycwyUK5pQ	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Clear data
+wytZxjTMDw	JarvisCode.App/Services/ChatQueue.cs	Queued messages
+x+jc/b46TT	JarvisCode.App/Services/GitBarPresentation.cs	CI: status unavailable
+x1taMCWebd	JarvisCode.App/Services/Toasts.cs	Couldn’t delete this session. Try again.
+x3qvaC3GqD	JarvisCode.App/Views/Panels/RunHistoryPanel.cs	No runs yet
+x5x6ZJX0IU	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Summarize my recent work in three sections: wins, blockers, and next steps. Keep the tone professional but not stiff...
+x9TlvXuBUX	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Scheduled tasks use a randomized delay of several minutes for server performance.
+xBU5hYIiNs	JarvisCode.App/Services/SettingsSearchIndex.cs	Enable auto-updates for extensions
+xGOUVSbQU8	JarvisCode.App/Services/ChatActivityPanel.cs	No web searches yet
+xIksaL4N9Q	JarvisCode.App/Services/ThinkingLabels.cs	Thought process
+xJcf9HjLHk	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	Apply Changes
+xJrRMGgqKO	JarvisCode.App/Services/PluginMonitors.cs	Monitors
+xKK6vlFDPu	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to make a plan
+xPuGYMU3MT	JarvisCode.App/Services/CustomizeConnectors.cs	No connectors match your search
+xQrHJqbQnW	JarvisCode.App/Services/ToolGroupSummary.cs	proposed
+xUS/qYZOWh	JarvisCode.App/Services/ChatWelcome.cs	Bring me anything—a tough problem, a half-formed idea, something you need to write. We’ll figure it out together.
+xVu+C0rCcm	JarvisCode.App/Views/Settings/ImportExportPage.cs	Remove this import?
+xgQtG2vu7a	JarvisCode.App/Views/Settings/InferenceConfigWindow.cs	This configuration contains sensitive values. They will be written to the exported file in plain text.
+xhfdqvZYVo	JarvisCode.App/Services/ToolRowPresentation.cs	Creating
+xl217pKraX	JarvisCode.App/Controls/WidgetBlock.cs	title
+xnAz2BnmSS	JarvisCode.App/Services/ScheduledTemplates.cs	Meeting prep
+xqCjQKdyAK	JarvisCode.App/Services/RoutineApprovals.cs	Always allowed
+xsrj8zSaHb	JarvisCode.App/Views/Customize/SkillEditorDialog.cs	Edit skill
+xz/cIYRwG0	JarvisCode.App/Services/MermaidDiagrams.cs	Mermaid diagram
+xzV2K7Pydt	JarvisCode.App/Controls/TextSelectionScope.cs	Copy image
+y+rvbUE4om	JarvisCode.App/Services/ShortcutSheet.cs	Composer
+y/bmsG8rnv	JarvisCode.App/Services/BrowserOriginGate.cs	Allow
+y0m/msJ/H2	JarvisCode.App/Views/Settings/AllowedSitesDialog.cs	Enter a valid web address.
+yAbZ8R653W	JarvisCode.App/Views/Customize/CustomizeSurface.Directory.cs	No results match your search.
+yCSyZCflT8	JarvisCode.App/Services/ShortcutSheet.cs	New Browser tab
+yCVRiEnn9v	JarvisCode.App/Views/Customize/CustomizeSurface.Plugins.cs	Make sure you trust a plugin before installing or using it. Uploaded plugins are not controlled by Anthropic, and Anthropic cannot verify that they will work as intended. See each plugin’s homepage for more information.
+yIOz3cdgmn	JarvisCode.App/Services/ToolRowPresentation.cs	Updating todos
+yLDwMzbiJ9	JarvisCode.App/Views/Settings/ImportExportPage.cs	Sessions are copied, not moved — your original history stays where it is, and re-importing won’t create duplicates.
+yNyU0xuMGA	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Your other windows will be hidden while Jarvis works.
+yOFPA6eD9X	JarvisCode.App/Views/Settings/ProviderCard.cs	API keys
+ySAk9qhogV	JarvisCode.App/Services/DiagnosticReport.cs	Show in Explorer
+yUsyxi1gKs	JarvisCode.App/Services/SettingsSearchIndex.cs	Android Emulator
+yVPKfWxps3	JarvisCode.App/Services/SettingsSearchIndex.cs	Auto-archive after PR merge or close
+yZJxVSJosU	JarvisCode.App/Views/Settings/DeveloperPage.cs	Developer
+yeBbpeNYqy	JarvisCode.App/Services/ErrorCards.cs	Try again in a moment, or switch to a different model.
+yhU1etXT1A	JarvisCode.App/Services/SidePanes.cs	Tasks
+yjV52Y2G/h	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Can change system settings
+yk4PT9S4sc	JarvisCode.App/Services/SettingsSearchIndex.cs	Full name
+ylMAcDTmFJ	JarvisCode.App/Services/ToolRowPresentation.cs	Failed to list
+yxguVqGJ5K	JarvisCode.App/Services/SessionDialogs.cs	Discard changes
+z0PjNhLbSp	JarvisCode.App/Services/Toasts.cs	Something went wrong loading this session.
+z3UjXRZwzQ	JarvisCode.App/App.xaml.cs	Debug
+z5aOk29Wxb	JarvisCode.App/Services/HomeViewPresentation.cs	Ready to merge
+zCFqyz7RGK	JarvisCode.App/Services/ComputerUseGrantPrompt.cs	Use system shortcuts (Alt+F4, Alt+Tab, and similar)
+zElqHZzItw	JarvisCode.App/Services/ChatPlaceholders.cs	Write a message…
+zEzs9O02+l	JarvisCode.App/Views/Scheduled/ScheduledEditor.cs	Review yesterday’s commits and flag anything concerning
+zHa3P1rigq	JarvisCode.App/Services/ErrorCards.cs	Your WorktreeCreate hook didn’t complete successfully. Check the hook output in the details below and fix the hook, then send your message again.
+zHk65p70ot	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Remove skill?
+zKrfOmewBi	JarvisCode.App/Views/CodeWorkspace.xaml	Copy as image
+zSP70MVzIo	JarvisCode.App/Views/Settings/DesktopPage.cs	Clear shortcut
+zTylMMruGq	JarvisCode.App/Services/DevServerDetector.cs	start
+zUEJiis2VC	JarvisCode.App/Services/DiagnosticReport.cs	This usually takes a few seconds.
+zUO6Ii5EAT	JarvisCode.App/Views/Settings/ProviderCard.cs	Add model
+zWgbGgjUUg	JarvisCode.App/Services/ChatListSections.cs	Today
+zc+Xyl0Uea	JarvisCode.App/Views/Panels/EmulatorPanel.cs	Attach emulator
+zgw2I8nSaM	JarvisCode.App/Services/WorkingDirectoryMenu.cs	Installing…
+zora1tCQsv	JarvisCode.App/Views/Panels/BrowserPanel.xaml.cs	Show dev server logs
+zpupd8cmau	JarvisCode.App/Services/SettingsSearchIndex.cs	Motion
+ztHNjqJY9S	JarvisCode.App/Views/Settings/ClaudeCodePage.cs	Let Jarvis verify your changes in Android emulators on this computer: running your app, driving it through flows, and capturing screenshots and recordings. You will be asked before Jarvis uses each device. When off, Jarvis doesn’t get its emulator tools, and you can still use the emulator in the app yourself.
+zu9kMqfe1c	JarvisCode.App/Views/Panels/SessionPanePanel.cs	No messages yet
+zxvhnE8mLU	JarvisCode.App/Services/ScheduleFrequencies.cs	Daily
+zz6ObK7ZEM	JarvisCode.App/Views/Customize/CustomizeSurface.Skills.cs	Restore
++Na8kklTSw	JarvisCode.App/Views/OutputStyleEditor.cs	This project
+AkJkxQULrm	JarvisCode.App/Views/OutputStyleEditor.cs	New output style
+De+8liLWgX	JarvisCode.App/Views/Chat/ComparisonView.Composer.cs	Stop dictation
+NZLQi1PTsg	JarvisCode.App/Views/OutputStyleEditor.cs	All projects
+u4szSEH7lO	JarvisCode.App/Views/OutputStyleEditor.cs	Save to
+xrAjmQ72mN	JarvisCode.App/Views/Chat/ComparisonView.Composer.cs	Add files
+/UnJ3SDiCO	JarvisCode.App/Views/ImageLightboxWindow.cs	Zoom out
+F+ukuPGfqR	JarvisCode.App/Views/ImageLightboxWindow.cs	Next image
+Sbj31CbCFT	JarvisCode.App/Services/SidebarPresentation.cs	Nothing pinned yet
+eM0Qa4coD/	JarvisCode.App/Views/ChatSurface.PrAutoFix.cs	Auto-fix pull requests
+fb1a/oVcaa	JarvisCode.App/Views/ImageLightboxWindow.cs	Previous image
+xbi38cl5pP	JarvisCode.App/Views/ImageLightboxWindow.cs	Zoom in

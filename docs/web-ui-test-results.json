@@ -1,0 +1,93 @@
+{
+  "suite": "Web UI regression \u2014 mocked API fixtures, NOT live server/MCP",
+  "checks": [
+    {
+      "name": "Login page renders",
+      "status": "passed"
+    },
+    {
+      "name": "Registration submission and pending-approval message",
+      "status": "passed"
+    },
+    {
+      "name": "Login transitions to authenticated dashboard",
+      "status": "passed"
+    },
+    {
+      "name": "Dashboard displays API values, not static metrics",
+      "status": "passed"
+    },
+    {
+      "name": "Enrollment shows one-time token dialog",
+      "status": "passed"
+    },
+    {
+      "name": "Device edit persists API update",
+      "status": "passed"
+    },
+    {
+      "name": "Device token rotation flow",
+      "status": "passed"
+    },
+    {
+      "name": "Device deletion flow",
+      "status": "passed"
+    },
+    {
+      "name": "Tool catalog search",
+      "status": "passed"
+    },
+    {
+      "name": "Tool detail shows schema",
+      "status": "passed"
+    },
+    {
+      "name": "Tool editor saves changes",
+      "status": "passed"
+    },
+    {
+      "name": "Capability import feedback",
+      "status": "passed"
+    },
+    {
+      "name": "Administrator approves pending user",
+      "status": "passed"
+    },
+    {
+      "name": "Untrusted user label is escaped, not executed",
+      "status": "passed"
+    },
+    {
+      "name": "Audit activity view",
+      "status": "passed"
+    },
+    {
+      "name": "Local control and revocation help",
+      "status": "passed"
+    },
+    {
+      "name": "OAuth endpoint help",
+      "status": "passed"
+    },
+    {
+      "name": "Mobile layout has no document horizontal overflow",
+      "status": "passed"
+    },
+    {
+      "name": "Mobile navigation opens",
+      "status": "passed"
+    },
+    {
+      "name": "Logout returns to login",
+      "status": "passed"
+    },
+    {
+      "name": "No browser pageerror events",
+      "status": "passed"
+    }
+  ],
+  "passed": 21,
+  "pageErrors": [],
+  "screenshots": "docs/screenshots",
+  "date": "2026-09-14"
+}

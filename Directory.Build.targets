@@ -1,0 +1,47 @@
+<Project>
+  <!-- Agent hosts reuse the baseline tool assembly, not its standalone application.
+       Keep DLLs, debugging symbols, resources and duplicate-publish checks intact. -->
+  <PropertyGroup>
+    <_JarvisAgentConsumesBaseline Condition="'$(MSBuildProjectName)' == 'Jarvis.Agent.Desktop' Or '$(MSBuildProjectName)' == 'Jarvis.Agent.Cli' Or '$(MSBuildProjectName)' == 'Jarvis.Agent.Windows'">true</_JarvisAgentConsumesBaseline>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(_JarvisAgentConsumesBaseline)' == 'true'">
+    <_JarvisStandaloneBaselineHost Include="JarvisCode.App.exe;JarvisCode.App.deps.json;JarvisCode.App.runtimeconfig.json">
+      <TargetPath>%(Identity)</TargetPath>
+      <RelativePath>%(Identity)</RelativePath>
+    </_JarvisStandaloneBaselineHost>
+  </ItemGroup>
+
+  <!-- GetCopyToOutputDirectoryItems also exports transitive content to VS/MSBuild.
+       Filter its return value and every copy mode before any build output copy. -->
+  <Target Name="ExcludeStandaloneBaselineHostFromAgentBuild"
+          AfterTargets="GetCopyToOutputDirectoryItems"
+          Condition="'$(_JarvisAgentConsumesBaseline)' == 'true'">
+    <ItemGroup>
+      <AllItemsFullPathWithTargetPath Remove="@(_JarvisStandaloneBaselineHost)" MatchOnMetadata="TargetPath" MatchOnMetadataOptions="PathLike" />
+      <_SourceItemsToCopyToOutputDirectory Remove="@(_JarvisStandaloneBaselineHost)" MatchOnMetadata="TargetPath" MatchOnMetadataOptions="PathLike" />
+      <_SourceItemsToCopyToOutputDirectoryAlways Remove="@(_JarvisStandaloneBaselineHost)" MatchOnMetadata="TargetPath" MatchOnMetadataOptions="PathLike" />
+      <_SourceItemsToCopyToOutputDirectoryIfDifferent Remove="@(_JarvisStandaloneBaselineHost)" MatchOnMetadata="TargetPath" MatchOnMetadataOptions="PathLike" />
+    </ItemGroup>
+  </Target>
+  <!-- Incremental builds do not automatically remove files copied by older targets.
+       Delete only these three exact filenames from this agent project's output. -->
+  <Target Name="RemoveStaleStandaloneBaselineHostFromAgentBuild"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(_JarvisAgentConsumesBaseline)' == 'true' And '$(DesignTimeBuild)' != 'true' And '$(OutDir)' != ''">
+    <Delete Files="@(_JarvisStandaloneBaselineHost->'$(OutDir)%(Identity)')" />
+  </Target>
+
+  <Target Name="ExcludeStandaloneBaselineHostFromAgentPublish"
+          BeforeTargets="_HandleFileConflictsForPublish"
+          Condition="'$(_JarvisAgentConsumesBaseline)' == 'true'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(_JarvisStandaloneBaselineHost)" MatchOnMetadata="RelativePath" MatchOnMetadataOptions="PathLike" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="RemoveStaleStandaloneBaselineHostFromAgentPublish"
+          AfterTargets="Publish"
+          Condition="'$(_JarvisAgentConsumesBaseline)' == 'true' And '$(DesignTimeBuild)' != 'true' And '$(PublishDir)' != ''">
+    <Delete Files="@(_JarvisStandaloneBaselineHost->'$(PublishDir)%(Identity)')" />
+  </Target>
+</Project>

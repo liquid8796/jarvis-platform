@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+.vs/
+artifacts/
+**/data/
+**/appsettings.Production.json
+**/agent.local.json
+**/*.pfx
+**/*.p12
+**/*.key
+**/*.pem
+vm-ssh/
+.env
+*.user

@@ -1,0 +1,59 @@
+Skill packs shipped with Jarvis Code
+====================================
+
+Each folder under this directory is one pack, and each folder inside a pack is
+one Agent Skill — SKILL.md plus the resources its instructions name. They are
+third-party works, copied verbatim: nothing here has been edited, rebranded or
+adapted, because a skill whose body no longer matches its upstream is neither
+the skill the author wrote nor one anybody can update.
+
+Every skill keeps the LICENSE file it was published with. Read that file for
+the terms; the summary below says where each pack came from and which of its
+skills were deliberately left out.
+
+
+anthropic/  —  https://github.com/anthropics/skills
+------------------------------------------------------------------------------
+Vendored at commit 3b3fad96af16a10759d930941b4520ba0c40edae (2026-08-21).
+
+14 skills, each Apache License 2.0, each carrying its own LICENSE.txt:
+
+  academy-guide          brand-guidelines   discernment-nudge   internal-comms
+  algorithmic-art        canvas-design      frontend-design     mcp-builder
+  skill-creator          slack-gif-creator  theme-factory       web-artifacts-builder
+  webapp-testing         claude-api
+
+canvas-design additionally bundles open-source fonts; each face ships beside
+its own OFL.txt in canvas-fonts/.
+
+NOT vendored, and why:
+
+  docx, pdf, pptx, xlsx
+      Source-available, not open source. Their LICENSE.txt forbids exactly what
+      shipping them here would be: "Distribute, sublicense, or transfer these
+      materials to any third party", and "retain copies of these materials
+      outside the Services". A user who wants them installs them into their own
+      profile — Settings > Plugins > add the marketplace anthropics/skills —
+      which is the route Anthropic documents for them.
+
+  doc-coauthoring
+      The one skill in that repository published with no LICENSE file at all.
+      No license is not a permissive one, so there is nothing granting the right
+      to redistribute it, and this is the only skill whose omission is a gap
+      upstream could close rather than a decision it made.
+
+
+vercel/  —  https://github.com/vercel-labs/skills
+------------------------------------------------------------------------------
+Vendored at commit 435076e78988e1e6ec40d00b0b1d76bdbbc5419a (2026-08-18).
+
+MIT License, Copyright (c) 2026 Vercel, Inc. The repository is the `skills` CLI
+rather than a skill collection, and find-skills is the only skill in it.
+
+The Vercel skill collection people usually mean is a different repository,
+vercel-labs/agent-skills (9 skills: composition-patterns, deploy-to-vercel,
+react-best-practices, react-native-skills, react-view-transitions,
+vercel-cli-with-tokens, vercel-optimize, web-design-guidelines,
+writing-guidelines). It ships no LICENSE file and its package is marked
+private, so it is not vendored here either; it installs as a marketplace the
+same way the Anthropic document skills do.

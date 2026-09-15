@@ -1,0 +1,1 @@
+feat(agent): add multi-directory workspaces and integrate Jarvis branding

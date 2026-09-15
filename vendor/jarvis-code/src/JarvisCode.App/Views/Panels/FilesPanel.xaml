@@ -1,0 +1,70 @@
+<UserControl x:Class="JarvisCode.App.Views.Panels.FilesPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:panels="clr-namespace:JarvisCode.App.Views.Panels"
+             xmlns:controls="clr-namespace:JarvisCode.App.Controls">
+    <UserControl.Resources>
+        <HierarchicalDataTemplate DataType="{x:Type panels:FileNode}" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal" Margin="0,1">
+                <Path Width="13" Height="13" Stretch="Uniform"
+                      Visibility="{Binding FolderVisibility}"
+                      Data="{StaticResource FolderGlyph}"
+                      Stroke="{DynamicResource Text500Brush}" StrokeThickness="1.8"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                      VerticalAlignment="Center" Margin="0,0,7,0" />
+                <TextBlock Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
+                           Foreground="{DynamicResource Text200Brush}" />
+            </StackPanel>
+        </HierarchicalDataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
+            <Path Style="{StaticResource PanelSmallGlyph}" Data="{StaticResource FolderGlyph}"
+                  Stroke="{DynamicResource Text400Brush}" Margin="0,0,8,0" />
+            <TextBlock x:Name="RootText" Style="{StaticResource PanelTitleText}" Text="Files" />
+        </StackPanel>
+
+        <!--
+            The reference's filter box: one input whose placeholder says that a leading "?"
+            searches file contents, with a Clear button beside it once it carries a query.
+        -->
+        <Grid Grid.Row="1" Margin="10,0,10,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="FilterBox" Style="{StaticResource PanelAddressBox}"
+                     controls:PlaceholderText.Text="Filter files… (? to search contents)"
+                     TextChanged="OnFilterChanged"
+                     PreviewKeyDown="OnFilterKey"
+                     AutomationProperties.Name="Filter files" />
+            <Button x:Name="ClearFilterButton" Grid.Column="1" Visibility="Collapsed"
+                    Style="{StaticResource PanelActionButton}" Click="OnClearFilterClick"
+                    AutomationProperties.Name="Clear filter" ToolTip="Clear filter">
+                <Path Style="{StaticResource PanelSmallGlyph}" Data="{StaticResource CloseGlyph}" />
+            </Button>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <TreeView x:Name="Tree" Background="Transparent" BorderThickness="0"
+                      Padding="8,0,8,10"
+                      MouseDoubleClick="OnTreeDoubleClick"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+            <ScrollViewer x:Name="ResultsScroll" Visibility="Collapsed"
+                          VerticalScrollBarVisibility="Auto" Padding="8,0,8,10">
+                <StackPanel x:Name="Results" />
+            </ScrollViewer>
+            <TextBlock x:Name="EmptyText" Visibility="Collapsed"
+                       FontSize="12.5" TextWrapping="Wrap" TextAlignment="Center"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="260"
+                       Foreground="{DynamicResource Text500Brush}" />
+        </Grid>
+    </Grid>
+</UserControl>

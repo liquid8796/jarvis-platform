@@ -1,0 +1,114 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:JarvisCode.App.Controls">
+
+    <!--
+        Shared side-panel chrome, measured off the reference app: a 36px header row whose
+        left half carries the panel's own title, breadcrumb or tab bar, and whose right
+        half carries the panel actions (menu · expand · close). Every panel spells that 36
+        out in its own first RowDefinition - a GridLength cannot come from a resource.
+    -->
+    <Style x:Key="PanelActionButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource IconButton}">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Padding" Value="5" />
+        <Setter Property="Foreground" Value="{DynamicResource Text400Brush}" />
+    </Style>
+
+    <Style x:Key="PanelSmallGlyph" TargetType="Path" BasedOn="{StaticResource PanelGlyph}">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="StrokeThickness" Value="2" />
+    </Style>
+
+    <Style x:Key="PanelSmallGlyphFilled" TargetType="Path" BasedOn="{StaticResource PanelGlyphFilled}">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+    </Style>
+
+    <!-- Panel title / breadcrumb text. -->
+    <Style x:Key="PanelTitleText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource Text200Brush}" />
+    </Style>
+
+    <Style x:Key="PanelMutedText" TargetType="TextBlock" BasedOn="{StaticResource PanelTitleText}">
+        <Setter Property="Foreground" Value="{DynamicResource Text500Brush}" />
+    </Style>
+
+    <!-- Tab in a panel tab bar ("Terminal", "New tab"). -->
+    <Style x:Key="PanelTab" TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource IconButton}">
+        <Setter Property="Padding" Value="9,4" />
+        <Setter Property="Margin" Value="0,0,2,0" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Foreground" Value="{DynamicResource Text400Brush}" />
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter Property="Background" Value="{DynamicResource SelectedOverlayBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource Text100Brush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Browser address bar. -->
+    <Style x:Key="PanelAddressBox" TargetType="{x:Type TextBox}">
+        <Setter Property="Background" Value="{DynamicResource FieldFillBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource Text100Brush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Text100Brush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderSoftBrush}" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Padding" Value="9,0" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TextBox}">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6">
+                        <Grid>
+                            <!-- No Margin: the box's own Padding already insets the text. -->
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          VerticalAlignment="Center"
+                                          Focusable="False" HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden" />
+                            <!--
+                                Drawn over the content host, which WPF paints in the box's own
+                                Background, and measured against the room the field has rather
+                                than its own sentence: "Filter files... (? to search contents)"
+                                is wider than the panel that holds it.
+                            -->
+                            <controls:OverlayHost>
+                                <TextBlock x:Name="Placeholder"
+                                           Margin="{Binding Padding, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource PlaceholderInset}}"
+                                           FontFamily="{TemplateBinding FontFamily}"
+                                           FontSize="{TemplateBinding FontSize}"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"
+                                           IsHitTestVisible="False"
+                                           Foreground="{DynamicResource Text500Brush}"
+                                           Visibility="Collapsed" />
+                            </controls:OverlayHost>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- A placeholder stands until something is typed over it, as an
+                             HTML input's does; focus alone does not clear it. -->
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

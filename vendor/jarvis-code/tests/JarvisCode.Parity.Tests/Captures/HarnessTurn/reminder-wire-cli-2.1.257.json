@@ -1,0 +1,237 @@
+{
+ "note": "The message shape of a post-tool-result request, recorded from the installed reference CLI driven at a local listener with a dummy key. System prompt, tools and identity removed; the roster turn's text elided. The markers are the reminder text the run supplied, so their position and joining are the observation. A client_data case's value is the model-pattern map's entry for that model: the reference resolves the map to one string through the same zHo path the environment variable takes, so what reaches the wire is a single text either way.",
+ "capturedFrom": "2.1.257 (Claude Code)",
+ "path": "/v1/messages?beta=true",
+ "cases": [
+  {
+   "case": "control",
+   "model": "claude-opus-5",
+   "env": {},
+   "messages": [
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "<agent roster + skill listing, elided>"
+    },
+    {
+     "role": "assistant",
+     "content": "array"
+    },
+    {
+     "role": "user",
+     "content": "array"
+    }
+   ],
+   "source": "none"
+  },
+  {
+   "case": "batching-env",
+   "model": "claude-opus-5",
+   "env": {
+    "CLAUDE_CODE_TOASTY_THIMBLE": "ZZBATCHMARKERZZ_list_needs_then_batch"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "<agent roster + skill listing, elided>"
+    },
+    {
+     "role": "assistant",
+     "content": "array"
+    },
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "ZZBATCHMARKERZZ_list_needs_then_batch"
+    }
+   ],
+   "source": "env"
+  },
+  {
+   "case": "secondary-env",
+   "model": "claude-opus-5",
+   "env": {
+    "CLAUDE_CODE_GENTLE_PARASOL": "ZZPARASOLMARKERZZ_secondary_nudge_here"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "<agent roster + skill listing, elided>"
+    },
+    {
+     "role": "assistant",
+     "content": "array"
+    },
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "ZZPARASOLMARKERZZ_secondary_nudge_here"
+    }
+   ],
+   "source": "env"
+  },
+  {
+   "case": "both-env",
+   "model": "claude-opus-5",
+   "env": {
+    "CLAUDE_CODE_TOASTY_THIMBLE": "ZZBOTH_A_batching",
+    "CLAUDE_CODE_GENTLE_PARASOL": "ZZBOTH_C_secondary"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "<agent roster + skill listing, elided>"
+    },
+    {
+     "role": "assistant",
+     "content": "array"
+    },
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "ZZBOTH_A_batching\n\nZZBOTH_C_secondary"
+    }
+   ],
+   "source": "env"
+  },
+  {
+   "case": "batching-client-data",
+   "model": "claude-opus-5",
+   "env": {
+    "client_data.tengu_toasty_thimble": "ZZCLIENTDATAMARKERZZ served from client_data, keyed by model pattern."
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "<agent roster + skill listing, elided>"
+    },
+    {
+     "role": "assistant",
+     "content": "array"
+    },
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "ZZCLIENTDATAMARKERZZ served from client_data, keyed by model pattern."
+    }
+   ],
+   "source": "client_data"
+  },
+  {
+   "case": "batching-env",
+   "model": "claude-fable-5-1",
+   "env": {
+    "CLAUDE_CODE_TOASTY_THIMBLE": "ZZBATCHMARKERZZ_list_needs_then_batch"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "<agent roster + skill listing, elided>"
+    },
+    {
+     "role": "assistant",
+     "content": "array"
+    },
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "system",
+     "content": "string",
+     "text": "ZZBATCHMARKERZZ_list_needs_then_batch"
+    }
+   ],
+   "source": "env"
+  },
+  {
+   "case": "batching-env",
+   "model": "claude-haiku-4-5",
+   "env": {
+    "CLAUDE_CODE_TOASTY_THIMBLE": "ZZBATCHMARKERZZ_list_needs_then_batch"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "assistant",
+     "content": "array"
+    },
+    {
+     "role": "user",
+     "content": "array"
+    }
+   ],
+   "source": "env"
+  },
+  {
+   "case": "batching-env",
+   "model": "claude-opus-4-5",
+   "env": {
+    "CLAUDE_CODE_TOASTY_THIMBLE": "ZZBATCHMARKERZZ_list_needs_then_batch"
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "array"
+    },
+    {
+     "role": "assistant",
+     "content": "array"
+    },
+    {
+     "role": "user",
+     "content": "array"
+    }
+   ],
+   "source": "env"
+  }
+ ]
+}

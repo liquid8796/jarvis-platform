@@ -1,0 +1,65 @@
+{
+  "version": "1.0.23",
+  "assemblyVersion": "1.0.23.0",
+  "coreTests": {
+    "passed": 36,
+    "failed": 0
+  },
+  "serverTests": {
+    "passed": 54,
+    "failed": 0
+  },
+  "uiSmoke": {
+    "version": "1.0.23.0",
+    "windowRendered": true,
+    "iconLoaded": true,
+    "makePrimaryPassed": true,
+    "removeDirectoryPassed": true,
+    "profileSaved": false,
+    "connectionStarted": false,
+    "controlArmed": false
+  },
+  "zipCrcPassed": true,
+  "packageBytes": 176301439,
+  "embeddedIconSizes": [
+    [
+      16,
+      16
+    ],
+    [
+      24,
+      24
+    ],
+    [
+      32,
+      32
+    ],
+    [
+      48,
+      48
+    ],
+    [
+      64,
+      64
+    ],
+    [
+      128,
+      128
+    ],
+    [
+      256,
+      256
+    ]
+  ],
+  "completedRequirements": [
+    "multi-directory selection and propagation",
+    "Jarvis icon integration"
+  ],
+  "notImplemented": [
+    "remove workspace guard",
+    "full-permission tab and native consent integration"
+  ],
+  "sourceBackup": "D:\\Project\\tools\\Jarvis\\jarvis-platform\\artifacts\\backups\\agent-settings-20260915-171418.zip",
+  "deploymentPerformed": false,
+  "liveProfileChanged": false
+}

@@ -1,0 +1,38 @@
+{
+  "note": "Recorded from the installed reference CLI against a local listener; identity headers, metadata, system prompt, messages and tools removed.",
+  "capturedFrom": "2.1.257 (Claude Code)",
+  "requestedModel": "claude-3-5-sonnet-20241022",
+  "requestedEffort": "high",
+  "path": "/v1/messages?beta=true",
+  "headers": {
+    "anthropic-beta": "claude-code-20250219,prompt-caching-scope-2026-01-05",
+    "anthropic-version": "2023-06-01",
+    "content-type": "application/json",
+    "x-app": "cli",
+    "anthropic-dangerous-direct-browser-access": "true"
+  },
+  "body": {
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 8192,
+    "stream": true
+  },
+  "bodyKeys": [
+    "max_tokens",
+    "messages",
+    "metadata",
+    "model",
+    "stream",
+    "system",
+    "tools"
+  ],
+  "omitted": [
+    "messages",
+    "system",
+    "tools",
+    "metadata",
+    "x-api-key",
+    "user-agent",
+    "x-stainless-*",
+    "x-claude-code-session-id"
+  ]
+}

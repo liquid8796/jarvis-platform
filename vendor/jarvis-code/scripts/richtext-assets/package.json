@@ -1,0 +1,7 @@
+{
+  "name": "jarvis-richtext-assets",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "dependencies": { "dompurify": "3.4.0", "esbuild": "0.25.10", "katex": "0.16.25", "shiki": "4.4.3" }
+}

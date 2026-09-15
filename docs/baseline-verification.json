@@ -1,0 +1,10 @@
+{
+  "baselineFiles": 2047,
+  "unchangedFiles": 1931,
+  "intentionalModified": [
+    "CLAUDE.md",
+    "Directory.Build.props"
+  ],
+  "omittedOptionalFonts": 114,
+  "csharpSourcesUnchanged": 1038
+}

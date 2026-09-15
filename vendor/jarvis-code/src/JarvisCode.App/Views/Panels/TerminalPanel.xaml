@@ -1,0 +1,39 @@
+<UserControl x:Class="JarvisCode.App.Views.Panels.TerminalPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!--
+            Tab bar: one tab per shell, the overflow that holds the rest, then the
+            new-tab button — the reference's own order and labels.
+        -->
+        <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"
+                    AutomationProperties.Name="Terminal tabs">
+            <ItemsControl x:Name="Tabs">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <Button x:Name="MoreTabsButton" Style="{StaticResource PanelActionButton}"
+                    Visibility="Collapsed" Click="OnMoreTabsClick"
+                    AutomationProperties.Name="More terminals" ToolTip="More terminals">
+                <Path Style="{StaticResource PanelSmallGlyphFilled}" Data="{StaticResource KebabGlyph}" />
+            </Button>
+            <Button x:Name="NewTabButton" Style="{StaticResource PanelActionButton}"
+                    Click="OnNewTabClick"
+                    AutomationProperties.Name="New terminal" ToolTip="New terminal">
+                <Path Style="{StaticResource PanelSmallGlyph}" Data="{StaticResource PlusGlyph}" />
+            </Button>
+        </StackPanel>
+
+        <Border Grid.Row="1" Margin="0,0,0,0" CornerRadius="0,0,10,10" ClipToBounds="True">
+            <Grid x:Name="TerminalHost" />
+        </Border>
+    </Grid>
+</UserControl>

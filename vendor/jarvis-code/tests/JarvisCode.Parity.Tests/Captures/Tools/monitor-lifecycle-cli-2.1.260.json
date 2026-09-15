@@ -1,0 +1,61 @@
+{
+  "measuredAgainst": "CLI 2.1.260",
+  "measuredOn": "2026-09-08",
+  "binarySha256": "ab5fe6cb800a9faf3df1cc0f6bcb71f097296b302a16b576ca906446a22fea71",
+  "sourceKind": "installed-binary declarations; not a live provider request",
+  "monitor": {
+    "byteWindow": [
+      192476600,
+      192478100
+    ],
+    "properties": [
+      "description",
+      "timeout_ms",
+      "persistent",
+      "command",
+      "ws"
+    ],
+    "required": [
+      "description"
+    ],
+    "exactlyOne": [
+      "command",
+      "ws"
+    ],
+    "timeoutDefaultMs": 300000,
+    "timeoutMinimumMs": 1000,
+    "timeoutMaximumMs": 3600000,
+    "persistentIgnoresMaximum": true,
+    "websocketFrameMaximumBytes": 1048576,
+    "resultProperties": [
+      "taskId",
+      "timeoutMs",
+      "persistent"
+    ],
+    "constantsOffset": 192476004
+  },
+  "idleSubscriptions": {
+    "byteOffset": 203443116,
+    "maximum": 32,
+    "lifetimeMs": 43200000,
+    "detailMaximumCharacters": 100,
+    "terminalStates": [
+      "idle",
+      "exited",
+      "unavailable",
+      "expired"
+    ]
+  },
+  "cronDefaults": {
+    "byteOffset": 183953725,
+    "recurringFrac": 0.5,
+    "recurringCapMs": 1800000,
+    "oneShotMaxMs": 90000,
+    "oneShotFloorMs": 0,
+    "oneShotMinuteMod": 30,
+    "recurringMaxAgeMs": 604800000,
+    "cacheLeadMs": 15000,
+    "seed": "parseInt(id.slice(0,8),16)/4294967296",
+    "note": "Runtime defaults differ from tool prose (10 percent / 15 minutes). A remote jitter configuration may override these defaults."
+  }
+}

@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/Shared/"><Project Path="shared/Jarvis.Protocol/Jarvis.Protocol.csproj" /></Folder>
+  <Folder Name="/Server/"><Project Path="jarvis-mcp-server/src/Jarvis.McpServer/Jarvis.McpServer.csproj" /></Folder>
+  <Folder Name="/Agent/">
+    <Project Path="jarvis-agent/src/Jarvis.Agent.Core/Jarvis.Agent.Core.csproj" />
+    <Project Path="jarvis-agent/src/Jarvis.Agent.Windows/Jarvis.Agent.Windows.csproj" />
+    <Project Path="jarvis-agent/src/Jarvis.Agent.Cli/Jarvis.Agent.Cli.csproj" />
+    <Project Path="jarvis-agent/src/Jarvis.Agent.Desktop/Jarvis.Agent.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/Jarvis.Core.Tests/Jarvis.Core.Tests.csproj" />
+    <Project Path="tests/Jarvis.Agent.Windows.Tests/Jarvis.Agent.Windows.Tests.csproj" />
+    <Project Path="tests/Jarvis.Server.Tests/Jarvis.Server.Tests.csproj" />
+  </Folder>
+  <!-- Keep reused projects loaded so Visual Studio restores and builds the full dependency graph. -->
+  <Folder Name="/Vendor/">
+    <Project Path="vendor/jarvis-code/src/JarvisCode.Core/JarvisCode.Core.csproj" />
+    <Project Path="vendor/jarvis-code/src/JarvisCode.Providers/JarvisCode.Providers.csproj" />
+    <Project Path="vendor/jarvis-code/src/JarvisCode.Host/JarvisCode.Host.csproj" />
+    <Project Path="vendor/jarvis-code/src/JarvisCode.App/JarvisCode.App.csproj" />
+  </Folder>
+</Solution>

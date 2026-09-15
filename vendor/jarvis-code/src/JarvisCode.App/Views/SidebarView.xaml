@@ -1,0 +1,132 @@
+<UserControl x:Class="JarvisCode.App.Views.SidebarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:JarvisCode.App.Views"
+             FontFamily="{StaticResource UiFontFamily}">
+    <Border Background="{DynamicResource Bg200Brush}">
+        <Grid Margin="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Top actions -->
+            <StackPanel Grid.Row="0" Margin="10,10,10,4">
+                <Button x:Name="NewChatButton" Style="{StaticResource RowButton}" Click="OnNewSessionClick"
+                        AutomationProperties.Name="New chat">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource ActiveOverlayBrush}">
+                            <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFontFamily}" FontSize="11"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock x:Name="NewChatLabel" Text="New chat" Margin="10,0,0,0" VerticalAlignment="Center" FontWeight="Medium" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource RowButton}" Click="OnSearchClick"
+                        AutomationProperties.Name="Search">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE721;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
+                                   Width="22" TextAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock Text="Search" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="ScheduledRow" Style="{StaticResource RowButton}" Click="OnScheduledClick"
+                        Visibility="Collapsed"
+                        AutomationProperties.Name="Scheduled">
+                    <DockPanel LastChildFill="False">
+                        <TextBlock Text="&#xE823;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
+                                   Width="22" TextAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock Text="Scheduled" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="ScheduledRunCount" DockPanel.Dock="Right" Margin="8,0,0,0"
+                                   VerticalAlignment="Center" Opacity="0.6" Visibility="Collapsed" />
+                    </DockPanel>
+                </Button>
+                <Button Style="{StaticResource RowButton}" Click="OnCustomizeClick"
+                        AutomationProperties.Name="Customize">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE771;" FontFamily="{StaticResource IconFontFamily}" FontSize="14"
+                                   Width="22" TextAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock Text="Customize" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <TextBox x:Name="SearchBox"
+                         Style="{StaticResource InputTextBox}"
+                         Margin="2,8,2,0"
+                         Visibility="Collapsed"
+                         TextChanged="OnSearchTextChanged"
+                         AutomationProperties.Name="Filter sessions" />
+            </StackPanel>
+
+            <!--
+                Session list. There is no standing "Recents" row: the reference hangs
+                the filter icon and the header menu off the trailing slot of the first
+                section's own header, and "Recents" is a section label only while the
+                list is ungrouped.
+            -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="10,4">
+                <ItemsControl x:Name="GroupsHost" />
+            </ScrollViewer>
+
+            <!--
+                The reference's auto-updater banner sits just above the bottom card
+                (its "auto_updater_banner"): a spinner line while it works, a
+                clickable card offering the relaunch, or one saying the update did
+                not complete.
+            -->
+            <Border x:Name="UpdateCard" Grid.Row="1" VerticalAlignment="Bottom"
+                    Margin="8,0,8,8" Padding="8" CornerRadius="12"
+                    Background="{DynamicResource Bg000Brush}"
+                    BorderBrush="{DynamicResource BorderMidBrush}" BorderThickness="1"
+                    Visibility="Collapsed">
+                <Button x:Name="UpdateCardButton" Style="{StaticResource GhostButton}"
+                        Padding="0" HorizontalContentAlignment="Stretch"
+                        Background="Transparent" BorderThickness="0"
+                        Click="OnUpdateCardClick">
+                    <StackPanel Orientation="Horizontal">
+                        <views:SpinnerGlyph x:Name="UpdateCardSpinner" Width="20" Height="20"
+                                            VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="UpdateCardTitle" FontSize="12.5" FontWeight="Medium"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource Text100Brush}" />
+                            <TextBlock x:Name="UpdateCardDetail" FontSize="11" Margin="0,1,0,0"
+                                       TextTrimming="CharacterEllipsis" Visibility="Collapsed"
+                                       Foreground="{DynamicResource Text400Brush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+            </Border>
+
+            <!-- Bottom: user / workspace card -->
+            <Border Grid.Row="3" BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="0,1,0,0" Padding="12,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="30" Height="30" CornerRadius="15" Background="{DynamicResource AccentBrandBrush}">
+                        <TextBlock x:Name="UserInitials" Text="J"
+                                   Foreground="{DynamicResource Oncolor100Brush}"
+                                   FontWeight="SemiBold" FontSize="13"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="UserName" Text="Jarvis" FontWeight="Medium" FontSize="13"
+                                   Foreground="{DynamicResource Text100Brush}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="UserSubtitle" Text=""
+                                   FontSize="11" Foreground="{DynamicResource Text400Brush}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Style="{StaticResource IconButton}" Click="OnCustomizeClick"
+                            AutomationProperties.Name="Open settings">
+                        <TextBlock Text="&#xE713;" FontFamily="{StaticResource IconFontFamily}" FontSize="13" />
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

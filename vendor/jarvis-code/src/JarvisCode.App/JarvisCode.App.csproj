@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- WinForms is referenced only for NotifyIcon (system tray); all UI is WPF. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Embedded as the exe's Win32 icon, which is what the taskbar, Alt-Tab,
+         Explorer and (since Window.Icon is unset) the windows themselves use. -->
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <AssemblyTitle>Jarvis Code</AssemblyTitle>
+    <Product>Jarvis Code</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WinForms implicit usings collide with WPF Color/Brush types. -->
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="JarvisCode.App.Tests" />
+    <!-- The CLI front-end drives the same services the UI does; its assembly
+         is named after the command it installs (jarvis.exe), not its project. -->
+    <InternalsVisibleTo Include="jarvis" />
+    <!-- Parity tests read the reference-derived constants directly. -->
+    <InternalsVisibleTo Include="JarvisCode.Parity.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JarvisCode.Core\JarvisCode.Core.csproj" />
+    <ProjectReference Include="..\JarvisCode.Providers\JarvisCode.Providers.csproj" />
+    <ProjectReference Include="..\JarvisCode.Host\JarvisCode.Host.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Voice input (offline OS dictation) and live artifact rendering. -->
+    <PackageReference Include="System.Speech" Version="9.0.0" />
+    <PackageReference Include="WpfMath" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Themes\builtin_themes.json" />
+    <EmbeddedResource Include="Assets\Themes\gaming_themes.json" />
+    <EmbeddedResource Include="Assets\Themes\community_themes.json" />
+    <EmbeddedResource Include="Assets\Skills\**\*.md" />
+    <!-- The visualize server's corpus and widget runtime, recorded from the
+         reference by Captures/Mcp/gen-visualize-corpus.js. read_me answers with
+         these sections joined, so they are resources rather than files: nothing
+         needs a path to them. -->
+    <EmbeddedResource Include="Assets\Visualize\**\*.md" />
+    <EmbeddedResource Include="Assets\Visualize\widget-runtime.html" />
+    <Content Include="Assets\JarvisBrowser\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\ElectronHost\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\IdeExtension\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Skill packs ship as files, not resources: a folder skill's body names
+         its own scripts and references, so it needs a real directory to point
+         the model at. -->
+    <Content Include="Assets\SkillPacks\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\BundledSkills\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- mermaid 11.16.1 from npm, MIT, plus the page that runs it: the chat
+         renderer's diagram fences load it as an ordinary script in an isolated
+         engine view, so it ships as files rather than as a resource. -->
+    <Content Include="Assets\Mermaid\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\RichText\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Console front-end over the App's engine composition. WPF/WinForms are
+         pulled in only because JarvisCode.App is a WPF assembly; the CLI never
+         creates an Application. ChatGPT browser sessions start a dedicated STA
+         dispatcher lazily; API-only commands create no windows. -->
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>jarvis</AssemblyName>
+    <AssemblyTitle>Jarvis Code CLI</AssemblyTitle>
+    <Product>Jarvis Code</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="JarvisCode.Cli.Tests" />
+    <!-- Parity tests diff HelpTexts against the installed reference CLI. -->
+    <InternalsVisibleTo Include="JarvisCode.Parity.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JarvisCode.App\JarvisCode.App.csproj" />
+  </ItemGroup>
+
+</Project>

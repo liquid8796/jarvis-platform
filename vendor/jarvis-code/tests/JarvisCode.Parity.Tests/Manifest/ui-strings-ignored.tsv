@@ -1,0 +1,60 @@
+# Strings that spell a reference catalogue entry without being UI text.
+# Columns: the text, why it is not a string this UI renders.
+# Excluded from Manifest/ui-strings.tsv so an unrelated reference rewording
+# cannot fail this suite over a JSON key or a folder name.
+Programs	the Windows LocalApplicationData subdirectory used to find VS Code in IdeServices.InstallAsync; not rendered UI text
+connections	the local browser-broker JSON response key; not rendered UI text
+bash	a language id in the syntax highlighter
+shell	a language id in the syntax highlighter
+switch	a keyword in the syntax highlighter
+default	a keyword in the syntax highlighter
+required	a keyword in the syntax highlighter
+global	a keyword in the syntax highlighter
+true	a literal in the syntax highlighter
+false	a literal in the syntax highlighter
+done	a keyword in the syntax highlighter
+None	a syntax-highlighting token kind
+session	a browser-bridge protocol field
+active	a browser-bridge protocol field
+result	a browser-bridge protocol field
+value	a console-capture protocol field
+warn	a console level from the debugger protocol
+preview	a capture kind, not a label
+Tool	an MCP typings JSON key
+unknown	an MCP typings JSON value
+Read	a permission-rule tool name
+Write	a permission-rule tool name
+Edit	a permission-rule tool name
+Shell	a permission-rule tool name
+Skill	a permission-rule tool name
+Bypass	a permission-mode name in a rule string
+monitor	a permission-rule tool name
+plugins	a profile folder name
+skills	a profile folder name
+agents	a profile folder name
+tasks	a profile folder name
+memory	a profile folder name
+workflows	a profile folder name
+settings.json	a profile file name
+Icon	a registry value name in the Explorer context menu
+Path	the PATH environment variable name
+Environment	a registry key name in the terminal setup
+Jarvis	this app's own name, which only spells the rebranding of the reference's "Claude"
+Jarvis Code	this app's own name, which only spells the rebranding of the reference's "Claude Code"
+cron	a YAML frontmatter key in a scheduled task's SKILL.md, not text this UI renders
+deleted	a YAML frontmatter key marking a scheduled task removed from the scheduler, not text this UI renders
+text	the android_input action kind, and a language-less fence tag; never rendered as UI text
+results	the key search_mcp_registry writes its JSON answer under, which is the reference tool result shape rather than UI text
+routine	the fallback file name a routine history falls back to when the id sanitises to nothing, not text this UI renders
+Command	an Electron accelerator token in the menu model, not a label
+Hidden	a PowerShell -WindowStyle argument in the update installer step
+week	a relative-time unit key inside the narrow clock, never rendered
+month	a relative-time unit key inside the narrow clock, never rendered
+year	a relative-time unit key inside the narrow clock, never rendered
+minute	a relative-time unit key inside the narrow clock, never rendered
+queued	the git bar's own mode key, matched against a stored value
+created	the sidebar's sort key, matched against a stored value
+skipping	the check-bucket name the reference's own counter uses
+saved	the name of one of --open=comparison's poses, not a string the view draws
+monitors	the folder a plugin's monitors.json sits in, not a rendered label
+diagram	a read_me module name the model passes to visualize, not UI text

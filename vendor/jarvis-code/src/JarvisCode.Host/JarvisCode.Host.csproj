@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Windows-only: the settings store protects API keys with DPAPI. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- DPAPI ships in the Windows Desktop framework, not the base one; this
+         headless host references the package directly. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JarvisCode.Core\JarvisCode.Core.csproj" />
+    <ProjectReference Include="..\JarvisCode.Providers\JarvisCode.Providers.csproj" />
+  </ItemGroup>
+
+</Project>

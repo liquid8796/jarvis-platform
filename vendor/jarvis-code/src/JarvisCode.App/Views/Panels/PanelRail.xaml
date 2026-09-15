@@ -1,0 +1,25 @@
+<UserControl x:Class="JarvisCode.App.Views.Panels.PanelRail"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <!--
+            The reference builds this rail from its Xb spec list: terminal, diff, then the
+            preview/browser toggle. Each carries the chord in its tooltip beside the label,
+            and the diff toggle grows an accent dot and a different label while the tree is
+            dirty. Its toggles and glyphs are built in code so the tooltip can hold keycaps.
+        -->
+        <ItemsControl x:Name="Toggles">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+        <Button x:Name="MenuButton" Style="{StaticResource PanelIconButton}"
+                Margin="0"
+                AutomationProperties.Name="Session menu" ToolTip="More"
+                Click="OnMenuClick">
+            <Path Style="{StaticResource PanelGlyphFilled}" Data="{StaticResource KebabGlyph}" />
+        </Button>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,14 @@
+<Solution>
+  <Project Path="src/Jarvis.Agent.Core/Jarvis.Agent.Core.csproj" />
+  <Project Path="src/Jarvis.Agent.Windows/Jarvis.Agent.Windows.csproj" />
+  <Project Path="src/Jarvis.Agent.Cli/Jarvis.Agent.Cli.csproj" />
+  <Project Path="src/Jarvis.Agent.Desktop/Jarvis.Agent.Desktop.csproj" />
+  <Project Path="../shared/Jarvis.Protocol/Jarvis.Protocol.csproj" />
+  <!-- Keep reused projects loaded so Visual Studio restores and builds the full dependency graph. -->
+  <Folder Name="/Vendor/">
+    <Project Path="../vendor/jarvis-code/src/JarvisCode.Core/JarvisCode.Core.csproj" />
+    <Project Path="../vendor/jarvis-code/src/JarvisCode.Providers/JarvisCode.Providers.csproj" />
+    <Project Path="../vendor/jarvis-code/src/JarvisCode.Host/JarvisCode.Host.csproj" />
+    <Project Path="../vendor/jarvis-code/src/JarvisCode.App/JarvisCode.App.csproj" />
+  </Folder>
+</Solution>

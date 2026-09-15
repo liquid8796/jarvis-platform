@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Jarvis.Agent.Core/Jarvis.Agent.Core.csproj" />
+    <ProjectReference Include="../../../vendor/jarvis-code/src/JarvisCode.App/JarvisCode.App.csproj" />
+  </ItemGroup>
+  <!-- ProtectedData is provided by Microsoft.WindowsDesktop.App for this target.
+       Keep the independent package on vendor JarvisCode.Host, which has no desktop framework reference. -->
+  <ItemGroup>
+    <Content Include="Assets/Browser/**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,22 @@
+# Managed by Jarvis deployment
+[Unit]
+Description=Jarvis MCP control plane (isolated user service)
+After=network-online.target
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/jarvis-mcp-server/current
+ExecStart=%h/.local/share/jarvis-mcp-server/current/jarvis-mcp-server
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:18765
+Environment=JARVIS_CONFIG_PATH=%h/.config/jarvis-mcp-server/server.private.json
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+UMask=0077
+LimitNOFILE=4096
+TasksMax=256
+MemoryMax=768M
+CPUQuota=100%
+[Install]
+WantedBy=default.target

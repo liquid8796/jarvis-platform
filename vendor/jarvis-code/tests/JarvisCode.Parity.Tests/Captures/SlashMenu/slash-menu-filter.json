@@ -1,0 +1,404 @@
+{
+  "generatedWith": "Claude 1.40609.0.0 — ion-dist shared-10-3-tqq7pk.js (px region) over vendor-utils-DWaswhiK.js (Fuse)",
+  "results": {
+    "": [
+      "More commands available once the session is running",
+      "rewind",
+      "fork",
+      "feedback",
+      "model",
+      "mcp",
+      "config",
+      "compact",
+      "context",
+      "",
+      "resume",
+      "usage",
+      "workflows",
+      "review",
+      "code-review",
+      "security_review",
+      "deploy",
+      "deploy-preview",
+      "docx",
+      "",
+      "clear",
+      "export",
+      "grep",
+      "clear"
+    ],
+    "c": [
+      "clear",
+      "clear",
+      "config",
+      "context",
+      "compact",
+      "code-review",
+      "usage",
+      "resume",
+      "security_review",
+      "mcp",
+      "docx",
+      "deploy-preview",
+      "deploy",
+      "feedback",
+      "review",
+      "fork",
+      "workflows"
+    ],
+    "co": [
+      "config",
+      "compact",
+      "context",
+      "code-review",
+      "usage",
+      "resume",
+      "fork",
+      "feedback",
+      "mcp",
+      "workflows",
+      "security_review",
+      "clear"
+    ],
+    "con": [
+      "config",
+      "context",
+      "resume",
+      "fork",
+      "feedback",
+      "mcp",
+      "compact",
+      "clear"
+    ],
+    "re": [
+      "review",
+      "rewind",
+      "resume",
+      "code-review",
+      "security_review",
+      "grep",
+      "deploy-preview",
+      "feedback",
+      "docx",
+      "compact",
+      "context",
+      "deploy"
+    ],
+    "rev": [
+      "review",
+      "code-review",
+      "security_review",
+      "deploy-preview"
+    ],
+    "review": [
+      "review",
+      "security_review",
+      "code-review",
+      "deploy-preview"
+    ],
+    "code-review": [
+      "code-review"
+    ],
+    "code_review": [
+      "code-review"
+    ],
+    "codereview": [
+      "code-review"
+    ],
+    "bug": [
+      "feedback",
+      "review",
+      "code-review"
+    ],
+    "share": [
+      "feedback"
+    ],
+    "sett": [
+      "config"
+    ],
+    "settings": [
+      "config"
+    ],
+    "cost": [
+      "usage"
+    ],
+    "stats": [
+      "usage"
+    ],
+    "workflow": [
+      "workflows"
+    ],
+    "clear": [
+      "clear",
+      "clear"
+    ],
+    "compact": [
+      "compact"
+    ],
+    "cmpact": [
+      "compact"
+    ],
+    "conersation": [],
+    "summarizing": [
+      "compact"
+    ],
+    "session": [
+      "rewind",
+      "fork",
+      "model",
+      "compact",
+      "resume",
+      "clear"
+    ],
+    "vercel": [
+      "deploy"
+    ],
+    "vercel:dep": [
+      "deploy"
+    ],
+    "anthropic-skills:docx": [
+      "docx"
+    ],
+    "acme": [
+      "deploy-preview"
+    ],
+    "acme:deploy": [
+      "deploy"
+    ],
+    "docx": [
+      "docx"
+    ],
+    "deploy": [
+      "deploy",
+      "deploy-preview"
+    ],
+    "grep something": [
+      "grep"
+    ],
+    "clear something": [],
+    "unknown thing": [],
+    "xyzzy": [],
+    "  fork  ": [
+      "fork"
+    ],
+    "FORK": [
+      "fork"
+    ],
+    "mcp": [
+      "mcp"
+    ],
+    "m": [
+      "mcp",
+      "model",
+      "compact",
+      "resume",
+      "deploy-preview",
+      "docx",
+      "rewind",
+      "clear",
+      "usage",
+      "workflows",
+      "security_review"
+    ],
+    "usage": [
+      "usage",
+      "context"
+    ],
+    "12345678901234567890123456789012345678901234567890": [],
+    "123456789012345678901234567890123456789012345678901": []
+  },
+  "scores": {
+    "c": [
+      {
+        "label": "code-review",
+        "score": 6.3245553203367595e-27
+      },
+      {
+        "label": "config",
+        "score": 1e-21
+      },
+      {
+        "label": "context",
+        "score": 1e-21
+      },
+      {
+        "label": "security_review",
+        "score": 2.2897336089597852e-20
+      },
+      {
+        "label": "compact",
+        "score": 3.162277660168379e-20
+      },
+      {
+        "label": "clear",
+        "score": 3.162277660168379e-20
+      },
+      {
+        "label": "clear",
+        "score": 1e-18
+      },
+      {
+        "label": "resume",
+        "score": 2e-16
+      },
+      {
+        "label": "mcp",
+        "score": 3.1622776601683806e-15
+      },
+      {
+        "label": "docx",
+        "score": 1.1723436077874101e-13
+      },
+      {
+        "label": "deploy-preview",
+        "score": 2.0000000000000005e-11
+      },
+      {
+        "label": "deploy",
+        "score": 2.9761300374815604e-11
+      },
+      {
+        "label": "feedback",
+        "score": 3.6139582200130637e-10
+      },
+      {
+        "label": "usage",
+        "score": 1e-9
+      },
+      {
+        "label": "review",
+        "score": 0.0009999999999999998
+      },
+      {
+        "label": "fork",
+        "score": 0.03162277660168379
+      },
+      {
+        "label": "workflows",
+        "score": 0.03162277660168379
+      }
+    ],
+    "re": [
+      {
+        "label": "review",
+        "score": 5.477225575051661e-21
+      },
+      {
+        "label": "rewind",
+        "score": 3.162277660168379e-20
+      },
+      {
+        "label": "resume",
+        "score": 1e-18
+      },
+      {
+        "label": "code-review",
+        "score": 8.558164961018224e-17
+      },
+      {
+        "label": "security_review",
+        "score": 2.910822236831029e-15
+      },
+      {
+        "label": "grep",
+        "score": 1.0000000000000004e-12
+      },
+      {
+        "label": "deploy-preview",
+        "score": 2.9859840000000005e-11
+      },
+      {
+        "label": "feedback",
+        "score": 1.4788509052639483e-7
+      },
+      {
+        "label": "docx",
+        "score": 0.0031622776601683794
+      },
+      {
+        "label": "compact",
+        "score": 0.1
+      },
+      {
+        "label": "context",
+        "score": 0.17320508075688773
+      },
+      {
+        "label": "deploy",
+        "score": 0.17320508075688773
+      }
+    ],
+    "review": [
+      {
+        "label": "review",
+        "score": 1.7859177988785547e-102
+      },
+      {
+        "label": "security_review",
+        "score": 3.90441183309592e-46
+      },
+      {
+        "label": "code-review",
+        "score": 7.703719777548946e-40
+      },
+      {
+        "label": "deploy-preview",
+        "score": 2.9859840000000005e-11
+      }
+    ],
+    "mcp": [
+      {
+        "label": "mcp",
+        "score": 1.7859177988785547e-102
+      }
+    ],
+    "session": [
+      {
+        "label": "rewind",
+        "score": 1.4901161193847656e-8
+      },
+      {
+        "label": "fork",
+        "score": 1.4901161193847656e-8
+      },
+      {
+        "label": "model",
+        "score": 1.4901161193847656e-8
+      },
+      {
+        "label": "compact",
+        "score": 1.4901161193847656e-8
+      },
+      {
+        "label": "resume",
+        "score": 1.4901161193847656e-8
+      },
+      {
+        "label": "clear",
+        "score": 1.4901161193847656e-8
+      }
+    ],
+    "cmpact": [
+      {
+        "label": "compact",
+        "score": 0.00002143347050754457
+      }
+    ],
+    "deploy": [
+      {
+        "label": "deploy",
+        "score": 5.595448581308736e-59
+      },
+      {
+        "label": "deploy-preview",
+        "score": 7.3468396926393e-52
+      }
+    ],
+    "vercel": [
+      {
+        "label": "deploy",
+        "score": 7.346839692639297e-49
+      }
+    ]
+  }
+}
