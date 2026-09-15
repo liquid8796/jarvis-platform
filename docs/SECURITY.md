@@ -33,3 +33,9 @@ There is deliberately no maximum duration for an explicitly armed running Agent.
 The file boundary now checks the explicitly selected primary and additional directories, rather than only one root. Paths under unselected roots and links/junctions remain rejected. Directory selection is not an OS sandbox for arbitrary commands, browser operations or desktop input. Managed jobs can specify an explicit starting directory; they retain approval, ownership, timeout and cancellation controls.
 
 No new silent-action mode or full-permission settings are shipped in this version. The requested guard removal/native-consent changes were blocked by the editing platform. No live enrollment profile, local permission grants or remote service was changed during implementation/testing.
+
+## Stale desktop-state protection - 1.0.50
+
+Computer input is now bound to a fresh opaque observation state. A `stateId` is valid only for the session that observed it and only while it remains that session's current state. New observations, local Pause and any dispatched input batch invalidate older state. Stale/cross-session IDs fail before the baseline input tool runs. The token is synchronization metadata, not an authorization credential; Arm/Pause, tool permission, local approval, frontmost-app and denied-app checks still apply independently.
+
+The new accessibility snapshot is deliberately bounded and best-effort. It reads only information Windows UI Automation exposes to the current non-elevated user session, clips returned strings/nodes, and treats access exceptions as partial results. It does not request elevation or interact with UAC secure desktop.

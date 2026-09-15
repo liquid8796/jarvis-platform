@@ -9,6 +9,7 @@ public sealed class ToolInventory : IDisposable
 {
     private readonly BrowserBridge _browser;
     private readonly TeachController? _teach;
+    private readonly ComputerStateTracker _computerStates = new();
     public IReadOnlyList<IAgentTool> Tools { get; }
     public ToolInventory(IUserQuestions questions, IArtifactSink artifacts, Func<Window?>? mainWindow = null, string? settingsRoot = null)
     {
@@ -24,7 +25,14 @@ public sealed class ToolInventory : IDisposable
         if (mainWindow is not null) _teach = new TeachController(mainWindow, () => settings.Current);
         var tools = new List<IAgentTool>();
         void Add(string category, IEnumerable<ITool> source) => tools.AddRange(source.Select(t => new LegacyToolAdapter(t, category, questions, artifacts, root)));
-        Add("computer", ComputerUseTools.Create(settings, _teach));
+
+        var observer = new WindowsComputerObservationProvider();
+        var computer = ComputerUseTools.Create(settings, _teach)
+            .Select(tool => (IAgentTool)new LegacyToolAdapter(tool, "computer", questions, artifacts, root))
+            .Select(tool => (IAgentTool)new StatefulComputerToolAdapter(tool, _computerStates, observer));
+        tools.AddRange(computer);
+        tools.Add(new ComputerStateTool(_computerStates, observer));
+
         Add("browser", JarvisBrowserTools.Create(_browser, Path.Combine(root, "browser-images")));
         Add("visualize", VisualizeTools.Create());
         Add("filesystem", [new ReadFileTool(), new ReadDocumentTool(), new WriteFileTool(), new EditFileTool(),
@@ -34,6 +42,6 @@ public sealed class ToolInventory : IDisposable
         Add("workflow", [new TodoTool(), new AskUserQuestionTool()]);
         Tools = tools;
     }
-    public void Pause() => _teach?.End();
+    public void Pause() { _computerStates.InvalidateAll(); _teach?.End(); }
     public void Dispose() { Pause(); _browser.Dispose(); }
 }

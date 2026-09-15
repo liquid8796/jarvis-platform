@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.50 Stateful Computer Use - executed verification (2026-09-16)
+
+- Added session-scoped opaque computer state IDs/generations, stale/cross-session rejection, `computer.get_state`, bounded Windows UI Automation observation, and state-bound `computer.computer_batch`.
+- RED/GREEN evidence: tracker tests first failed because state contracts did not exist; adapter tests first failed because the stateful wrapper/provider interface did not exist; state-tool tests first failed because `computer.get_state` did not exist; inventory integration then failed until the new tool and state-required batch schema were wired.
+- Windows targeted suite: **28 passed, 0 failed** after adding 11 stateful-computer tests to the prior 17.
+- `dotnet test Jarvis.slnx --nologo`: **196 passed, 0 failed** (Core 91, Windows 28, Server 77).
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.50 and assembly/file 1.0.50.0. Existing vendor warnings remain unchanged; no package publish or production deployment was performed.
+
 ## 1.0.49 Dynamic Tool Host - executed verification (2026-09-16)
 
 - Added `DynamicToolRegistry`, lifecycle fan-out and optional thread/turn correlation. Ordinary calls and Task Gateway validation resolve the same current immutable tool snapshot; registry replacement does not grant local permission.

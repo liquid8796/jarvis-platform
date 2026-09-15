@@ -8,7 +8,7 @@ Counts below are derived from source registration, **not a captured tool list fr
 
 | Group | Desktop | CLI | Baseline / integration |
 |---|---:|---:|---|
-| Computer | 11 | 8 | Screenshot + computer_batch + six extras + three desktop-only teach tools |
+| Computer | 12 | 9 | Screenshot + state-bound computer_batch + computer.get_state + six extras + three desktop-only teach tools |
 | Browser | 19 | 19 | All 18 `JarvisBrowserTools.Create` tools + browser_batch |
 | Visualize | 2 | 2 | read_me + show_widget; actual host delivery replaces the baseline host-dependent show behavior |
 | Filesystem / document / notebook | 8 | 8 | ReadFile, ReadDocument, WriteFile, EditFile, ListDirectory, Glob, Grep, NotebookEdit |
@@ -16,7 +16,7 @@ Counts below are derived from source registration, **not a captured tool list fr
 | Shell | 2 | 2 | Normal and Bash variants; detached background mode disallowed |
 | Workflow | 2 | 2 | Todo and AskUserQuestion |
 | Managed process jobs | 3 | 3 | Added process.start/read/cancel |
-| **Expected total** | **52** | **49** | Subject to Windows build/runtime verification |
+| **Expected total** | **53** | **50** | Subject to Windows build/runtime verification |
 
 Mouse move/click/double-click/right-click/drag/scroll and keyboard actions already exist in the baseline computer batch/browser computer implementations. They are reused, not replaced with a new incomplete mouse simulator. This is not a binary clone of a specific Codex proprietary tool protocol.
 
@@ -31,3 +31,9 @@ Tool public names are namespaced (`computer__…`, `browser__…`, `filesystem__
 The original app has unrelated orchestration/provider/task/team/scheduling functionality. Its source remains available in `vendor`, but those capabilities are **not automatically exposed as remote tools**. This delivery does not register a dedicated DAP debugger, general-purpose subagent LLM runner, arbitrary MCP server spawning or screenshot video streaming service. New tools should implement `IAgentTool` and have explicit permission/schema tests.
 
 114 optional font binaries from bundled skill assets are omitted; `omitted-font-assets.json` lists paths. No required computer/browser C# implementation is removed. Existing third-party copyright/license notices remain with their source; review redistribution rights of baseline/reference-derived assets before public publication.
+
+## Jarvis state-bound Computer Use - 1.0.50
+
+The public Computer surface intentionally differs from the reused baseline: Jarvis adds `computer.get_state`, appends opaque state metadata to standalone screenshots, and requires a current `stateId` on `computer.computer_batch`. The state token is scoped to one remote session and becomes stale after another observation, explicit invalidation or input dispatch. This prevents blind reuse of coordinates from an older desktop snapshot while retaining the baseline implementation for actual input and screenshots.
+
+Foreground/focus/accessibility observation is bounded to 200 UI Automation nodes and 32,000 output characters. A target that denies UI Automation produces partial metadata; Jarvis does not escalate privileges or bypass Windows/UAC boundaries.

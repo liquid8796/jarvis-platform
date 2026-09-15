@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.50 - 2026-09-16
+
+- Add opaque per-session computer observation state IDs and generations; stale, evicted, invalidated or cross-session state fails closed before desktop input reaches the baseline tool.
+- Wrap `computer.computer_batch` with a required current `stateId`, strip Jarvis metadata before vendor dispatch, and invalidate the state after dispatch so coordinates cannot be blindly reused.
+- Add `computer.get_state` with foreground-window identity, focused UI Automation metadata and a bounded accessibility-tree snapshot; UIA access failure returns partial state without escalating privileges.
+- Append fresh state metadata to successful standalone screenshots and invalidate all computer state on local Pause/owned-activity stop.
+- Preserve existing app grants, denied-app handling, Arm/Pause, local approval and Full Permission boundaries.
+
 ## 1.0.49 - 2026-09-16
 
 - Add a runtime `DynamicToolRegistry` with immutable snapshots, catalog generations, canonical SHA-256 descriptor digests and precompiled local schemas.

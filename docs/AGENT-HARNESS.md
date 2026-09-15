@@ -38,3 +38,9 @@ The older `Autonomous/` folder remains compatibility scaffolding; in particular 
 
 Execution context now has optional `ThreadId`/`TurnId` correlation alongside the existing call/session identity. `AgentLifecycleHub` provides isolated `Interrupt`, `Stop` and `SubagentStop` notifications so browser/computer/plugin runtimes can clean up without one failing listener blocking another.
 
+## Stateful computer execution in 1.0.50
+
+The Windows adapter adds a `ComputerStateTracker` in front of the reused baseline computer tools. Observation states are opaque, session-scoped, bounded and generation-tracked. `computer.computer_batch` is schema-extended with `stateId`; validation happens before baseline execution and the state is invalidated after dispatch because success/failure does not prove the desktop stayed unchanged.
+
+`computer.get_state` provides bounded foreground/focus/accessibility context, while `computer.screenshot` appends fresh state metadata to its normal result. `ToolInventory.Pause()` invalidates every outstanding state. This layer does not weaken baseline frontmost-app checks, app grants or local consent.
+
