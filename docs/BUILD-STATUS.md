@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.53 Delegation / Durable Memory - executed verification (2026-09-16)
+
+- Added persisted task lineage, bounded same-scope child creation, fork/join polling, MCP/REST `parentTaskId`, and replaced the fake dictionary `SqliteMemoryStore` with partitioned durable SQLite memory.
+- RED/GREEN evidence: memory tests first failed on the missing database constructor/partition/upsert/search contracts; initial SQLite run then exposed pooled file handles and a NuGet High advisory on `SQLitePCLRaw.lib.e_sqlite3` 2.1.11. The final implementation uses non-pooled connections and pins Core 10.0.11 / SQLitePCLRaw 2.1.12; the advisory no longer appears. Delegation tests first failed at the internal host boundary, then verified persisted lineage, scope narrowing, depth/count caps and join; MCP integration verifies `parentTaskId` end-to-end.
+- Durable memory/delegation targeted group: **7 passed, 0 failed**; MCP parent-child integration: **1 passed, 0 failed**; Core suite: **112 passed, 0 failed**.
+- `dotnet test Jarvis.slnx --nologo`: **217 passed, 0 failed** (Core 112, Windows 28, Server 77).
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.53 and assembly/file 1.0.53.0. Existing vendor warnings remain; no package publish or production deployment was performed.
+
 ## 1.0.52 Restricted Tool Code Mode / Plugin SDK - executed verification (2026-09-16)
 
 - Added bounded `tool_program.run`, composite nested-call scheduling, local hash-pinned plugin manifests/catalog validation and hot plugin projection into the dynamic registry.

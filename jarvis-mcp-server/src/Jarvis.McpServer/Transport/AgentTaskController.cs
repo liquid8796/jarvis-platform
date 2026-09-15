@@ -14,6 +14,7 @@ public sealed record AgentTaskInput
 {
     public string? DeviceId { get; init; }
     public string? TaskId { get; init; }
+    [StringLength(36)] public string? ParentTaskId { get; init; }
     [Required, StringLength(8000)] public string Goal { get; init; } = "";
     [StringLength(1024)] public string? Project { get; init; }
     public string ExecutionMode { get; init; } = "NORMAL";
@@ -31,7 +32,7 @@ public sealed class AgentTaskController(AppDbContext db, AgentTaskService tasks)
     private static string Device(string? id) => Guid.TryParse(id, out _) ? id! : throw new ArgumentException("deviceId is required and must be a UUID.");
     [HttpPost]
     public async Task<IActionResult> Create(AgentTaskInput input, CancellationToken ct) =>
-        Respond(await tasks.SendAsync(await Owner(ct), Device(input.DeviceId), "create", input.TaskId, input.ToPlan(), 0, 20, ct), accepted: true);
+        Respond(await tasks.SendAsync(await Owner(ct), Device(input.DeviceId), "create", input.TaskId, input.ToPlan(), 0, 20, input.ParentTaskId, ct), accepted: true);
     [HttpPost("{taskId}/plan")]
     public async Task<IActionResult> Plan(string taskId, AgentTaskInput input, CancellationToken ct) =>
         Respond(await tasks.SendAsync(await Owner(ct), Device(input.DeviceId), "plan", taskId, input.ToPlan(), 0, 20, ct), accepted: true);

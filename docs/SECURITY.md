@@ -45,3 +45,9 @@ The new accessibility snapshot is deliberately bounded and best-effort. It reads
 Tool Code Mode is intentionally not a general scripting runtime. There is no dynamic evaluation, arbitrary process creation, direct file/network primitive or recursive `tool_program.run`. A program can cause effects only through nested published tools, and each nested call goes through the same local Arm/Pause, exact-ID standing permission, schema and approval checks as a top-level call. Tool-program Full Permission never propagates into an unrelated nested tool.
 
 Plugin discovery accepts only top-level local manifests, rejects path traversal and unsupported hooks, verifies a 64-hex SHA-256 pin for the referenced local entry file, and binds declarations only to implementations already present in the host process. Remote arbitrary plugin upload/loading remains unsupported.
+
+## Delegation and memory isolation - 1.0.53
+
+A `parentTaskId` is lineage metadata, not authority. The Agent loads the parent from the current owner's local store, requires identical resolved project/device scope, prevents execution-mode escalation, and enforces local child/depth bounds before persisting the child. The server cannot forge a different owner in the task request.
+
+Durable memory uses parameterized SQL and bounded keys/values/provenance/search limits. Partitions include owner, project and namespace in every lookup/upsert primary key; expired records are not returned. SQLite dependency versions are pinned above the vulnerable 2.1.11 native bundle observed by NuGet audit during implementation.

@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.52
+# Architecture decisions · 1.0.53
 
 ## Transport choice
 
@@ -52,3 +52,9 @@ Default composition supplies no model planner/coordinator. This keeps determinis
 Composite tools are orchestration surfaces, not alternate execution authorities. AgentConnection still owns the guarded nested invoker. The composite marker changes semaphore lifetime only: approval occurs before slots are released, and nested calls independently reacquire policy/limits.
 
 Plugin manifests are discovery/integrity metadata. Hash pins protect the referenced local entry file, but a manifest does not cause Jarvis to load that file. A host must provide matching `IAgentTool` instances explicitly; only those instances can be projected into the dynamic tool registry.
+
+## Delegation and memory boundary - 1.0.53
+
+Delegation does not introduce a second execution authority. Forked work is materialized as ordinary persisted RemoteTask records with explicit lineage and therefore traverses the same tool registry, local policy gates and no-replay logic as parent work. Scope inheritance is enforced locally, not trusted from the server or caller.
+
+Durable autonomous memory is SQLite-backed and explicitly partitioned; it is not an implicit global model memory. Owner/project/namespace are part of the primary key, TTL is enforced during reads, and provenance remains attached to each current value.

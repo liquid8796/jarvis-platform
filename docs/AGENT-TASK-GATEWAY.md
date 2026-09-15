@@ -77,3 +77,9 @@ Release 1.0.48 passed 177 tests across Core, Windows and Server suites, includin
 `AUTONOMOUS` now has an optional local coordinator extension point. If a configured coordinator returns a replacement after a known failed step/verification, the replacement must retain the logical step ID, cannot regress stage, is revalidated against the current installed-tool registry, and still requires local authorization. At most two adaptive repairs are attempted.
 
 This does not change goal creation: Jarvis still does not ship or silently configure an LLM planner. Without an injected coordinator, `AUTONOMOUS` behaves like the existing explicit client plan. NORMAL/READ_ONLY execution is unchanged. Cancellation, task deadline or uncertain interruption never enters adaptive repair.
+
+## Child-task lineage - 1.0.53
+
+`agent_task_create` may include optional `parentTaskId`. Child creation remains device-bound and owner-bound by the existing router and additionally requires the parent to exist in that same local task store. The child inherits the parent's resolved project, may only keep or narrow `executionMode`, has maximum lineage depth 3, and each parent can have at most 8 direct children.
+
+Snapshots expose `parentTaskId`, `rootTaskId` and `depth`; these fields survive agent restart because they are part of the durable snapshot. A child task is still an ordinary task for Arm/Pause, schema/permission checks, cancellation, process ownership and no-replay behavior.

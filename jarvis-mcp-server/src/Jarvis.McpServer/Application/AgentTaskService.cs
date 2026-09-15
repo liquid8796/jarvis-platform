@@ -11,8 +11,12 @@ public sealed class AgentTaskService(AppDbContext db, IAgentTaskRouter router, I
 {
     public bool SupportsTasks(string ownerId, string deviceId) => router.SupportsTasks(ownerId, deviceId);
 
+    public Task<RemoteTaskReply> SendAsync(string ownerId, string deviceId, string operation, string? taskId,
+        RemoteTaskPlan? plan, int offset, int limit, CancellationToken ct) =>
+        SendAsync(ownerId, deviceId, operation, taskId, plan, offset, limit, null, ct);
+
     public async Task<RemoteTaskReply> SendAsync(string ownerId, string deviceId, string operation, string? taskId,
-        RemoteTaskPlan? plan, int offset, int limit, CancellationToken ct)
+        RemoteTaskPlan? plan, int offset, int limit, string? parentTaskId, CancellationToken ct)
     {
         var device = await OwnedAsync(ownerId, deviceId, ct);
         if (!RemoteTaskRules.Operations.Contains(operation)) throw new ArgumentException("Unknown task operation.");
@@ -43,7 +47,7 @@ public sealed class AgentTaskService(AppDbContext db, IAgentTaskRouter router, I
         await audit.WriteAsync(new() { UserId = ownerId, DeviceId = deviceId, Action = "task." + operation,
             CorrelationId = id, Outcome = "requested" }, ct);
         RemoteTaskReply reply;
-        try { reply = await router.TaskAsync(ownerId, deviceId, operation, new(ownerId, id, plan, offset, limit), ct); }
+        try { reply = await router.TaskAsync(ownerId, deviceId, operation, new(ownerId, id, plan, offset, limit, parentTaskId), ct); }
         catch (OperationCanceledException)
         { reply = RemoteTaskReply.Failure("timeout", "Task acknowledgement timed out. Query taskId=" + id + " before retrying; completion may be unknown."); }
         catch (Exception ex) when (ex is IOException or System.Net.WebSockets.WebSocketException)

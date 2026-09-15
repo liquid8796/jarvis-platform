@@ -55,3 +55,9 @@ Task Gateway has a separate optional `IRemoteTaskAdaptiveCoordinator` with an ev
 `ToolProgramEngine` is a deterministic composite orchestrator with explicit instruction, nested-call, elapsed-time, loop-size and accumulated-output limits. It releases the outer execution/interactive semaphores after the program itself is approved, preventing nested tool deadlock; nested tools then acquire their own slots and authorization. `tool_program.run` remains mutating/sensitive so READ_ONLY task plans cannot use it as a policy escape.
 
 `PluginCatalog` validates only local metadata and SHA-256-pinned entry files. It never loads an assembly or downloads code. Declared tool IDs must match implementations explicitly supplied by the local host, and `AgentConnection.ApplyPluginCatalog` replaces only the prior plugin projection while preserving built-in tools.
+
+## Delegation and durable memory in 1.0.53
+
+Task lineage is persisted in the same local snapshots as ordinary task state. A child is created only from an existing same-owner parent on the same bound device; the Agent resolves the child project and rejects any difference from the parent, rejects broader execution modes, caps depth at 3 and direct children at 8. `RemoteTaskDelegation.JoinAsync` polls at most eight child IDs until terminal state and propagates caller cancellation.
+
+The former dictionary-backed `SqliteMemoryStore` now uses parameterized SQLite operations. `MemoryPartition` separates owner/project/namespace; `DurableMemoryEntry` carries provenance plus created/updated/expiry timestamps. WAL and bounded busy retry support concurrent writers, expired rows are removed/excluded on read, and result/query/value sizes are bounded.

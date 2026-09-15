@@ -32,6 +32,11 @@ internal sealed class RemoteTaskStore : IDisposable
     }
     public static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     public static string Digest(RemoteTaskPlan plan) => Hash(JsonSerializer.Serialize(plan, WireJson.Options));
+    public static string CreateDigest(RemoteTaskPlan plan, string? parentTaskId)
+    {
+        if (string.IsNullOrWhiteSpace(parentTaskId)) return Digest(plan);
+        return Hash(JsonSerializer.Serialize(new { plan, parentTaskId = RemoteTaskRules.TaskId(parentTaskId) }, WireJson.Options));
+    }
     private string FilePath(string owner, string id) => Path.Combine(_root, Hash(owner), RemoteTaskRules.TaskId(id) + ".json");
     public StoredRemoteTask? Load(string owner, string id)
     {
@@ -43,6 +48,19 @@ internal sealed class RemoteTaskStore : IDisposable
         return task;
     }
     public bool AtCapacity => Directory.EnumerateFiles(_root, "*.json", SearchOption.AllDirectories).Take(128).Count() >= 128;
+    public int CountChildren(string owner, string parentTaskId)
+    {
+        var canonical = RemoteTaskRules.TaskId(parentTaskId);
+        var directory = Path.Combine(_root, Hash(owner));
+        if (!Directory.Exists(directory)) return 0;
+        var count = 0;
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
+        {
+            var task = Read(path);
+            if (StringComparer.Ordinal.Equals(task.Snapshot.ParentTaskId, canonical)) count++;
+        }
+        return count;
+    }
     public void Save(StoredRemoteTask task)
     {
         var path = FilePath(task.OwnerId, task.Snapshot.TaskId);

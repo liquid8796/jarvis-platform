@@ -29,6 +29,12 @@ public sealed class AgentTaskMcpTests
         var reply = JsonSerializer.Deserialize<JsonElement>(create.GetProperty("content")[0].GetProperty("text").GetString()!);
         var id = reply.GetProperty("task").GetProperty("taskId").GetString();
         Assert.Equal("NEEDS_PLAN", reply.GetProperty("task").GetProperty("status").GetString());
+        var child = await CallAsync(client, "agent_task_create", new { goal = "MCP child fixture", parentTaskId = id, executionMode = "READ_ONLY" });
+        Assert.False(child.TryGetProperty("isError", out var childError) && childError.GetBoolean(), child.GetRawText());
+        var childReply = JsonSerializer.Deserialize<JsonElement>(child.GetProperty("content")[0].GetProperty("text").GetString()!);
+        Assert.Equal(id, childReply.GetProperty("task").GetProperty("parentTaskId").GetString());
+        Assert.Equal(id, childReply.GetProperty("task").GetProperty("rootTaskId").GetString());
+        Assert.Equal(1, childReply.GetProperty("task").GetProperty("depth").GetInt32());
         var get = await CallAsync(client, "agent_task_get", new { taskId = id });
         Assert.Contains("NEEDS_PLAN", get.GetRawText());
         var planned = await CallAsync(client, "agent_task_plan", new

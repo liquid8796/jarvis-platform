@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.53 - 2026-09-16
+
+- Add durable task lineage (`parentTaskId`, `rootTaskId`, `depth`) to task snapshots and persist it across agent restart/reopen while preserving top-level create digest compatibility.
+- Add bounded child-task creation: same owner/device/project, child execution mode may only stay equal or narrow, maximum depth 3 and maximum 8 direct children per parent.
+- Add `RemoteTaskDelegation.JoinAsync` for bounded fork/join coordination with cancellation and terminal-state polling; expose optional `parentTaskId` through REST and `agent_task_create` MCP input.
+- Replace the misleading in-memory `SqliteMemoryStore` with a real SQLite store using WAL, parameterized queries, owner/project/namespace partitions, provenance, upsert, TTL expiry and bounded search.
+- Pin SQLite dependencies to `Microsoft.Data.Sqlite.Core` 10.0.11 / `SQLitePCLRaw` 2.1.12 to avoid the 2.1.11 high-severity restore advisory observed during RED/GREEN work, and disable connection pooling so store disposal releases database files deterministically.
+
 ## 1.0.52 - 2026-09-16
 
 - Add `tool_program.run`, a bounded JSON interpreter with call/set/if/forEach/assert/return operations and hard instruction/tool-call/time/output budgets; it has no eval, shell escape or direct OS API.

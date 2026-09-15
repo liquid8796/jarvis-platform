@@ -40,19 +40,35 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
                 {
                     if (request.Plan is null) throw new ArgumentException("Task plan metadata is required.");
                     RemoteTaskRules.Validate(request.Plan);
-                    var digest = RemoteTaskStore.Digest(request.Plan);
+                    var planDigest = RemoteTaskStore.Digest(request.Plan);
+                    var createDigest = RemoteTaskStore.CreateDigest(request.Plan, request.ParentTaskId);
                     if (stored is not null)
-                        return Task.FromResult(stored.CreateDigest == digest ? new RemoteTaskReply(Task: stored.Snapshot)
+                        return Task.FromResult(stored.CreateDigest == createDigest ? new RemoteTaskReply(Task: stored.Snapshot)
                             : RemoteTaskReply.Failure("conflict", "taskId already belongs to a different request."));
                     RequireArmed();
                     var project = ResolveProject(request.Plan.Project);
+                    RemoteTaskLineage lineage;
+                    if (string.IsNullOrWhiteSpace(request.ParentTaskId))
+                    {
+                        lineage = RemoteTaskDelegation.Root(id);
+                    }
+                    else
+                    {
+                        var parentId = RemoteTaskRules.TaskId(request.ParentTaskId);
+                        if (StringComparer.Ordinal.Equals(parentId, id)) throw new ArgumentException("A task cannot be its own parent.");
+                        var parent = _store.Load(request.OwnerId, parentId) ?? throw new ArgumentException("Parent task was not found for this owner on this device.");
+                        if (_store.CountChildren(request.OwnerId, parentId) >= RemoteTaskDelegation.MaxChildren)
+                            return Task.FromResult(RemoteTaskReply.Failure("busy", $"Parent task already has the maximum {RemoteTaskDelegation.MaxChildren} children."));
+                        lineage = RemoteTaskDelegation.Child(parent, request.Plan, project);
+                    }
                     ValidateTools(request.Plan);
                     if (_store.AtCapacity) return Task.FromResult(RemoteTaskReply.Failure("busy", "Local task history is full (128). Archive terminal task files locally before creating more."));
                     if (request.Plan.Steps.Count > 0 && _active.Count >= 2) return Busy();
                     var now = DateTimeOffset.UtcNow;
                     var snapshot = new RemoteTaskSnapshot(id, request.Plan.Goal, project,
-                        request.Plan.Steps.Count == 0 ? "NEEDS_PLAN" : "QUEUED", null, 0, request.Plan.Steps.Count, now, now);
-                    stored = new(1, request.OwnerId, digest, request.Plan.Steps.Count == 0 ? null : digest,
+                        request.Plan.Steps.Count == 0 ? "NEEDS_PLAN" : "QUEUED", null, 0, request.Plan.Steps.Count, now, now,
+                        ParentTaskId: lineage.ParentTaskId, RootTaskId: lineage.RootTaskId, Depth: lineage.Depth);
+                    stored = new(1, request.OwnerId, createDigest, request.Plan.Steps.Count == 0 ? null : planDigest,
                         Clone(request.Plan), snapshot, []);
                     _store.Save(stored); // Acknowledge only after durable storage.
                     if (stored.Plan.Steps.Count > 0) Start(stored, sessionToken);
