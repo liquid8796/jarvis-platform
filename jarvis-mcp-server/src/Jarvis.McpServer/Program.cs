@@ -19,6 +19,7 @@ using OpenIddict.Server;
 using static OpenIddict.Server.OpenIddictServerEvents;
 using OpenIddict.Validation.AspNetCore;
 
+var releaseVersion = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "unknown";
 var builder = WebApplication.CreateBuilder(args);
 if (Environment.GetEnvironmentVariable("JARVIS_CONFIG_PATH") is { Length: > 0 } privateConfig)
     builder.Configuration.AddJsonFile(Path.GetFullPath(privateConfig), optional: false, reloadOnChange: false).AddEnvironmentVariables();
@@ -80,9 +81,11 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllersWithViews().AddJsonOptions(o => o.JsonSerializerOptions.PropertyNameCaseInsensitive = true);
 builder.Services.AddSingleton<WsAgentRouter>();
 builder.Services.AddSingleton<IAgentRouter>(s => s.GetRequiredService<WsAgentRouter>());
+builder.Services.AddSingleton<IAgentTaskRouter>(s => s.GetRequiredService<WsAgentRouter>());
+builder.Services.AddScoped<AgentTaskService>();
 builder.Services.AddSingleton<IAuditWriter, AuditWriter>();
 builder.Services.AddScoped<DeviceService>(); builder.Services.AddScoped<ToolCatalogService>(); builder.Services.AddScoped<McpGateway>();
-builder.Services.AddMcpServer(o => o.ServerInfo = new Implementation { Name = "jarvis-mcp-server", Version = "1.0.22" })
+builder.Services.AddMcpServer(o => o.ServerInfo = new Implementation { Name = "jarvis-mcp-server", Version = releaseVersion })
     .WithHttpTransport(o => o.Stateless = true)
     .WithListToolsHandler(async (context, ct) => await context.Services!.GetRequiredService<McpGateway>().ListAsync(ct))
     .WithCallToolHandler(async (context, ct) => await context.Services!.GetRequiredService<McpGateway>().CallAsync(context.Params!, ct));
@@ -142,7 +145,7 @@ app.Use(async (http, next) =>
 });
 app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(20) });
 app.UseDefaultFiles(); app.UseStaticFiles();
-app.MapGet("/health", () => Results.Ok(new { status = "ok", version = "1.0.22" }));
+app.MapGet("/health", () => Results.Ok(new { status = "ok", version = releaseVersion }));
 object Metadata() => new { resource = settings.Resource, authorization_servers = new[] { settings.PublicOrigin }, scopes_supported = new[] { CurrentAccess.Scope }, bearer_methods_supported = new[] { "header" } };
 app.MapGet("/.well-known/oauth-protected-resource", Metadata);
 app.MapGet("/.well-known/oauth-protected-resource/mcp", Metadata);

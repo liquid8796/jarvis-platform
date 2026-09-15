@@ -11,7 +11,10 @@ public sealed record ToolReply(string Text, bool IsError = false, IReadOnlyList<
     public static ToolReply Error(string message) => new(message, true);
 }
 public sealed record AgentHello(string DeviceId, string Version, string Platform, string MachineName,
-    IReadOnlyList<ToolDescriptor> Tools);
+    IReadOnlyList<ToolDescriptor> Tools)
+{
+    public int TaskProtocolVersion { get; init; }
+}
 public sealed record WireMessage(string Type)
 {
     public int Version { get; init; } = 1;
@@ -23,6 +26,9 @@ public sealed record WireMessage(string Type)
     public AgentHello? Hello { get; init; }
     public ToolReply? Result { get; init; }
     public long? Timestamp { get; init; }
+    public string? TaskOperation { get; init; }
+    public RemoteTaskRequest? TaskRequest { get; init; }
+    public RemoteTaskReply? TaskReply { get; init; }
 }
 public static class WireJson
 {

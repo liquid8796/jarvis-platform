@@ -1,5 +1,54 @@
 # Validated 1.0.24 release
 
+## 1.0.48 Task Gateway - executed verification (2026-09-16)
+
+Approach A is implemented as a device-bound server gateway and an agent-owned client-plan executor. This section supersedes only the new task-release status; older release/deployment records below are retained. No production deployment or live Agent restart was performed.
+
+### Commands executed
+
+```powershell
+.\scripts\Build.ps1 -Component All -ServerRuntime linux-arm64 -Offline
+python .\scripts\Verify-TaskGatewayRelease.py
+```
+
+Full solution Release build completed with 0 errors / 0 warnings. The subsequent win-x64 vendor publish emitted 38 warning lines from unchanged `vendor/jarvis-code`; no new task source warning was reported. Cached dependency/runtime resolution used a local empty NuGet source plus the existing package cache, with NuGet audit disabled only for offline resolution. No package source or runtime version was silently downloaded.
+
+| Suite | Passed | Failed | Skipped |
+|---|---:|---:|---:|
+| Jarvis.Core.Tests | 83 | 0 | 0 |
+| Jarvis.Agent.Windows.Tests | 17 | 0 | 0 |
+| Jarvis.Server.Tests | 77 | 0 | 0 |
+| **Total** | **177** | **0** | **0** |
+
+### Runtime evidence
+
+- Real `AgentConnection` connected to the authenticated TestServer WebSocket, using `ProcessToolSet`, not a fake planner/executor success stub. A synthetic C# program was patched, restored from an empty feed/cache, built, executed with an assertion, packaged into ZIP, and the ZIP entry verified through five submitted task steps.
+- OAuth DCR + PKCE token flow exercised all six custom MCP task operations, including plan execution, text artifact retrieval and cross-device rejection. Cookie APIs tested authentication/CSRF; per-step schema, read-only mode, disabled catalog tools, local pause/deny and standing-permission revocation were checked.
+- Exit code failure prevents later stages. Tests covered idempotent create/plan, conflicting payloads, safe-read retry, pagination, retained-output assertions, timeout partial logs, task deadline classification, cancellation of owned jobs, transport reconnect without replay and interrupted snapshot recovery.
+- Red/green logs exist for missing HTTP endpoints, missing MCP task discovery, stale health version, deadline/output handling, and a false success caused by matching discarded log output. They are diagnostic failure reproductions, not final-suite failures.
+- Published CLI `help` returned `Jarvis Agent 1.0.48`. Published agent/core/protocol/server assembly and file versions were inspected as 1.0.48.0. Desktop UI and native Linux execution were not smoke-tested in this patch; Linux ARM64 ELF layout and package contents were validated.
+
+### Release artifacts
+
+| Artifact | Bytes | Archive file entries | SHA-256 |
+|---|---:|---:|---|
+| `Jarvis-Agent-1.0.48-win-x64.zip` | 176643683 | 2514 | `01a128d66918ce6de04703f0430bf37ebde9b5e37e980821f94f41db729933c8` |
+| `jarvis-mcp-server-1.0.48-linux-arm64.tar.gz` | 51238505 | 407 | `15fce4dcb7af327bd5d55df160e39d4fe72472c5deb6bab702ab5fbff4db76b4` |
+
+ZIP CRC and gzip end-of-stream integrity passed. Every archived file SHA-256 and member set matched its publish directory. Checked private-key/certificate/runtime-config/database/font filenames were absent, standalone vendor app entry points were excluded, and the required desktop/CLI/server entry points were present. This is a defined package policy check, not a claim that arbitrary tool logs can never contain sensitive information.
+
+Full machine-readable evidence: `artifacts/verification/1.0.48/verification.json`; build/test/publish log: `artifacts/verification/1.0.48/build-test-package.log`; release TRX files: `artifacts/test-results/1.0.48/`. Each package has a `.sha256` companion.
+
+### Review and boundaries
+
+Focused inline review checked owner/device isolation, additive protocol compatibility, sharing the original local tool permission path, process completion rather than launch acknowledgement, bounded logs/limits, non-replay behavior and documentation preservation. No independent reviewer/subagent was available or claimed. README/API/Agent-Harness baseline bytes and changelog history were checked programmatically; no vendor source was changed.
+
+Goal-only tasks are `NEEDS_PLAN`; the client supplies steps and any repair decisions. Persistence is atomic local JSON, not SQLite or semantic memory. Existing `Autonomous/` classes remain compatibility scaffolding. Catalog availability is checked at acceptance and local authorization at each step. Existing tasks are stopped explicitly by cancellation/pause/device revocation rather than reinterpreting a previously accepted plan. The gateway does not claim Codex parity, automatic code repair, multi-day autonomous inference, exactly-once side effects or live production activation.
+
+Both server and agent must be upgraded for task-v1. Existing OAuth registration and enrollment secrets remain external and unchanged. The release binaries were produced and verified from this working tree before the final source/documentation commit; verification report hashes identify the exact delivered archives.
+
+---
+
 The updated uploaded source was built in this isolated validation tree. Core: 64 passed; Windows adapters: 17 passed; Server: 54 passed. Desktop/CLI win-x64 self-contained publish and isolated WPF permission-tab smoke passed (52 tools). All ZIP CRC checks and seven executable icon sizes passed. Full release evidence: artifacts/verification/release-1.0.24.json. The original project and live enrollment/permission settings were not modified. The complete source archive returned in the conversation contains the updated operator documentation and vendor modification ledger. Historical entries below describe older releases, not this build.
 
 # Verification status - Jarvis 1.0.21 - 2026-09-15

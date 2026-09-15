@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.48 - 2026-09-16
+
+- Add an authenticated Task Gateway over the existing outbound agent WebSocket, with additive task-v1 capability negotiation; older agents retain ordinary tool calls.
+- Expose create, submit-plan, status, paged artifacts and cancellation HTTP APIs plus six OAuth-device-bound MCP task tools and canonical installed-tool schema discovery.
+- Run client-supplied engineering plans through the same installed-tool schema, local Arm, standing-permission and explicit-approval gates as ordinary tool calls. Task modes do not grant permissions.
+- Persist bounded task snapshots and text artifacts atomically on the agent; repeated identical IDs do not replay actions, changed payloads conflict, and interrupted work never automatically resumes.
+- Wire real owned process start/read/cancel to step execution and wait for actual exit codes. Preserve partial output on timeout/cancel, stop later stages after failure, and permit bounded retries only for non-sensitive read-only tools.
+- Distinguish FAILED task deadlines from INTERRUPTED transport loss. Retain original README/changelog history, use assembly-derived health/CLI versions, and align package/assembly/file versions at 1.0.48 / 1.0.48.0.
+- Add offline cache-only packaging and a full-solution build before release tests. Keep NoRestore semantics consistent for agent and server publishing.
+- Scope: goal-only requests remain NEEDS_PLAN until a client supplies steps. This release is not a configured LLM planner or SQLite memory implementation, does not deploy/restart live services, and makes no Codex-parity claim. See docs/AGENT-TASK-GATEWAY.md and docs/BUILD-STATUS.md for executed evidence.
+
+
 ## 1.0.23 - 2026-09-15
 
 - Recognize the seven required System.Private.* framework DLL filenames during packaging; continue rejecting private configuration, credentials and font binaries.

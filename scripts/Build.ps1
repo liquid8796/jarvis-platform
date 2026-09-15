@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param([ValidateSet('All','Server','Agent')][string]$Component='All',
       [ValidateSet('linux-x64','linux-arm64')][string]$ServerRuntime='linux-arm64',
-      [switch]$NoRestore, [switch]$SkipTests)
+      [switch]$NoRestore, [switch]$SkipTests, [switch]$Offline)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 $version=(Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim()
@@ -10,15 +10,28 @@ Push-Location $root
 try {
   $sdk=& dotnet --version
   if ($LASTEXITCODE -ne 0 -or $sdk -notmatch '^10\.') { throw '.NET 10 SDK is required.' }
-  function Run-Dotnet([string[]]$Arguments) { & dotnet @Arguments; if($LASTEXITCODE -ne 0){throw "dotnet failed: $($Arguments -join ' ')"} }
+  # Offline restores resolve only already cached packages and SDK packs; never consult remote feeds.
+  $offlineArgs=@()
+  if($Offline){
+    $feed=Join-Path $root 'artifacts/empty-feed'
+    New-Item -ItemType Directory -Force -Path $feed | Out-Null
+    $offlineArgs=@("-p:RestoreSources=$feed",'-p:NuGetAudit=false')
+  }
+  function Run-Dotnet([string[]]$Arguments) {
+    & dotnet @Arguments @offlineArgs
+    if($LASTEXITCODE -ne 0){throw "dotnet failed: $($Arguments -join ' ')"}
+  }
   $restore=@(); if($NoRestore){$restore=@('--no-restore')}
-  $restorePublish=@()
+  $restorePublish=$restore
+  $resultsDirectory="artifacts/test-results/$version"
+  # Build before tests/publish. Keep the full solution so all production entry points compile.
+  Run-Dotnet (@('build','Jarvis.slnx','-c','Release')+$restore)
   if(-not $SkipTests){
-    Run-Dotnet (@('test','tests/Jarvis.Core.Tests','-c','Release','--logger','trx','--results-directory','artifacts/test-results')+$restore)
+    Run-Dotnet (@('test','tests/Jarvis.Core.Tests','-c','Release','--logger','trx','--results-directory',$resultsDirectory)+$restore)
     if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
-      Run-Dotnet (@('test','tests/Jarvis.Agent.Windows.Tests','-c','Release','--logger','trx','--results-directory','artifacts/test-results')+$restore)
+      Run-Dotnet (@('test','tests/Jarvis.Agent.Windows.Tests','-c','Release','--logger','trx','--results-directory',$resultsDirectory)+$restore)
     }
-    Run-Dotnet (@('test','tests/Jarvis.Server.Tests','-c','Release','--logger','trx','--results-directory','artifacts/test-results')+$restore)
+    Run-Dotnet (@('test','tests/Jarvis.Server.Tests','-c','Release','--logger','trx','--results-directory',$resultsDirectory)+$restore)
   }
   if($Component -in 'All','Server'){
     $out="artifacts/server/$version-$ServerRuntime"

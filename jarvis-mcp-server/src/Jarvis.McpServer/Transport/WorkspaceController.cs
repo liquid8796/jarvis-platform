@@ -37,6 +37,6 @@ public sealed class WorkspaceController(AppDbContext db, DeviceService devices) 
         return new { devices = list.Count, online = list.Count(d => d.Online),
             tools = await db.Tools.CountAsync(t => t.Enabled, ct),
             callsToday = await db.Audit.CountAsync(a => a.UserId == owner && a.Time >= today && a.Outcome == "started" && a.Action.StartsWith("tool."), ct),
-            version = "1.0.22", transport = "MCP Streamable HTTP / agent WebSocket TLS" };
+            version = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "unknown", transport = "MCP Streamable HTTP / agent WebSocket TLS" };
     }
 }

@@ -115,3 +115,9 @@ Goal -> Planner -> Executor -> Tool Router -> MCP Tools -> Artifact -> Verificat
 Core remains framework independent and integrations are provided by adapters.
 
 Packaging supports win-x64 runtime assets for Agent delivery.
+
+## Task Gateway (1.0.48)
+
+The MCP server now routes durable client-planned tasks to the local agent over the existing authenticated WebSocket. HTTP lifecycle APIs and six device-bound MCP task tools support goal creation, explicit plan submission, status, paged output artifacts, cancellation and installed-tool schema discovery. Goal-only input returns `NEEDS_PLAN`: no model planner is silently assumed.
+
+Agent execution reuses local permissions, waits for process exit codes, retains bounded output and stores snapshots outside the repository. Reconnect/restart does not replay uncertain actions. Both the server and agent need this release for task-v1; older agents still support ordinary tools. Detailed usage and boundaries: [Task Gateway](docs/AGENT-TASK-GATEWAY.md). Build with `.\scripts\Build.ps1 -Component All -ServerRuntime linux-arm64 -Offline` when dependencies and runtime packs are cached. Executed release evidence is recorded in [Build status](docs/BUILD-STATUS.md).

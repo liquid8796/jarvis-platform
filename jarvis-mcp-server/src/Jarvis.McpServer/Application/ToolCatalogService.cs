@@ -17,6 +17,7 @@ public sealed partial class ToolCatalogService(AppDbContext db, IAuditWriter aud
     public async Task<ToolEntry> SaveAsync(string actor, string? id, string name, string agentToolId,
         string description, bool enabled, string? revision, CancellationToken ct)
     {
+        if (RemoteTaskRules.IsReservedName(name)) throw new ArgumentException("The agent_task_ prefix is reserved for the task gateway.");
         if (!NamePattern().IsMatch(name)) throw new ArgumentException("Tool name must be 1..64 letters, digits, underscores or hyphens.");
         var installed = (await InstalledAsync(ct)).SingleOrDefault(t => t.Id == agentToolId)
             ?? throw new ArgumentException("Connect an agent providing this capability before registering it.");
@@ -73,7 +74,7 @@ public sealed partial class ToolCatalogService(AppDbContext db, IAuditWriter aud
         var count = 0;
         foreach (var tool in installed.Where(t => !existing.Contains(t.Id)))
         {
-            if (!NamePattern().IsMatch(tool.Name) || !names.Add(tool.Name)) continue;
+            if (RemoteTaskRules.IsReservedName(tool.Name) || !NamePattern().IsMatch(tool.Name) || !names.Add(tool.Name)) continue;
             db.Tools.Add(new() { Name = tool.Name, AgentToolId = tool.Id, Description = tool.Description, Category = tool.Category, Enabled = false }); count++;
         }
         await db.SaveChangesAsync(ct);

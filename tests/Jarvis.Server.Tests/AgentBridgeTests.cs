@@ -23,6 +23,10 @@ public sealed class AgentBridgeTests
         using var scope=app.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var owner=(await db.Devices.AsNoTracking().SingleAsync(d=>d.Id==deviceId)).OwnerId;
         var router=app.Services.GetRequiredService<IAgentRouter>();Assert.True(router.IsOnline(owner,deviceId));Assert.False(router.IsOnline("other-owner",deviceId));
+        var taskRouter=app.Services.GetRequiredService<IAgentTaskRouter>();
+        Assert.False(taskRouter.SupportsTasks(owner,deviceId));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => taskRouter.TaskAsync(owner,deviceId,"create",
+            new RemoteTaskRequest(owner,Guid.NewGuid().ToString("N"),new RemoteTaskPlan{Goal="legacy peer"}),timeout.Token));
         var pending=router.CallAsync(owner,deviceId,"test.echo",WireJson.Element(new{text="hello"}),"test",timeout.Token);
         var call=await wire.ReceiveAsync(timeout.Token);Assert.Equal("call",call!.Type);Assert.Equal("test.echo",call.ToolId);
         await wire.SendAsync(new("result"){Id=call.Id,Result=new("echo: hello")},timeout.Token);

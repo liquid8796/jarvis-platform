@@ -50,6 +50,7 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                     t.InputSchema.GetRawText().Length > 65536) || hello.Tools.Select(t => t.Id).Distinct().Count() != hello.Tools.Count)
                 throw new InvalidDataException("Invalid agent manifest.");
             foreach (var descriptor in hello.Tools) _ = SchemaGuard.Compile(descriptor.InputSchema);
+            peer.TaskProtocolVersion = hello.TaskProtocolVersion;
             // A new connection replaces only this enrolled device, never other users' connections.
             _peers.AddOrUpdate(device.Id, peer, (_, previous) => { previous.Wire.Abort(); return peer; });
             var current = await db.Devices.SingleAsync(d => d.Id == device.Id, stop.Token);
@@ -71,6 +72,9 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                     {
                         case "ping": await peer.Wire.SendAsync(new WireMessage("pong") { Timestamp = message.Timestamp }, stop.Token); break;
                         case "pong": break;
+                        case "task.result" when message.Id is not null && message.TaskReply is not null:
+                            if (peer.TaskPending.TryRemove(message.Id, out var taskCompletion)) taskCompletion.TrySetResult(message.TaskReply);
+                            break;
                         case "result" when message.Id is not null && message.Result is not null:
                             if (peer.Pending.TryRemove(message.Id, out var completion)) completion.TrySetResult(message.Result);
                             break;
@@ -87,6 +91,8 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             ((ICollection<KeyValuePair<string, Peer>>)_peers).Remove(new(device.Id, peer));
             foreach (var completion in peer.Pending.Values)
                 completion.TrySetException(new IOException("Agent disconnected. Completion is unknown; inspect state before repeating a mutating command."));
+            foreach (var completion in peer.TaskPending.Values)
+                completion.TrySetException(new IOException("Agent disconnected; task acknowledgement or completion may be unknown."));
             peer.Wire.Abort();
         }
     }
@@ -147,5 +153,7 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
         public long LastActivity = Environment.TickCount64;
         public SemaphoreSlim Slots { get; } = new(4, 4);
         public ConcurrentDictionary<string, TaskCompletionSource<ToolReply>> Pending { get; } = new();
+        public int TaskProtocolVersion { get; set; }
+        public ConcurrentDictionary<string, TaskCompletionSource<RemoteTaskReply>> TaskPending { get; } = new();
     }
 }

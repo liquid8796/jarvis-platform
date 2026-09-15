@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Jarvis.McpServer.Domain;
+using Jarvis.McpServer.Application;
 using Jarvis.McpServer.Infrastructure;
 using Jarvis.McpServer.Security;
 using Jarvis.Protocol;
@@ -11,7 +12,7 @@ using ModelContextProtocol.Protocol;
 namespace Jarvis.McpServer.Transport;
 
 /// <summary>Dynamic registry adapter. Permissions and schema come from the bound device, never from caller-supplied routing arguments.</summary>
-public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWriter audit, IHttpContextAccessor http)
+public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWriter audit, IHttpContextAccessor http, AgentTaskService tasks)
 {
     private HttpContext Http => http.HttpContext ?? throw new InvalidOperationException("MCP HTTP request required.");
     public async Task<ListToolsResult> ListAsync(CancellationToken ct)
@@ -21,18 +22,20 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
         var entries = await db.Tools.AsNoTracking().Where(t => t.Enabled).OrderBy(t => t.Name).ToListAsync(ct);
         return new ListToolsResult
         {
-            Tools = entries.Where(t => capabilities.ContainsKey(t.AgentToolId)).Select(t => new Tool
+            Tools = entries.Where(t => capabilities.ContainsKey(t.AgentToolId) && !RemoteTaskRules.IsReservedName(t.Name)).Select(t => new Tool
             {
                 Name = t.Name, Description = t.Description,
                 InputSchema = capabilities[t.AgentToolId].InputSchema,
                 Annotations = new ToolAnnotations { ReadOnlyHint = capabilities[t.AgentToolId].ReadOnly,
                     DestructiveHint = !capabilities[t.AgentToolId].ReadOnly, OpenWorldHint = true }
-            }).ToList()
+            }).Concat(tasks.SupportsTasks(user.Id, device.Id) ? AgentTaskMcpTools.List() : []).ToList()
         };
     }
     public async Task<CallToolResult> CallAsync(CallToolRequestParams request, CancellationToken ct)
     {
         var (user, device) = await CurrentAccess.RequireMcpAsync(Http, db, ct);
+        if (RemoteTaskRules.IsReservedName(request.Name))
+            return await AgentTaskMcpTools.CallAsync(tasks, user.Id, device.Id, request, ct);
         var entry = await db.Tools.AsNoTracking().SingleOrDefaultAsync(t => t.Name == request.Name && t.Enabled, ct);
         if (entry is null) return Error("Tool is disabled or unknown. Refresh the tool list.");
         var capabilities = await CapabilitiesAsync(user.Id, device.Id, ct);

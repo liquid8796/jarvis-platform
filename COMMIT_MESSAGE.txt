@@ -1,1 +1,1 @@
-feat(agent): add multi-directory workspaces and integrate Jarvis branding
+feat(tasks): integrate device-bound agent task gateway
