@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.52 Restricted Tool Code Mode / Plugin SDK - executed verification (2026-09-16)
+
+- Added bounded `tool_program.run`, composite nested-call scheduling, local hash-pinned plugin manifests/catalog validation and hot plugin projection into the dynamic registry.
+- RED/GREEN evidence: tool-program tests first failed because the interpreter namespace did not exist; plugin tests first failed because the plugin catalog did not exist; connection projection tests failed until host registration and plugin projection APIs were wired. A compile rerun also identified/fixed one missing protocol import and two unused interpreter-state constructor parameters.
+- Tool-program/plugin targeted group: **8 passed, 0 failed**. Core suite: **105 passed, 0 failed**.
+- `dotnet test Jarvis.slnx --nologo`: **210 passed, 0 failed** (Core 105, Windows 28, Server 77).
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.52 and assembly/file 1.0.52.0. Plugin manifests do not load/download arbitrary code; no production deployment was performed.
+
 ## 1.0.51 Adaptive Harness - executed verification (2026-09-16)
 
 - Added validated adaptive dependency DAGs, async per-action execution/verification, bounded replacement of only the failed logical action, and optional `AUTONOMOUS` Task Gateway repair coordination.

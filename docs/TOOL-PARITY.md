@@ -37,3 +37,7 @@ The original app has unrelated orchestration/provider/task/team/scheduling funct
 The public Computer surface intentionally differs from the reused baseline: Jarvis adds `computer.get_state`, appends opaque state metadata to standalone screenshots, and requires a current `stateId` on `computer.computer_batch`. The state token is scoped to one remote session and becomes stale after another observation, explicit invalidation or input dispatch. This prevents blind reuse of coordinates from an older desktop snapshot while retaining the baseline implementation for actual input and screenshots.
 
 Foreground/focus/accessibility observation is bounded to 200 UI Automation nodes and 32,000 output characters. A target that denies UI Automation produces partial metadata; Jarvis does not escalate privileges or bypass Windows/UAC boundaries.
+
+## Tool Code Mode and plugin projection - 1.0.52
+
+Jarvis now adds the host-owned `tool_program.run` composite tool in Agent Core. It is deliberately smaller than an unrestricted Node/Python REPL but supports conditional and bounded iterative composition while retaining per-tool policy checks. Plugin manifests may extend the dynamic catalog only when the local host already supplies the implementation; the SDK does not claim binary compatibility with Codex plugins and does not execute manifest-referenced code.

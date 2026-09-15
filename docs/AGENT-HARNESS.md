@@ -49,3 +49,9 @@ The Windows adapter adds a `ComputerStateTracker` in front of the reused baselin
 `AdaptivePlan` validates 1..32 actions, dependency existence/cycles, stage names and a 0..3 repair budget. `AdaptiveAgentExecutionLoop` executes dependency-ready actions, verifies each result and asks an injected replanner only for the failed action. A replacement must keep the logical action ID, have no unmet dependencies and consumes the bounded repair budget. Completed actions are never replayed by this loop.
 
 Task Gateway has a separate optional `IRemoteTaskAdaptiveCoordinator` with an even tighter two-repair cap. It is active only for `AUTONOMOUS`, never for cancellation/timeout, and replacement steps are passed through `RemoteTaskRules`, installed schema validation and the guarded local tool invoker. No coordinator is configured by default.
+
+## Restricted tool programs and plugins in 1.0.52
+
+`ToolProgramEngine` is a deterministic composite orchestrator with explicit instruction, nested-call, elapsed-time, loop-size and accumulated-output limits. It releases the outer execution/interactive semaphores after the program itself is approved, preventing nested tool deadlock; nested tools then acquire their own slots and authorization. `tool_program.run` remains mutating/sensitive so READ_ONLY task plans cannot use it as a policy escape.
+
+`PluginCatalog` validates only local metadata and SHA-256-pinned entry files. It never loads an assembly or downloads code. Declared tool IDs must match implementations explicitly supplied by the local host, and `AgentConnection.ApplyPluginCatalog` replaces only the prior plugin projection while preserving built-in tools.

@@ -29,6 +29,8 @@ public interface IAgentTool
     ToolDescriptor Descriptor { get; }
     Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context, CancellationToken cancellationToken);
 }
+/// <summary>Marker for orchestrators whose own execution slots must be released before nested guarded tool calls.</summary>
+public interface ICompositeAgentTool : IAgentTool { }
 public interface IApprovalService
 {
     Task<bool> ApproveAsync(ToolDescriptor tool, JsonElement arguments, CancellationToken cancellationToken);

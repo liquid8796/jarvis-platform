@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.51
+# Architecture decisions · 1.0.52
 
 ## Transport choice
 
@@ -46,3 +46,9 @@ Archive is a source release, not evidence that these workflows have all passed r
 Adaptive orchestration is an Agent Core policy layer, not a new authority. Plans are validated DAGs and repairs can replace only the currently failed logical action; completed actions are not replayed. The Task Gateway coordinator hook is optional and receives no direct tool execution capability: returned replacement steps go back through local schema validation and `AgentConnection` guarded invocation.
 
 Default composition supplies no model planner/coordinator. This keeps deterministic task execution and security behavior stable while providing a concrete extension point for a future model/plugin planner.
+
+## Composite tool and plugin boundary - 1.0.52
+
+Composite tools are orchestration surfaces, not alternate execution authorities. AgentConnection still owns the guarded nested invoker. The composite marker changes semaphore lifetime only: approval occurs before slots are released, and nested calls independently reacquire policy/limits.
+
+Plugin manifests are discovery/integrity metadata. Hash pins protect the referenced local entry file, but a manifest does not cause Jarvis to load that file. A host must provide matching `IAgentTool` instances explicitly; only those instances can be projected into the dynamic tool registry.

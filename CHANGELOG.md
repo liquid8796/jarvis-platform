@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.52 - 2026-09-16
+
+- Add `tool_program.run`, a bounded JSON interpreter with call/set/if/forEach/assert/return operations and hard instruction/tool-call/time/output budgets; it has no eval, shell escape or direct OS API.
+- Route every nested program call back through the existing guarded local invoker so nested tools independently enforce installed schema, Arm/Pause, exact permission and approval policy; recursive program calls are rejected.
+- Add composite-tool scheduling so the outer orchestrator releases execution/interactive slots after approval before nested calls, avoiding nested-call semaphore deadlocks without weakening nested policy.
+- Add local plugin manifest/catalog contracts with min-agent-version checks, entry-file SHA-256 pins, bounded declarations, supported lifecycle hook names and path-traversal rejection.
+- Bind plugin declarations only to locally supplied implementations and hot-project validated plugin tools into `DynamicToolRegistry`; manifests do not download or load arbitrary remote code.
+
 ## 1.0.51 - 2026-09-16
 
 - Add validated adaptive DAG contracts plus an async plan/execute/verify/replan loop that never replays already verified actions.

@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text.Json;
+using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.RemoteTasks;
+using Jarvis.Agent.Core.ToolPrograms;
 using Jarvis.Protocol;
 namespace Jarvis.Agent.Core;
 
@@ -24,6 +26,8 @@ public sealed class AgentConnection : IAsyncDisposable
     private readonly ConcurrentDictionary<string, Task> _tasks = new();
     private readonly ConcurrentDictionary<string, (DateTimeOffset At, ToolReply Reply)> _completed = new();
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly object _pluginSync = new();
+    private HashSet<string> _pluginToolIds = new(StringComparer.Ordinal);
     private WireSocket? _current;
     private int _started;
     private long _lastPong;
@@ -50,7 +54,36 @@ public sealed class AgentConnection : IAsyncDisposable
         _gate.Changed += OnGateChanged;
         _permissions = permissions ?? new ToolPermissionPolicy();
         _permissions.PermissionsRevoked += CancelInFlight;
+        EnsureCompositeTools();
     }
+
+    private void EnsureCompositeTools()
+    {
+        var snapshot = _registry.Snapshot;
+        if (snapshot.Tools.ContainsKey("tool_program.run")) return;
+        var program = new ToolProgramTool(new ToolProgramEngine(InvokeInstalledToolAsync));
+        _registry.Replace(snapshot.Tools.Values.Append(program));
+    }
+    public void ApplyPluginCatalog(PluginCatalogSnapshot catalog)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        lock (_pluginSync)
+        {
+            EnsureCompositeTools();
+            var current = _registry.Snapshot.Tools.Values
+                .Where(tool => !_pluginToolIds.Contains(tool.Descriptor.Id))
+                .ToDictionary(tool => tool.Descriptor.Id, StringComparer.Ordinal);
+            foreach (var pair in catalog.Tools)
+            {
+                if (current.ContainsKey(pair.Key))
+                    throw new ArgumentException("Plugin tool ID conflicts with an installed non-plugin tool: " + pair.Key);
+                current.Add(pair.Key, pair.Value);
+            }
+            _registry.Replace(current.Values);
+            _pluginToolIds = catalog.Tools.Keys.ToHashSet(StringComparer.Ordinal);
+        }
+    }
+
     private void OnGateChanged(bool armed)
     { if (!armed) _remoteTasks?.CancelAll("CANCELLED"); }
     private void CancelInFlight()
@@ -223,6 +256,7 @@ public sealed class AgentConnection : IAsyncDisposable
             var snapshot = _registry.Snapshot;
             if (!snapshot.Tools.TryGetValue(toolId, out var tool)) throw new InvalidOperationException("Tool is not installed on this agent.");
             if (!SchemaGuard.Matches(snapshot.Schemas[toolId], arguments)) throw new ArgumentException("Arguments do not match the local tool schema.");
+            var composite = tool is ICompositeAgentTool;
             await _parallel.WaitAsync(ct); acquired = true;
             if (!tool.Descriptor.ReadOnly || tool.Descriptor.Sensitive)
             { await _interactive.WaitAsync(ct); interactiveAcquired = true; }
@@ -231,6 +265,11 @@ public sealed class AgentConnection : IAsyncDisposable
                 throw new UnauthorizedAccessException("The local user denied this action.");
             ct.ThrowIfCancellationRequested();
             if (!_gate.IsArmed) throw new UnauthorizedAccessException("Local control was paused.");
+            if (composite)
+            {
+                if (interactiveAcquired) { _interactive.Release(); interactiveAcquired = false; }
+                if (acquired) { _parallel.Release(); acquired = false; }
+            }
             Emit("tool", "Started " + tool.Descriptor.Name);
             var result = await tool.ExecuteAsync(arguments,
                 context with { FullPermission = _permissions.HasFullPermission(toolId) }, ct);

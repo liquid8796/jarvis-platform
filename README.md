@@ -1,6 +1,6 @@
-# Jarvis Control - 1.0.51
+# Jarvis Control - 1.0.52
 
-**Version 1.0.51 adds a bounded adaptive agent harness: validated DAG plans, per-action verification and repair, and optional AUTONOMOUS Task Gateway repair coordination without changing deterministic NORMAL/READ_ONLY execution or local permission gates.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
+**Version 1.0.52 adds restricted Tool Code Mode and a local plugin SDK: conditional multi-tool programs stay inside hard budgets and re-enter Jarvis policy per nested call, while hash-pinned manifests can publish only implementations already supplied locally.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
 
 Jarvis Control là control plane cho MCP; Jarvis Agent là ứng dụng C# .NET 10 trên Windows 10/11, gồm WPF desktop và CLI. Tên web được chọn vì yêu cầu ban đầu chưa điền tên. Một repository chứa hai project sản phẩm và shared protocol; giữ nguyên các thư mục `shared` và `vendor` khi mở solution con.
 
@@ -34,7 +34,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.51/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.51/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
+Build thành công sẽ tạo `artifacts/agent/1.0.52/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.52/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
 
 ## Chạy local
 
@@ -51,10 +51,10 @@ Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.51\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.51\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.51\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.51\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.52\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.52\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.52\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.52\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -100,7 +100,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.51**, assembly/file **1.0.51.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.52**, assembly/file **1.0.52.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 
@@ -135,4 +135,10 @@ Wire calls may carry optional `threadId` and `turnId` correlation, and local run
 Agent Core now includes `AdaptiveAgentExecutionLoop` with validated dependency DAGs, async execution/verification and bounded replacement of only the failed logical action. Verified predecessors are not replayed by the adaptive loop. `AgentConnection` can optionally inject an `IRemoteTaskAdaptiveCoordinator`; Task Gateway uses it only for `AUTONOMOUS` tasks and never after cancellation/timeout.
 
 The default hosts do not configure a model planner, so goal-only tasks still return `NEEDS_PLAN` and NORMAL/READ_ONLY plans retain the 1.0.48 deterministic semantics. Every adaptive replacement is revalidated against the installed local tool schema and then traverses the same Arm/Pause, exact-permission and approval path.
+
+## Restricted Tool Code Mode and Plugins (1.0.52)
+
+`tool_program.run` executes only a small JSON instruction language (`call`, `set`, `if`, bounded `forEach`, `assert`, `return`). It has no `eval`, reflection, direct filesystem/network API or shell primitive. Each nested `call` is sent back through `AgentConnection`'s guarded invoker and is independently checked for local installation/schema/Arm/Pause/permission/approval. The outer composite tool is still mutating/sensitive for task-policy purposes and recursive invocation is rejected.
+
+The plugin SDK is metadata-first: local `*.plugin.json` manifests declare an ID/version/minimum agent version, a relative entry file plus SHA-256 pin, tool IDs, permissions/skills and supported lifecycle hook names. Jarvis validates these fields and binds declared tools only to implementations already supplied by the local host; it does not load or download code from a manifest. `ApplyPluginCatalog` hot-projects that validated set into the dynamic registry without replacing non-plugin tools.
 
