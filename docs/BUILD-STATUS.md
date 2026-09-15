@@ -1,4 +1,12 @@
-# Validated 1.0.24 release
+# Build / test status
+
+## 1.0.49 Dynamic Tool Host - executed verification (2026-09-16)
+
+- Added `DynamicToolRegistry`, lifecycle fan-out and optional thread/turn correlation. Ordinary calls and Task Gateway validation resolve the same current immutable tool snapshot; registry replacement does not grant local permission.
+- RED/GREEN evidence: dynamic-registry tests initially failed because `DynamicToolRegistry` did not exist; lifecycle tests failed because lifecycle/context fields did not exist; dynamic-connection tests failed until wire correlation, registry constructor/accessor and live schema/tool lookup were wired.
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.49 and assembly/file 1.0.49.0 after detecting the pre-patch README 1.0.23 drift.
+- `dotnet test Jarvis.slnx --nologo`: **185 passed, 0 failed** (Core 91, Windows 17, Server 77). Existing vendor nullable/unreachable-code warnings remain; no new test failures.
+- This verification did not publish packages or deploy/restart a production server.
 
 ## 1.0.48 Task Gateway - executed verification (2026-09-16)
 

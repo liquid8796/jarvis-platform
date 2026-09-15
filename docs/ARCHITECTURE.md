@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.22
+# Architecture decisions · 1.0.49
 
 ## Transport choice
 
@@ -18,9 +18,16 @@ Baseline reuse is intentionally a ProjectReference to `JarvisCode.App` for publi
 
 OAuth grants bind user+device. Gateway rechecks active status/security stamp/ownership and enabled catalog alias. Schema is from the **bound device's actual manifest**, not arbitrary admin-edited executable content. Router authorizes enrollment token again before dispatch and enforces four in-flight calls per device. Deadline uses UTC; machines must have synchronized clocks.
 
-Agent validates envelope and its own immutable schema, checks the local arm state, serializes sensitive/mutating operations, prompts the local user, checks arm state/cancellation again, then invokes the local tool. Read-only file operations still require the local arm state but may not prompt each time. Metadata audit surrounds server dispatch; no tool arguments/results are written into the audit database.
+Agent validates the envelope against the current immutable `DynamicToolRegistry` snapshot and its precompiled local schema, checks the local arm state, serializes sensitive/mutating operations, prompts the local user, checks arm state/cancellation again, then invokes that same snapshot tool. Read-only file operations still require the local arm state but may not prompt each time. Metadata audit surrounds server dispatch; no tool arguments/results are written into the audit database.
 
 A lost connection faults in-flight requests with completion unknown. Reconnect does not replay them and preserves the user-selected arm state within the same process. An in-memory bounded completion cache reduces duplicate execution for the same call ID within the current agent process; this is not durable idempotency or exactly-once delivery. If sending a successful result fails, the client must inspect state before retrying.
+
+
+## Dynamic tool catalog and lifecycle
+
+Installed tools are represented by immutable registry snapshots. Each snapshot includes the exact implementation map, schemas, ordered descriptors, generation and digest, so one invocation cannot observe half of a hot catalog replacement. The handshake advertises the current descriptor snapshot; later calls and task-plan validation deliberately resolve the latest local snapshot. Catalog replacement is not an authorization event: `ToolPermissionPolicy` remains exact-ID and local approval remains in the invocation path.
+
+Optional `threadId` and `turnId` fields correlate calls without becoming authorization inputs. Local interrupt/stop/subagent-stop notifications are fan-out cleanup signals only and cannot arm control or grant permissions.
 
 ## Long jobs
 

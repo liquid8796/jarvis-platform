@@ -9,7 +9,7 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
     private readonly object _sync = new();
     private readonly RemoteTaskStore _store;
     private readonly WorkspaceDirectories _folders;
-    private readonly IReadOnlyDictionary<string, IAgentTool> _tools;
+    private readonly DynamicToolRegistry _registry;
     private readonly Func<bool> _armed;
     private readonly Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> _invoke;
     private readonly Func<string, AgentExecutionContext, Task> _cancelJob;
@@ -17,10 +17,10 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
     private readonly HashSet<string> _storageFaults = new(StringComparer.Ordinal);
     private bool _disposed;
 
-    public RemoteTaskHost(string root, WorkspaceDirectories folders, IReadOnlyDictionary<string, IAgentTool> tools,
+    public RemoteTaskHost(string root, WorkspaceDirectories folders, DynamicToolRegistry registry,
         Func<bool> armed, Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> invoke,
         Func<string, AgentExecutionContext, Task> cancelJob)
-    { _store = new(root); _folders = folders; _tools = tools; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; }
+    { _store = new(root); _folders = folders; _registry = registry; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; }
 
     public Task<RemoteTaskReply> HandleAsync(string operation, RemoteTaskRequest request, CancellationToken sessionToken)
     {
@@ -128,14 +128,15 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
     }
     private void ValidateTools(RemoteTaskPlan plan)
     {
+        var snapshot = _registry.Snapshot;
         foreach (var step in plan.Steps)
         {
-            if (!_tools.TryGetValue(step.ToolId, out var tool)) throw new ArgumentException("Tool is not installed: " + step.ToolId);
-            if (!SchemaGuard.Matches(SchemaGuard.Compile(tool.Descriptor.InputSchema), step.Arguments))
+            if (!snapshot.Tools.TryGetValue(step.ToolId, out var tool)) throw new ArgumentException("Tool is not installed: " + step.ToolId);
+            if (!SchemaGuard.Matches(snapshot.Schemas[step.ToolId], step.Arguments))
                 throw new ArgumentException("Step arguments do not match installed schema: " + step.Id);
             if ((plan.ExecutionMode == "READ_ONLY" || step.MaxAttempts > 1) && (!tool.Descriptor.ReadOnly || tool.Descriptor.Sensitive))
                 throw new ArgumentException("Read-only mode and retries cannot invoke mutating or sensitive tools: " + step.Id);
-            if (step.ToolId == "process.start" && (!_tools.ContainsKey("process.read") || !_tools.ContainsKey("process.cancel")))
+            if (step.ToolId == "process.start" && (!snapshot.Tools.ContainsKey("process.read") || !snapshot.Tools.ContainsKey("process.cancel")))
                 throw new ArgumentException("Owned process read/cancel tools are required.");
         }
     }

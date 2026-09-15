@@ -19,6 +19,8 @@ public sealed record AgentOptions(string ServerUrl, string DeviceId, string Work
 public sealed record AgentExecutionContext(string Workspace, string CallId, string SessionId)
 {
     public IReadOnlyList<string> AdditionalDirectories { get; init; } = [];
+    public string? ThreadId { get; init; }
+    public string? TurnId { get; init; }
     // Set by the local dispatcher, never taken from remote arguments or the wire envelope.
     public bool FullPermission { get; init; }
 }

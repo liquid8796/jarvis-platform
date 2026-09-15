@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.49 - 2026-09-16
+
+- Add a runtime `DynamicToolRegistry` with immutable snapshots, catalog generations, canonical SHA-256 descriptor digests and precompiled local schemas.
+- Make ordinary remote calls and Task Gateway validation resolve the current installed-tool snapshot at execution time while preserving Arm/Pause, schema, approval and exact-permission gates.
+- Add optional thread/turn correlation to the wire execution context and a local lifecycle hub for interrupt/stop/subagent-stop cleanup notifications.
+- Add release-version verification so `VERSION`, root package/assembly/file versions, README heading and the newest CHANGELOG release cannot silently drift.
+- Preserve no-replay semantics and keep dynamic discovery non-authoritative for permission: replacing a catalog never grants tool consent.
+
 ## 1.0.48 - 2026-09-16
 
 - Add an authenticated Task Gateway over the existing outbound agent WebSocket, with additive task-v1 capability negotiation; older agents retain ordinary tool calls.

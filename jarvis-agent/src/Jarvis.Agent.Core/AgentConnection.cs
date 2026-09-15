@@ -3,20 +3,19 @@ using System.Net.WebSockets;
 using System.Reflection;
 using System.Text.Json;
 using Jarvis.Agent.Core.RemoteTasks;
-using Json.Schema;
 using Jarvis.Protocol;
 namespace Jarvis.Agent.Core;
 
 /// <summary>Outbound-only WebSocket, bounded concurrency, heartbeats, cancellation, no replay on reconnect.</summary>
 public sealed class AgentConnection : IAsyncDisposable
 {
-    private readonly IReadOnlyDictionary<string, IAgentTool> _tools;
+    private readonly DynamicToolRegistry _registry;
     private readonly string? _taskStorageRoot;
     private readonly Func<Uri, string, CancellationToken, Task<WebSocket>> _socketConnector;
     private RemoteTaskHost? _remoteTasks;
     private readonly IApprovalService _approval;
     private readonly ToolPermissionPolicy _permissions;
-    private readonly IReadOnlyDictionary<string, JsonSchema> _schemas;
+    private readonly AgentLifecycleHub _lifecycle;
     private readonly LocalControlGate _gate;
     private readonly SemaphoreSlim _parallel = new(4, 4);
     private readonly SemaphoreSlim _interactive = new(1, 1);
@@ -30,19 +29,24 @@ public sealed class AgentConnection : IAsyncDisposable
     public event Action<AgentEvent>? Activity;
     public event Action<bool>? ConnectionChanged;
     public bool IsConnected { get; private set; }
-    public IReadOnlyList<ToolDescriptor> Descriptors => _tools.Values.Select(t => t.Descriptor).OrderBy(t => t.Id).ToArray();
+    public DynamicToolRegistry ToolRegistry => _registry;
+    public IReadOnlyList<ToolDescriptor> Descriptors => _registry.Snapshot.Descriptors;
 
     public AgentConnection(IEnumerable<IAgentTool> tools, IApprovalService approval, LocalControlGate gate, ToolPermissionPolicy? permissions = null,
         string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null)
+        : this(new DynamicToolRegistry(tools), approval, gate, permissions, taskStorageRoot, socketConnector) { }
+
+    public AgentConnection(DynamicToolRegistry registry, IApprovalService approval, LocalControlGate gate, ToolPermissionPolicy? permissions = null,
+        string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null, AgentLifecycleHub? lifecycle = null)
     {
-        _tools = tools.ToDictionary(t => t.Descriptor.Id, StringComparer.Ordinal);
+        _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _approval = approval; _gate = gate;
         _taskStorageRoot = taskStorageRoot;
         _socketConnector = socketConnector ?? ConnectSocketAsync;
+        _lifecycle = lifecycle ?? new AgentLifecycleHub();
         _gate.Changed += OnGateChanged;
         _permissions = permissions ?? new ToolPermissionPolicy();
         _permissions.PermissionsRevoked += CancelInFlight;
-        _schemas = _tools.ToDictionary(t => t.Key, t => SchemaGuard.Compile(t.Value.Descriptor.InputSchema));
     }
     private void OnGateChanged(bool armed)
     { if (!armed) _remoteTasks?.CancelAll("CANCELLED"); }
@@ -56,6 +60,7 @@ public sealed class AgentConnection : IAsyncDisposable
     public void Pause()
     {
         _gate.Disarm();
+        _ = _lifecycle.NotifyAsync(new AgentLifecycleEvent(AgentLifecycleKind.Stop, Reason: "Local control paused."), CancellationToken.None);
         foreach (var cancellation in _running.Values) { try { cancellation.Cancel(); } catch (ObjectDisposedException) { } }
         Emit("security", "Remote control paused; in-flight calls cancelled.");
     }
@@ -69,7 +74,7 @@ public sealed class AgentConnection : IAsyncDisposable
         var folders = new WorkspaceDirectories(options.Workspace, options.AdditionalDirectories);
         var taskRoot = Path.Combine(_taskStorageRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "JarvisAgent", "TaskRuns"), RemoteTaskStore.Hash(endpoint.AbsoluteUri + "|" + options.DeviceId));
-        _remoteTasks = new RemoteTaskHost(taskRoot, folders, _tools, () => _gate.IsArmed,
+        _remoteTasks = new RemoteTaskHost(taskRoot, folders, _registry, () => _gate.IsArmed,
             InvokeInstalledToolAsync, CancelOwnedJobAsync);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
         var attempt = 0;
@@ -111,6 +116,7 @@ public sealed class AgentConnection : IAsyncDisposable
                             case "cancel":
                                 if (message.Id is not null && _running.TryGetValue(message.Id, out var pending))
                                     try { pending.Cancel(); } catch (ObjectDisposedException) { }
+                                _ = _lifecycle.NotifyAsync(new AgentLifecycleEvent(AgentLifecycleKind.Interrupt, message.ThreadId, message.TurnId, message.Id), CancellationToken.None);
                                 break;
                             case "call": Dispatch(wire, message, folders, session.Token); break;
                             case "task.request": DispatchTask(wire, message, session.Token); break;
@@ -181,7 +187,7 @@ public sealed class AgentConnection : IAsyncDisposable
             { await ReplyAsync(wire, id, cached.Reply, cts.Token); return; }
             var result = await InvokeInstalledToolAsync(call.ToolId!, call.Arguments!.Value,
                 new AgentExecutionContext(workspace.Primary, id, call.SessionId ?? "remote")
-                { AdditionalDirectories = workspace.Additional }, cts.Token);
+                { AdditionalDirectories = workspace.Additional, ThreadId = call.ThreadId, TurnId = call.TurnId }, cts.Token);
             _completed[id] = (DateTimeOffset.UtcNow, result);
             await ReplyAsync(wire, id, result, cts.Token);
         }
@@ -211,8 +217,9 @@ public sealed class AgentConnection : IAsyncDisposable
         {
             ct.ThrowIfCancellationRequested();
             if (!_gate.IsArmed) throw new UnauthorizedAccessException("Local control is paused.");
-            if (!_tools.TryGetValue(toolId, out var tool)) throw new InvalidOperationException("Tool is not installed on this agent.");
-            if (!SchemaGuard.Matches(_schemas[toolId], arguments)) throw new ArgumentException("Arguments do not match the local tool schema.");
+            var snapshot = _registry.Snapshot;
+            if (!snapshot.Tools.TryGetValue(toolId, out var tool)) throw new InvalidOperationException("Tool is not installed on this agent.");
+            if (!SchemaGuard.Matches(snapshot.Schemas[toolId], arguments)) throw new ArgumentException("Arguments do not match the local tool schema.");
             await _parallel.WaitAsync(ct); acquired = true;
             if (!tool.Descriptor.ReadOnly || tool.Descriptor.Sensitive)
             { await _interactive.WaitAsync(ct); interactiveAcquired = true; }
@@ -235,7 +242,7 @@ public sealed class AgentConnection : IAsyncDisposable
     }
     private async Task CancelOwnedJobAsync(string jobId, AgentExecutionContext context)
     {
-        if (!_tools.TryGetValue("process.cancel", out var cancel)) return;
+        if (!_registry.Snapshot.Tools.TryGetValue("process.cancel", out var cancel)) return;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         try { await cancel.ExecuteAsync(WireJson.Element(new { jobId }), context with { FullPermission = false }, timeout.Token); }
         catch (Exception ex) { Emit("task", "Owned-job cleanup: " + ex.GetType().Name); }

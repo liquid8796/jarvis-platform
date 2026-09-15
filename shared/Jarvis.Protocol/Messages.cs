@@ -21,6 +21,8 @@ public sealed record WireMessage(string Type)
     public string? Id { get; init; }
     public string? ToolId { get; init; }
     public string? SessionId { get; init; }
+    public string? ThreadId { get; init; }
+    public string? TurnId { get; init; }
     public DateTimeOffset? DeadlineUtc { get; init; }
     public JsonElement? Arguments { get; init; }
     public AgentHello? Hello { get; init; }
