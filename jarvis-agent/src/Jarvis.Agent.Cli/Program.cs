@@ -1,5 +1,8 @@
 using System.Security.Principal;
+using System.Text.Json;
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Diagnostics;
+using Jarvis.Protocol;
 using Jarvis.Agent.Windows;
 namespace Jarvis.Agent.Cli;
 public static class Program
@@ -18,7 +21,13 @@ public static class Program
         var command = args.FirstOrDefault() ?? "help";
         if (command == "help")
         {
-            Console.WriteLine($"Jarvis Agent {typeof(Program).Assembly.GetName().Version?.ToString(3)}\n  configure       Save server, device, project directories and DPAPI-encrypted token\n  connect         Connect interactively; Ctrl+C disconnects and stops owned jobs\n  list-tools      Print the installed CLI tool manifest as JSON\n  browser-install Register the isolated native browser host for this user\n\nSaved per-tool Full permission is configured in the desktop Tool permissions tab; startup still requires local Arm."); return 0;
+            Console.WriteLine($"Jarvis Agent {typeof(Program).Assembly.GetName().Version?.ToString(3)}\n  configure       Save server, device, project directories and DPAPI-encrypted token\n  connect         Connect interactively; Ctrl+C disconnects and stops owned jobs\n  list-tools      Print the installed CLI tool manifest as JSON\n  doctor --json   Print redacted runtime/protocol/catalog health as JSON\n  browser-install Register the isolated native browser host for this user\n\nSaved per-tool Full permission is configured in the desktop Tool permissions tab; startup still requires local Arm."); return 0;
+        }
+        if (command == "doctor")
+        {
+            if (args.Skip(1).Any(arg => !StringComparer.Ordinal.Equals(arg, "--json")))
+                throw new ArgumentException("Usage: jarvis-agent doctor --json");
+            return await DoctorAsync();
         }
         using var mutex = new Mutex(true, @"Local\JarvisAgent-" + WindowsIdentity.GetCurrent().User!.Value, out var created);
         if (!created) throw new InvalidOperationException("Jarvis Agent is already running in the GUI or another terminal.");
@@ -67,6 +76,49 @@ public static class Program
         finally { Console.CancelKeyPress -= cancel; }
         return 0;
     }
+    private static async Task<int> DoctorAsync()
+    {
+        var prompts = new ConsolePrompts();
+        using var tools = new ToolInventory(prompts, new FileArtifactSink(Environment.CurrentDirectory));
+        using var processes = new ProcessToolSet();
+        ToolPermissionPolicy permissions;
+        var permissionHealthy = true;
+        var permissionStatus = "ok";
+        try
+        {
+            permissions = new ToolPermissionPolicy(new ToolPermissionStore(
+                Path.Combine(AgentProfile.Root, "tool-permissions.json")).Load());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or ArgumentException)
+        {
+            permissions = new ToolPermissionPolicy();
+            permissionHealthy = false;
+            permissionStatus = "error:" + ex.GetType().Name;
+        }
+
+        var registry = new DynamicToolRegistry(tools.Tools.Concat(processes.Tools));
+        var gate = new LocalControlGate();
+        await using var connection = new AgentConnection(registry, prompts, gate, permissions);
+        var assembly = typeof(Program).Assembly.GetName().Version ?? new Version(0, 0, 0, 0);
+        var package = assembly.ToString(3);
+        var snapshot = AgentDoctor.Capture(new AgentDoctorInput(
+            package,
+            assembly,
+            connection.ToolRegistry,
+            permissions,
+            Path.Combine(AgentProfile.Root, "plugins"),
+            [],
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JarvisAgent", "TaskRuns"),
+            0,
+            OperatingSystem.IsWindows(),
+            File.Exists(Path.Combine(AgentProfile.Root, "browser-host.json")),
+            permissionHealthy,
+            permissionStatus));
+        Console.WriteLine(JsonSerializer.Serialize(snapshot,
+            new JsonSerializerOptions(WireJson.Options) { WriteIndented = true }));
+        return snapshot.VersionDrift || !snapshot.PluginHealthy || !snapshot.PermissionStoreHealthy || !snapshot.TaskStoreHealthy ? 2 : 0;
+    }
+
     private static string Secret()
     {
         var text = new System.Text.StringBuilder();

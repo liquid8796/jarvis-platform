@@ -157,7 +157,8 @@ public sealed class AgentConnection : IAsyncDisposable
                     Hello = new AgentHello(options.DeviceId,
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown",
                         Environment.OSVersion.ToString(), Environment.MachineName, catalog.Descriptors)
-                    { TaskProtocolVersion = RemoteTaskRules.ProtocolVersion, CatalogGeneration = catalog.Generation, CatalogDigest = catalog.Digest }
+                    { TaskProtocolVersion = RemoteTaskRules.ProtocolVersion, ProtocolVersion = AgentProtocolVersion.Current,
+                        Capabilities = AgentProtocolCapabilities.Agent, CatalogGeneration = catalog.Generation, CatalogDigest = catalog.Digest }
                 }, session.Token).ConfigureAwait(false);
                 using (var welcomeTimeout = CancellationTokenSource.CreateLinkedTokenSource(session.Token))
                 {

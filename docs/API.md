@@ -23,9 +23,13 @@ Read the actual controller contracts for exact JSON fields. `/api` uses cookie a
 | `/agent/connect` | WebSocket upgrade; enrollment Authorization header, no browser Origin |
 | `/health` | GET anonymous version/liveness; no private health details |
 
-## Agent wire protocol v1
+## Agent wire envelope v1 / capability protocol v2
 
-Text JSON frames, one logical envelope max 8 MiB, no compression. Fields use camelCase. Initial `hello` contains `{deviceId,version,platform,machineName,tools}`; server returns `welcome`. Manifest is capped at 256 tools, schemas 64 KiB each. `ping` and `pong` contain monotonic timestamps. `call` includes ID, toolId, sessionId, deadlineUtc and arguments. `result` includes ID and `{text,isError,images?,widget?}`. `cancel` targets an in-flight ID. TLS and enrollment authorization are mandatory outside explicitly configured loopback development.
+Text JSON frames still use `WireMessage.version = 1`, one logical envelope max 8 MiB and no compression. Fields use camelCase. Initial `hello` contains `{deviceId,version,platform,machineName,tools}` plus additive `protocolVersion`, `capabilities`, task-protocol and catalog identity fields; server returns `welcome` with the negotiated protocol/capability subset. Missing protocol metadata is normalized to legacy protocol 1, so existing peers retain ordinary tool behavior. Capability names are feature discovery only, never authorization.
+
+Manifest is capped at 256 tools, schemas 64 KiB each. `ping` and `pong` contain monotonic timestamps. `catalog.changed` carries the immutable tool generation/digest/descriptors and receives `catalog.ack` after server validation/persistence. Later `call` frames may carry expected catalog generation/digest; the agent rejects stale identity before tool execution. `call` otherwise includes ID, toolId, sessionId, deadlineUtc and arguments. `result` includes ID and `{text,isError,images?,widget?}`. `cancel` targets an in-flight ID. TLS and enrollment authorization are mandatory outside explicitly configured loopback development.
+
+Protocol v2 currently negotiates `task-v1`, `catalog-sync-v1` and `capability-leases-v1`. Unsupported capability names are not negotiated. `jarvis-agent doctor --json` is a local diagnostic command, not a remote RPC; it emits redacted health metadata and no credential, raw local path or tool argument/result.
 
 Server heartbeat 15s; stale peer threshold 50s. Deadlines max five minutes on agent, server default120s/max240s. Four server calls/device; agent bounds parallelism and queues. TCP/WebSocket disconnect cannot indicate whether a mutating tool completed: clients must inspect state, not blindly replay.
 

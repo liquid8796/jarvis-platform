@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.56 - 2026-09-16
+
+- Add additive agent capability protocol v2 negotiation in hello/welcome while retaining `WireMessage.version = 1` for legacy frame compatibility; current negotiated features are Task Gateway v1, catalog synchronization and capability leases.
+- Add redacted `AgentDoctor` operational diagnostics for package/assembly drift, protocol/capabilities, catalog identity/tool count, plugin metadata health, permission-store/grant/lease counts, bounded task-snapshot health/count and local process/computer/browser readiness.
+- Add `jarvis-agent doctor --json`; the command emits no credentials, raw local paths, permission/lease/session identifiers, plugin manifest content or tool arguments/results and returns a non-zero diagnostic status when a checked subsystem is unhealthy.
+- Preserve existing legacy peers that omit protocol metadata and cover v2 negotiation plus doctor redaction/invalid-plugin behavior with regression tests.
+
 ## 1.0.55 - 2026-09-16
 
 - Wire the existing adaptive Task Gateway extension point and pinned local plugin catalog into the production Windows `AgentRuntime` composition root; the default coordinator may repair only installed read-only/non-sensitive steps and cannot broaden tool arguments or permission.

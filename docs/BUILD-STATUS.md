@@ -1,5 +1,14 @@
 # Build / test status
 
+## 1.0.56 Capability Protocol V2 / Doctor - executed verification (2026-09-16)
+
+- Added protocol-v2 capability negotiation inside the backward-compatible wire-v1 envelope. New agents advertise Task Gateway/catalog-sync/capability-lease support; missing protocol metadata is normalized to legacy v1.
+- Added read-only redacted `AgentDoctor` plus CLI `doctor --json`, covering version drift, protocol/capability state, catalog identity/tool count, plugin/permission/task health, process count and computer/browser readiness without returning credentials or raw local paths/IDs/tool payloads.
+- RED/GREEN evidence: protocol integration first failed because `AgentHello`/welcome had no v2 fields/constants; doctor tests first failed because the Diagnostics namespace/contracts did not exist. After implementation, doctor tests verify redaction plus invalid-plugin reporting; the real CLI command was smoke-run against the local profile and emitted only the documented redacted fields.
+- Targeted tests: doctor **2 passed, 0 failed**; protocol-v2 negotiation **1 passed, 0 failed**; the existing legacy AgentBridge tests remain part of the full suite.
+- Final `dotnet test Jarvis.slnx --nologo`: **235 passed, 0 failed** (Core 127, Windows 29, Server 79).
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.56 and assembly/file 1.0.56.0. `jarvis-agent doctor --json` exited 0 with package/assembly 1.0.56/1.0.56.0 and protocol 2. No push/deployment/restart was performed.
+
 ## 1.0.55 Runtime Closure / Scoped Permissions - executed verification (2026-09-16)
 
 - Production `AgentRuntime` now boots the validated local plugin catalog and conservative adaptive coordinator; dynamic registry replacement is synchronized to the server with `catalog.changed`/`catalog.ack` and later calls are generation/digest-pinned.

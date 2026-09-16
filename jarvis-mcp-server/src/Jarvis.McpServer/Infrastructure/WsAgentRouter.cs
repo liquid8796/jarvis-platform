@@ -51,6 +51,9 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                 throw new InvalidDataException("Invalid agent manifest.");
             foreach (var descriptor in hello.Tools) _ = SchemaGuard.Compile(descriptor.InputSchema);
             peer.TaskProtocolVersion = hello.TaskProtocolVersion;
+            peer.ProtocolVersion = AgentProtocolVersion.Negotiate(hello.ProtocolVersion);
+            peer.Capabilities = peer.ProtocolVersion >= AgentProtocolVersion.Current
+                ? AgentProtocolCapabilities.Negotiate(hello.Capabilities) : [];
             peer.UpdateCatalog(hello.CatalogGeneration, hello.CatalogDigest);
             // A new connection replaces only this enrolled device, never other users' connections.
             _peers.AddOrUpdate(device.Id, peer, (_, previous) => { previous.Wire.Abort(); return peer; });
@@ -60,7 +63,11 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             current.AgentVersion = hello.Version[..Math.Min(hello.Version.Length, 40)];
             current.LastSeenAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await db.SaveChangesAsync(stop.Token);
-            await peer.Wire.SendAsync(new WireMessage("welcome"), stop.Token);
+            await peer.Wire.SendAsync(new WireMessage("welcome")
+            {
+                ProtocolVersion = peer.ProtocolVersion,
+                Capabilities = peer.Capabilities
+            }, stop.Token);
             var heartbeat = WatchAsync(peer, stop.Token);
             try
             {
@@ -187,6 +194,8 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
         public SemaphoreSlim Slots { get; } = new(4, 4);
         public ConcurrentDictionary<string, TaskCompletionSource<ToolReply>> Pending { get; } = new();
         public int TaskProtocolVersion { get; set; }
+        public int ProtocolVersion { get; set; } = AgentProtocolVersion.Legacy;
+        public IReadOnlyList<string> Capabilities { get; set; } = [];
         public long CatalogGeneration { get; private set; }
         public string? CatalogDigest { get; private set; }
         public void UpdateCatalog(long generation, string? digest)

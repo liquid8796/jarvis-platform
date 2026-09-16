@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.55
+# Architecture decisions · 1.0.56
 
 ## Transport choice
 
@@ -34,6 +34,12 @@ Optional `threadId` and `turnId` fields correlate calls without becoming authori
 The Windows composition root now owns one production registry and injects both the conservative adaptive coordinator and the validated local plugin bootstrap into `AgentConnection`; these are no longer test-only seams. A registry replacement sends the complete immutable catalog snapshot as `catalog.changed`. The server validates schemas/descriptors, persists the bound device manifest, updates peer generation/digest and replies `catalog.ack`; subsequent calls carry that acknowledged identity and stale calls fail locally before tool lookup/schema execution.
 
 Standing consent remains separate from discovery. `ToolPermissionPolicy` adds expiring capability leases scoped to a session or turn with optional workspace roots, command prefixes and network allowance. Legacy exact-ID Full Permission remains for ordinary tools, but `process.start`/`process.spawn` require a matching invocation-time lease rather than treating an arbitrary shell/process surface as one unconstrained saved capability. Lease expiry/revocation reuses the existing in-flight cancellation path.
+
+### Capability protocol and diagnostics - 1.0.56
+
+`WireMessage.Version` remains 1; protocol v2 is additive metadata in hello/welcome, so older peers continue deserializing the same envelope. The agent advertises a bounded capability-name set, the server intersects it with supported names, and a missing/zero protocol version is normalized to legacy v1. Feature handlers still validate their own fields and never treat capability advertisement as authorization.
+
+`AgentDoctor` is a read-only Core diagnostic projection, and the CLI exposes it as `doctor --json`. The snapshot deliberately contains only counts, booleans, generic status/type names, versions and catalog identity. Plugin/task checks are bounded and no credential, raw local path, permission tool ID, lease/session ID, command argument/result or manifest body is serialized. Doctor health is operational evidence, not an Arm/permission grant or a substitute for tests.
 
 ## Long jobs
 
