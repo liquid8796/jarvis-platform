@@ -153,7 +153,7 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
                 throw new ArgumentException("Step arguments do not match installed schema: " + step.Id);
             if ((plan.ExecutionMode == "READ_ONLY" || step.MaxAttempts > 1) && (!tool.Descriptor.ReadOnly || tool.Descriptor.Sensitive))
                 throw new ArgumentException("Read-only mode and retries cannot invoke mutating or sensitive tools: " + step.Id);
-            if (step.ToolId == "process.start" && (!snapshot.Tools.ContainsKey("process.read") || !snapshot.Tools.ContainsKey("process.cancel")))
+            if ((step.ToolId is "process.start" or "process.spawn") && (!snapshot.Tools.ContainsKey("process.read") || !snapshot.Tools.ContainsKey("process.cancel")))
                 throw new ArgumentException("Owned process read/cancel tools are required.");
         }
     }
@@ -196,7 +196,7 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
                         RemoteStepResult result;
                         try
                         {
-                            if (step.ToolId == "process.start")
+                            if (step.ToolId is "process.start" or "process.spawn")
                                 result = await RemoteProcessRunner.RunAsync(step, context, _invoke, _cancelJob, stepStop.Token);
                             else
                             {

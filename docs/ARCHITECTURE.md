@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.56
+# Architecture decisions · 1.0.57
 
 ## Transport choice
 
@@ -43,9 +43,9 @@ Standing consent remains separate from discovery. `ToolPermissionPolicy` adds ex
 
 ## Long jobs
 
-`process__start` approves one shell command, returns a job ID, and starts an owned process. `process__read` returns output, an incremental character cursor, truncation flag, completion and exit code. `process__cancel` targets only an owned job. Maximum four active jobs, 30-minute process timeout, 128 KiB retained characters/job, 32k read chunks, at most 50 retained completed jobs. Local arming has no timed expiry. Manual Pause/Disconnect/Exit and connection interruption can still cancel an owned job.
+`process__start` remains the compatibility shell wrapper; `process__spawn` launches an exact bounded argv with optional environment overrides and Windows ConPTY, and both return opaque owned job IDs. `process__write_stdin` sends bounded text only to an owned running job; `process__resize_pty` resizes only an owned ConPTY. `process__read` keeps combined output compatibility and adds structured stdout/stderr/pty/system events plus incremental cursor, truncation, completion and exit code. `process__cancel` targets only an owned job. Maximum four active jobs, 30-minute process timeout, 128 KiB retained characters/job, 32k read chunks, at most 50 retained completed jobs. Local arming has no timed expiry. Manual Pause/Disconnect/Exit and connection interruption can still cancel an owned job.
 
-Windows Job Objects are used to group the launched shell and children with kill-on-close. Assignment occurs immediately after launch, not via a suspended launcher; it is not a hardened adversarial process sandbox. Arbitrary commands can affect files/network outside the workspace. The old short shell tool stays available under explicit consent; its detached background mode is rejected.
+Windows Job Objects are used to group the launched shell and children with kill-on-close. Piped jobs are assigned immediately after `Process.Start`; ConPTY jobs use `CREATE_SUSPENDED`, attach to the Job Object, then resume the main thread so PTY descendants cannot race ownership. This is still not a hardened adversarial process sandbox. Arbitrary commands can affect files/network outside the workspace. The old short shell tool stays available under explicit consent; its detached background mode is rejected.
 
 ## Storage and scale
 

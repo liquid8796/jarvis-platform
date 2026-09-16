@@ -20,7 +20,7 @@ Agent native host: `com.jarvis.agent.browser`; named pipe: `JarvisAgent-browser`
 
 ## Typical build/test workflow
 
-First use filesystem tools to inspect `README`, build files and tests. Use process__start for a locally approved build/test command. Poll process__read with its jobId and cursor; do not launch repeated duplicate builds. Stop with process__cancel. Non-zero exit codes and truncated logs are explicit. Long-lived jobs are not durable across agent exit/disconnect and do not promise continued work while ChatGPT is idle.
+First use filesystem tools to inspect `README`, build files and tests. Use `process__spawn` with argv for exact locally approved build/test execution; retain `process__start` only when shell syntax is actually required. Poll `process__read` with its jobId and cursor; do not launch repeated duplicate builds. Interactive jobs may use `process__write_stdin` and Windows ConPTY jobs may use `process__resize_pty`. Stop with `process__cancel`. Non-zero exit codes and truncated logs are explicit. Long-lived jobs are not durable across agent exit/disconnect and do not promise continued work while ChatGPT is idle.
 
 Baseline computer tools support visual inspection/clicks of IDE/debugger if locally granted. That is not the same as a tested programmatic breakpoint API. Shell/Bash requires the corresponding installed interpreter; Windows PowerShell is used by managed jobs. Install project SDKs/dependencies separately, respecting the project's offline/network policies.
 

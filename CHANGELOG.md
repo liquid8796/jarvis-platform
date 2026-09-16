@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.57 - 2026-09-16
+
+- Add `process.spawn` for exact argv execution without an inserted shell, bounded environment overrides and optional Windows ConPTY sessions while retaining `process.start` as the compatibility shell wrapper.
+- Add `process.write_stdin` and `process.resize_pty`; `process.read` remains cursor-compatible and now includes bounded structured stdout/stderr/pty/system events alongside combined output.
+- Create Windows ConPTY children suspended, attach them to the existing kill-on-close Job Object before resume, and retain Pause/disconnect/permission-revocation cleanup so interactive jobs cannot escape Agent ownership.
+- Extend Task Gateway managed-process handling and scoped capability leases to `process.spawn`, including token-wise argv command-prefix matching.
+- Add regression coverage for argv/environment execution, stdin, ConPTY resize/cancel and spawn capability leases; bump package/assembly/file versions to 1.0.57 / 1.0.57.0.
+
 ## 1.0.56 - 2026-09-16
 
 - Add additive agent capability protocol v2 negotiation in hello/welcome while retaining `WireMessage.version = 1` for legacy frame compatibility; current negotiated features are Task Gateway v1, catalog synchronization and capability leases.

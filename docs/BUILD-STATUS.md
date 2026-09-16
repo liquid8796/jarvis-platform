@@ -1,5 +1,14 @@
 # Build / test status
 
+## 1.0.57 Process Runtime V2 - executed verification (2026-09-16)
+
+- Added exact argv `process.spawn`, bounded environment overrides, structured stdout/stderr/pty/system cursor events, `process.write_stdin` and Windows `process.resize_pty` while retaining the legacy shell `process.start` contract.
+- Windows ConPTY creation uses suspended process startup, kill-on-close Job Object attachment before resume, owned stdin/output handles and normal Pause/disconnect/permission-revocation cleanup; Task Gateway treats `process.spawn` as a managed long-running job and waits for exit status.
+- RED/GREEN evidence: Process V2 tests first failed because only start/read/cancel existed; spawn capability-lease coverage then failed because prefix matching only understood shell `command`. Implementation added argv-token matching and the focused process/lease group passed **10/10**.
+- Process targeted tests: **6 passed, 0 failed**; scoped capability lease tests: **4 passed, 0 failed**.
+- Final `dotnet test Jarvis.slnx --nologo --no-restore`: **240 passed, 0 failed** (Core 132, Windows 29, Server 79). Existing vendor warnings remain; Server integration completed in 1m56s.
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.57 and assembly/file 1.0.57.0. No push, deployment or service restart was performed.
+
 ## 1.0.56 Capability Protocol V2 / Doctor - executed verification (2026-09-16)
 
 - Added protocol-v2 capability negotiation inside the backward-compatible wire-v1 envelope. New agents advertise Task Gateway/catalog-sync/capability-lease support; missing protocol metadata is normalized to legacy v1.

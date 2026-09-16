@@ -6,7 +6,7 @@ Transport reuses the authenticated outbound WebSocket with additive task-v1 nego
 
 The previous Autonomous folder contains disconnected abstractions, including an in-memory class named SqliteMemoryStore. This gateway does not pretend those are a configured planner or durable database. Goal-only requests enter NEEDS_PLAN. The client LLM can then supply an ordered installed-tool plan. The agent enforces that plan, local permissions and verification outcomes; it does not generate code or repair patches by itself.
 
-Task modes READ_ONLY, NORMAL and AUTONOMOUS never grant permissions. Each step uses the existing installed-tool schema and local approval gate. READ_ONLY rejects mutation/sensitive tools. Retry applies only to read-only, non-sensitive operations. Long process steps use owned process start/read/cancel and actual exitCode, not successful process creation. Failed stages stop subsequent stages. No new public agent listener, broker or model endpoint is introduced.
+Task modes READ_ONLY, NORMAL and AUTONOMOUS never grant permissions. Each step uses the existing installed-tool schema and local approval gate. READ_ONLY rejects mutation/sensitive tools. Retry applies only to read-only, non-sensitive operations. Long process steps use owned process start/spawn + read/cancel and actual exitCode, not successful process creation. Failed stages stop subsequent stages. No new public agent listener, broker or model endpoint is introduced.
 
 Limits: 2 running tasks per agent, 32 steps, 3 attempts only for safe reads, 1..1800 seconds per step, 1..3600 seconds per task, bounded arguments and artifact output. State and logs can contain private project information: keep the directory local and outside source exports and release packages.
 
@@ -16,7 +16,7 @@ This is supervised client-planned execution, not proof of full autonomous LLM en
 
 ## Running a task through MCP
 
-Use `agent_task_tools` first to obtain the enabled installed descriptors. `id` is the canonical step `toolId`; a catalog display alias is not a tool ID. The client chooses the project, steps and acceptance checks. For a long build use `process.start` (not an asynchronous shell wrapper); the runner polls `process.read` until the job exits and drains the final log pages.
+Use `agent_task_tools` first to obtain the enabled installed descriptors. `id` is the canonical step `toolId`; a catalog display alias is not a tool ID. The client chooses the project, steps and acceptance checks. For a long build prefer `process.spawn` with exact argv; use `process.start` only when shell syntax is intentionally required. The runner treats both as owned process jobs, polls `process.read` until exit and drains the final log pages.
 
 Example arguments to `agent_task_create` (synthetic example, not an automatically executed command):
 

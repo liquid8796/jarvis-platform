@@ -63,10 +63,18 @@ public sealed record ToolCapabilityLease(
 
         if (CommandPrefixes is { Count: > 0 })
         {
-            if (arguments.ValueKind != JsonValueKind.Object || !arguments.TryGetProperty("command", out var commandElement) ||
-                commandElement.ValueKind != JsonValueKind.String) return false;
-            var command = commandElement.GetString() ?? "";
-            if (!CommandPrefixes.Any(prefix => CommandHasPrefix(command, prefix))) return false;
+            if (arguments.ValueKind != JsonValueKind.Object) return false;
+            if (arguments.TryGetProperty("command", out var commandElement) && commandElement.ValueKind == JsonValueKind.String)
+            {
+                var command = commandElement.GetString() ?? "";
+                if (!CommandPrefixes.Any(prefix => CommandHasPrefix(command, prefix))) return false;
+            }
+            else if (arguments.TryGetProperty("argv", out var argvElement) && argvElement.ValueKind == JsonValueKind.Array)
+            {
+                var argv = argvElement.EnumerateArray().Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? "" : "").ToArray();
+                if (!CommandPrefixes.Any(prefix => ArgvHasPrefix(argv, prefix))) return false;
+            }
+            else return false;
         }
 
         if (!AllowNetwork && arguments.ValueKind == JsonValueKind.Object && arguments.TryGetProperty("allowNetwork", out var network) &&
@@ -80,6 +88,17 @@ public sealed record ToolCapabilityLease(
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         if (!command.StartsWith(prefix, comparison)) return false;
         return command.Length == prefix.Length || char.IsWhiteSpace(command[prefix.Length]);
+    }
+
+    private static bool ArgvHasPrefix(IReadOnlyList<string> argv, string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix) || argv.Count == 0) return false;
+        var expected = prefix.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (expected.Length == 0 || expected.Length > argv.Count) return false;
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        for (var i = 0; i < expected.Length; i++)
+            if (!string.Equals(argv[i], expected[i], comparison)) return false;
+        return true;
     }
 
     private static bool IsWithin(string path, string root)

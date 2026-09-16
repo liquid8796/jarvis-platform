@@ -60,7 +60,7 @@ DAP support exposes no generic attach, injection or process-control tool. A laun
 
 ## Scoped process authority and catalog freshness - 1.0.55
 
-A saved exact-ID grant for `process.start` is no longer sufficient to authorize arbitrary commands without prompting. Full-permission execution for process surfaces requires an active capability lease whose session/turn, expiry, allowed workspace roots and command prefix match the actual invocation; lease expiry or revocation emits the same cancellation signal used for standing-permission revocation. These checks do not turn workspace roots into a kernel sandbox and do not undo effects already performed before cancellation.
+Saved exact-ID grants for `process.start` or `process.spawn` are not sufficient to authorize arbitrary commands without prompting. Full-permission execution for process surfaces requires an active capability lease whose session/turn, expiry, allowed workspace roots and command prefix match the actual invocation; shell commands use a boundary-aware text prefix and argv spawns compare prefix tokens directly. Lease expiry or revocation emits the same cancellation signal used for standing-permission revocation. These checks do not turn workspace roots into a kernel sandbox and do not undo effects already performed before cancellation.
 
 Dynamic catalog discovery remains non-authoritative. The agent sends immutable generation/digest-tagged snapshots, the server validates and persists them before acknowledging, and later calls are bound to the acknowledged catalog identity. A stale generation/digest is rejected by the agent before tool lookup/schema execution. Catalog ACK protects synchronization/TOCTOU; it is not a permission grant and cannot Arm the Agent.
 
@@ -69,3 +69,9 @@ Dynamic catalog discovery remains non-authoritative. The agent sends immutable g
 Protocol capability names describe supported features only and are not trusted authorization claims. The server intersects advertised protocol-v2 names with its own supported set; a legacy/absent protocol version remains compatible with the stable wire-v1 envelope.
 
 `jarvis-agent doctor --json` is intentionally local and redacted. It emits versions, generic status/error-type labels, booleans, counts and catalog generation/digest only. It does not emit enrollment/OAuth credentials, raw workspace/plugin/task paths, saved permission tool IDs, capability lease IDs/session IDs, plugin manifest bodies, commands, tool arguments/results or screenshot/browser content. Doctor performs bounded read-only metadata checks and cannot Arm the agent or grant permission.
+
+## Owned interactive process boundary - 1.0.57
+
+`process.spawn` never inserts a shell: executable and arguments are passed separately. Environment overrides are bounded and cannot contain invalid environment names. `process.write_stdin`, `process.resize_pty`, `process.read` and `process.cancel` resolve only opaque IDs in the Agent-owned registry; there is no PID attach surface.
+
+Windows ConPTY children are created suspended, attached to a kill-on-close Job Object, then resumed. This closes the pre-ownership spawn window for PTY descendants. ConPTY is still code execution under the logged-in user's OS authority, not a sandbox. Local Arm, schema validation, scoped capability leases, Pause/disconnect cleanup and owned-process cancellation remain the security boundary.

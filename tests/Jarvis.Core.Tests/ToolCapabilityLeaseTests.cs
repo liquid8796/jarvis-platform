@@ -41,6 +41,25 @@ public sealed class ToolCapabilityLeaseTests
     }
 
     [Fact]
+    public void Spawn_lease_matches_argv_prefix_without_shell_text()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "jarvis-spawn-lease-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var policy = new ToolPermissionPolicy();
+            policy.GrantLease(new ToolCapabilityLease(
+                "spawn-lease", "process.spawn", ToolCapabilityScope.Session, "session-1", null,
+                DateTimeOffset.UtcNow.AddMinutes(1), [root], ["dotnet test"], false));
+            var context = new AgentExecutionContext(root, "call-1", "session-1");
+
+            Assert.True(policy.HasFullPermission("process.spawn", WireJson.Element(new { argv = new[] { "dotnet", "test", "--no-restore" } }), context));
+            Assert.False(policy.HasFullPermission("process.spawn", WireJson.Element(new { argv = new[] { "dotnet", "build" } }), context));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public async Task Lease_expiry_revokes_authority_and_raises_cancellation_signal()
     {
         var policy = new ToolPermissionPolicy();

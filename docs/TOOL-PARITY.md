@@ -15,9 +15,9 @@ Counts below are derived from source registration, **not a captured tool list fr
 | Git | 5 | 5 | Status, Diff, Log, Show, Blame |
 | Shell | 2 | 2 | Normal and Bash variants; detached background mode disallowed |
 | Workflow | 2 | 2 | Todo and AskUserQuestion |
-| Managed process jobs | 3 | 3 | Added process.start/read/cancel |
+| Managed process jobs | 6 | 6 | process.start/spawn/read/write_stdin/resize_pty/cancel |
 | Agent Core host tools | 3 | 3 | tool_program.run + developer.symbol_search + developer.test; plugin projections are additional/dynamic |
-| **Expected total** | **56** | **53** | Subject to Windows build/runtime verification |
+| **Expected total** | **59** | **56** | Subject to Windows build/runtime verification |
 
 Mouse move/click/double-click/right-click/drag/scroll and keyboard actions already exist in the baseline computer batch/browser computer implementations. They are reused, not replaced with a new incomplete mouse simulator. This is not a binary clone of a specific Codex proprietary tool protocol.
 
@@ -47,7 +47,13 @@ Jarvis now adds the host-owned `tool_program.run` composite tool in Agent Core. 
 
 The dynamic registry is now synchronized end to end rather than only inside the Agent. A hot replacement publishes generation/digest/descriptors, server-side validation/persistence completes before `catalog.ack`, and subsequent tool calls are pinned to that acknowledged identity. Plugin tools discovered by the production Windows bootstrap therefore become remotely discoverable without reconnect, while catalog presence still grants no execution permission.
 
-Process authority is also more granular than the tool-count table suggests: `process.start` retains the same public tool ID, but saved exact-ID Full Permission alone no longer authorizes its arbitrary command surface. A matching expiring session/turn capability lease must satisfy invocation workspace/command constraints; otherwise the normal local approval path is used.
+Process authority is also more granular than the tool-count table suggests: `process.start` and `process.spawn` require invocation-time capability leases for Full Permission. Shell-command prefixes retain boundary-aware text matching; argv spawns compare prefix tokens directly so a grant for `dotnet test` does not authorize `dotnet build`. Otherwise the normal local approval path is used.
+
+## Process Runtime V2 - 1.0.57
+
+The Agent now publishes exact argv `process.spawn`, interactive `process.write_stdin` and Windows `process.resize_pty` in addition to the original managed-job surface. Piped argv jobs keep stdout/stderr identities in structured cursor events; ConPTY exposes a unified `pty` stream. The combined `output` property remains for older process readers.
+
+This is intentionally not a generic PID/process-inspection API. All operations require an opaque ID created by the current Agent process. Windows PTY children are attached to the Agent Job Object before resume, and local Pause/disconnect/permission revocation retains ownership cleanup.
 
 ## Developer power tools - 1.0.54
 

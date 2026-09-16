@@ -39,7 +39,7 @@ public sealed class AgentTaskService(AppDbContext db, IAgentTaskRouter router, I
                     throw new ArgumentException("Task step arguments do not match the installed schema: " + step.Id);
                 if ((plan.ExecutionMode == "READ_ONLY" || step.MaxAttempts > 1) && (!tool.ReadOnly || tool.Sensitive))
                     throw new ArgumentException("Read-only mode and retries cannot invoke mutating/sensitive tools.");
-                if (step.ToolId == "process.start" && (!enabled.Contains("process.read") || !enabled.Contains("process.cancel") ||
+                if ((step.ToolId is "process.start" or "process.spawn") && (!enabled.Contains("process.read") || !enabled.Contains("process.cancel") ||
                     !installed.ContainsKey("process.read") || !installed.ContainsKey("process.cancel")))
                     throw new UnauthorizedAccessException("Process task plans require enabled installed process.read and process.cancel capabilities.");
             }
