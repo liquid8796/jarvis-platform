@@ -33,6 +33,8 @@ public sealed record AgentDoctorSnapshot
     public string PluginStatus { get; init; } = "";
     public int PluginManifestCount { get; init; }
     public int PluginToolCount { get; init; }
+    public int PluginSkillRootCount { get; init; }
+    public int PluginMcpDependencyCount { get; init; }
     public bool PermissionStoreHealthy { get; init; }
     public string PermissionStoreStatus { get; init; } = "";
     public int FullPermissionCount { get; init; }
@@ -52,7 +54,7 @@ public static class AgentDoctor
     {
         ArgumentNullException.ThrowIfNull(input);
         var catalog = input.Registry.Snapshot;
-        var (pluginHealthy, pluginStatus, pluginManifests, pluginTools) = PluginHealth(input);
+        var (pluginHealthy, pluginStatus, pluginManifests, pluginTools, pluginSkillRoots, pluginMcpDependencies) = PluginHealth(input);
         var (taskHealthy, taskStatus, taskCount) = TaskHealth(input.TaskStorageRoot);
         return new AgentDoctorSnapshot
         {
@@ -69,6 +71,8 @@ public static class AgentDoctor
             PluginStatus = pluginStatus,
             PluginManifestCount = pluginManifests,
             PluginToolCount = pluginTools,
+            PluginSkillRootCount = pluginSkillRoots,
+            PluginMcpDependencyCount = pluginMcpDependencies,
             PermissionStoreHealthy = input.PermissionStoreHealthy,
             PermissionStoreStatus = input.PermissionStoreStatus,
             FullPermissionCount = input.Permissions.FullPermissionTools.Count,
@@ -82,16 +86,17 @@ public static class AgentDoctor
         };
     }
 
-    private static (bool Healthy, string Status, int Manifests, int Tools) PluginHealth(AgentDoctorInput input)
+    private static (bool Healthy, string Status, int Manifests, int Tools, int SkillRoots, int McpDependencies) PluginHealth(AgentDoctorInput input)
     {
         try
         {
             var snapshot = PluginCatalog.Load(input.PluginDirectory, input.PluginImplementations, input.AssemblyVersion);
-            return (true, "ok", snapshot.Manifests.Count, snapshot.Tools.Count);
+            return (true, "ok", snapshot.Manifests.Count, snapshot.Tools.Count,
+                snapshot.SkillRoots.Values.Sum(x => x.Count), snapshot.McpDependencies.Values.Sum(x => x.Count));
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or JsonException)
         {
-            return (false, "error:" + ex.GetType().Name, 0, 0);
+            return (false, "error:" + ex.GetType().Name, 0, 0, 0, 0);
         }
     }
 

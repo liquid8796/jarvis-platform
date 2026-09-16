@@ -44,6 +44,10 @@ Foreground/focus/accessibility observation is bounded to 200 UI Automation nodes
 
 Jarvis now adds the host-owned `tool_program.run` composite tool in Agent Core. It is deliberately smaller than an unrestricted Node/Python REPL but supports conditional and bounded iterative composition while retaining per-tool policy checks. Plugin manifests may extend the dynamic catalog only when the local host already supplies the implementation; the SDK does not claim binary compatibility with Codex plugins and does not execute manifest-referenced code.
 
+## Managed plugin lifecycle - 1.0.59
+
+Dynamic plugin projection now has a production lifecycle rather than startup-only metadata. Host-bound tools/hooks are selected by SHA-256-pinned compatible manifests; skill roots and MCP dependencies are validated metadata. Debounced local hot reload publishes through the same generation/digest catalog protocol, while malformed updates keep the previous valid snapshot. Local package install/update/uninstall is atomic/rollback-aware and still does not execute entry payloads or provide a remote arbitrary plugin loader.
+
 ## Runtime tool-catalog closure - 1.0.55
 
 The dynamic registry is now synchronized end to end rather than only inside the Agent. A hot replacement publishes generation/digest/descriptors, server-side validation/persistence completes before `catalog.ack`, and subsequent tool calls are pinned to that acknowledged identity. Plugin tools discovered by the production Windows bootstrap therefore become remotely discoverable without reconnect, while catalog presence still grants no execution permission.

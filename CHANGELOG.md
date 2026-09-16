@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.59 - 2026-09-16
+
+- Activate a managed plugin runtime that hot-reloads validated local manifests into the live dynamic tool catalog while retaining the last-known-good snapshot when validation fails.
+- Bind declared interrupt/stop/subagentStop hooks only to explicit host-supplied implementations and isolate failures per plugin so cleanup fan-out continues.
+- Extend manifest validation with optional maximum Agent compatibility, contained skill roots, bounded MCP dependency metadata and provenance while retaining SHA-256 entry pinning and no arbitrary code loading/downloading.
+- Add atomic local install/update with rollback plus manifest-only uninstall; entry payload cleanup remains explicit so shared/local artifacts are not deleted implicitly.
+- Extend redacted doctor metadata with plugin skill-root/MCP-dependency counts; add runtime/hot-reload/package/hook production-bootstrap regressions and bump package/assembly/file versions to 1.0.59 / 1.0.59.0.
+
 ## 1.0.58 - 2026-09-16
 
 - Add a profile-local SQLite thread runtime with append-only project/thread event journals, persisted turns/items/artifact references, goals/sections and parent/fork-event lineage.

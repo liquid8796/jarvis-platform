@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.58
+# Architecture decisions · 1.0.59
 
 ## Transport choice
 
@@ -40,6 +40,12 @@ Standing consent remains separate from discovery. `ToolPermissionPolicy` adds ex
 `WireMessage.Version` remains 1; protocol v2 is additive metadata in hello/welcome, so older peers continue deserializing the same envelope. The agent advertises a bounded capability-name set, the server intersects it with supported names, and a missing/zero protocol version is normalized to legacy v1. Feature handlers still validate their own fields and never treat capability advertisement as authorization.
 
 `AgentDoctor` is a read-only Core diagnostic projection, and the CLI exposes it as `doctor --json`. The snapshot deliberately contains only counts, booleans, generic status/type names, versions and catalog identity. Plugin/task checks are bounded and no credential, raw local path, permission tool ID, lease/session ID, command argument/result or manifest body is serialized. Doctor health is operational evidence, not an Arm/permission grant or a substitute for tests.
+
+## Managed plugin lifecycle - 1.0.59
+
+`PluginCatalog` validates declarative manifests only. A pinned entry file proves package identity/provenance but is never dynamically loaded; tool and lifecycle-hook implementations must already be supplied by the local host. Compatibility can be bounded by minimum/maximum Agent versions; skill roots must resolve inside the plugin directory and MCP dependencies/provenance remain bounded metadata.
+
+`PluginRuntimeBootstrap` owns one last-known-good snapshot, a debounced `FileSystemWatcher`, explicit host hook bindings and local atomic package management. A valid reload publishes through `Changed` into `AgentConnection.ApplyPluginCatalog`; a failed validation preserves the previous snapshot and records redacted error type. Lifecycle dispatch maps interrupt/stop/subagentStop to declared host bindings and catches failures per plugin so one extension cannot block later cleanup subscribers.
 
 ## Durable thread journal - 1.0.58
 

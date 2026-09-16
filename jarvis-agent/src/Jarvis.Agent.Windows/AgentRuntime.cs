@@ -15,17 +15,19 @@ public sealed class AgentRuntime : IAsyncDisposable
     private readonly ProcessToolSet _processes = new();
     private readonly ThreadRuntimeToolSet _threads;
     private readonly PluginRuntimeBootstrap _plugins;
+    private readonly IDisposable _pluginLifecycleBinding;
     private readonly CancellationTokenSource _stop = new();
     private Task? _connectionTask;
     private readonly ToolPermissionPolicy _permissions;
     public LocalControlGate Gate { get; } = new();
     public AgentConnection Connection { get; }
     public PluginCatalogSnapshot PluginCatalog => _plugins.Snapshot;
+    public PluginRuntimeBootstrap PluginRuntime => _plugins;
 
     public AgentRuntime(IApprovalService approvals, IUserQuestions questions, IArtifactSink artifacts,
         Func<Window?>? mainWindow = null, ToolPermissionPolicy? permissions = null, string? settingsRoot = null,
         string? pluginDirectory = null, IEnumerable<IAgentTool>? pluginTools = null,
-        IRemoteTaskAdaptiveCoordinator? adaptiveCoordinator = null)
+        IRemoteTaskAdaptiveCoordinator? adaptiveCoordinator = null, IEnumerable<IPluginLifecycleHook>? pluginHooks = null)
     {
         var root = settingsRoot ?? AgentProfile.Root;
         _permissions = permissions ?? new ToolPermissionPolicy(new ToolPermissionStore(
@@ -41,8 +43,11 @@ public sealed class AgentRuntime : IAsyncDisposable
 
         var agentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0);
         _plugins = new PluginRuntimeBootstrap(pluginDirectory ?? System.IO.Path.Combine(root, "plugins"),
-            pluginTools ?? [], agentVersion);
+            pluginTools ?? [], agentVersion, pluginHooks);
         Connection.ApplyPluginCatalog(_plugins.Snapshot);
+        _plugins.Changed += ApplyPluginCatalog;
+        _pluginLifecycleBinding = _plugins.BindLifecycle(lifecycle);
+        _plugins.StartWatching();
 
         _permissions.PermissionsRevoked += StopOwnedActivity;
         // A temporary transport loss cancels jobs, never replays them, but preserves
@@ -59,12 +64,14 @@ public sealed class AgentRuntime : IAsyncDisposable
     public void Arm() => Gate.Arm();
     public void Pause() { Connection.Pause(); StopOwnedActivity(); }
     private void StopOwnedActivity() { _processes.StopAll(); _inventory.Pause(); }
+    private void ApplyPluginCatalog(PluginCatalogSnapshot snapshot) => Connection.ApplyPluginCatalog(snapshot);
 
     public async ValueTask DisposeAsync()
     {
         _permissions.PermissionsRevoked -= StopOwnedActivity;
+        _plugins.Changed -= ApplyPluginCatalog;
         Pause(); _stop.Cancel(); await Connection.DisposeAsync();
         if (_connectionTask is not null) try { await _connectionTask.WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
-        _threads.Dispose(); _processes.Dispose(); _inventory.Dispose(); _stop.Dispose();
+        _pluginLifecycleBinding.Dispose(); _plugins.Dispose(); _threads.Dispose(); _processes.Dispose(); _inventory.Dispose(); _stop.Dispose();
     }
 }

@@ -1,5 +1,14 @@
 # Build / test status
 
+## 1.0.59 Managed Plugin + Hook Runtime - executed verification (2026-09-16)
+
+- Activated host-bound plugin lifecycle runtime: compatibility-range/hash validation, contained skill roots, bounded MCP dependency/provenance metadata, local lifecycle hooks, debounced FileSystemWatcher hot reload and last-known-good error handling.
+- Added atomic local package install/update rollback and manifest-only uninstall. Pinned entry payloads remain non-executed package/provenance material; tools/hooks must still be implementations supplied by the local host.
+- Production `AgentRuntime` now binds lifecycle hooks, starts plugin watching and applies valid hot catalog snapshots through the existing generation/digest protocol. Hook exceptions are isolated per plugin; doctor reports count/status metadata only.
+- RED/GREEN evidence: new runtime tests first failed on missing `PluginPackage`/`IPluginLifecycleHook`; implementation then passed **7/7** plugin catalog/projection/runtime tests. Focused doctor/plugin group passed **9/9**, and Windows production bootstrap including watcher+stop-hook behavior passed **1/1**.
+- Final `dotnet test Jarvis.slnx --nologo --no-restore`: **246 passed, 0 failed** (Core 138, Windows 29, Server 79); Server integration completed in 1m33s.
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.59 and assembly/file 1.0.59.0. No push, deployment or service restart was performed.
+
 ## 1.0.58 Durable Thread Runtime - executed verification (2026-09-16)
 
 - Added profile-local SQLite `thread-runtime.db` with append-only thread event journals, persisted turns/items/artifact references, goal/section metadata, fork lineage and materialized durable queue state.

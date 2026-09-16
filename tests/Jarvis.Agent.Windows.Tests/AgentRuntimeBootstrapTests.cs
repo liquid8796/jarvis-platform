@@ -25,9 +25,16 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
     {
         public Task ShowAsync(WidgetArtifact artifact, CancellationToken cancellationToken) => Task.CompletedTask;
     }
-    private sealed class PluginTool : IAgentTool
+    private sealed class StopHook : Jarvis.Agent.Core.Plugins.IPluginLifecycleHook
     {
-        public ToolDescriptor Descriptor { get; } = new("plugin.echo", "plugin__echo", "plugin", "test plugin",
+        public string PluginId => "test.echo";
+        public string HookName => "stop";
+        public int Calls { get; private set; }
+        public Task InvokeAsync(AgentLifecycleEvent evt, CancellationToken cancellationToken) { Calls++; return Task.CompletedTask; }
+    }
+    private sealed class PluginTool(string id = "plugin.echo") : IAgentTool
+    {
+        public ToolDescriptor Descriptor { get; } = new(id, id.Replace('.', '_'), "plugin", "test plugin",
             WireJson.Element(new { type = "object", additionalProperties = false }), true);
         public Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context, CancellationToken cancellationToken) =>
             Task.FromResult(new ToolReply("ok"));
@@ -51,11 +58,12 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
             tools = new[] { new { id = "plugin.echo" } },
             permissions = Array.Empty<string>(),
             skills = Array.Empty<string>(),
-            hooks = Array.Empty<string>()
+            hooks = new[] { "stop" }
         }, WireJson.Options));
 
+        var stopHook = new StopHook();
         await using var runtime = new AgentRuntime(new Approval(), new Questions(), new Artifacts(), settingsRoot: _root,
-            pluginDirectory: pluginRoot, pluginTools: [new PluginTool()]);
+            pluginDirectory: pluginRoot, pluginTools: [new PluginTool(), new PluginTool("plugin.hot")], pluginHooks: [stopHook]);
 
         Assert.Contains(runtime.Connection.Descriptors, descriptor => descriptor.Id == "plugin.echo");
         Assert.True(runtime.Connection.AdaptiveCoordinatorAvailable);
@@ -63,6 +71,26 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
         foreach (var id in new[] { "thread.create", "thread.get", "thread.append_turn", "thread.queue", "thread.search", "thread.fork", "thread.checkpoint" })
             Assert.Contains(runtime.Connection.Descriptors, descriptor => descriptor.Id == id);
         Assert.True(File.Exists(Path.Combine(_root, "thread-runtime.db")));
+        Assert.True(runtime.PluginRuntime.Watching);
+
+        runtime.Pause();
+        await EventuallyAsync(() => stopHook.Calls > 0);
+
+        var hotEntry = Path.Combine(pluginRoot, "hot.bin");
+        await File.WriteAllTextAsync(hotEntry, "hot plugin metadata");
+        var hotHash = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(hotEntry))).ToLowerInvariant();
+        await File.WriteAllTextAsync(Path.Combine(pluginRoot, "hot.plugin.json"), JsonSerializer.Serialize(new
+        {
+            id = "test.hot", version = "1.0.0", minAgentVersion = "1.0.0", entryFile = "hot.bin", sha256 = hotHash,
+            tools = new[] { new { id = "plugin.hot" } }, permissions = Array.Empty<string>(), skills = Array.Empty<string>(), hooks = Array.Empty<string>()
+        }, WireJson.Options));
+        await EventuallyAsync(() => runtime.Connection.Descriptors.Any(descriptor => descriptor.Id == "plugin.hot"));
+    }
+
+    private static async Task EventuallyAsync(Func<bool> condition)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        while (!condition()) await Task.Delay(50, timeout.Token);
     }
 
     public void Dispose()

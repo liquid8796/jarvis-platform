@@ -44,7 +44,7 @@ The new accessibility snapshot is deliberately bounded and best-effort. It reads
 
 Tool Code Mode is intentionally not a general scripting runtime. There is no dynamic evaluation, arbitrary process creation, direct file/network primitive or recursive `tool_program.run`. A program can cause effects only through nested published tools, and each nested call goes through the same local Arm/Pause, exact-ID standing permission, schema and approval checks as a top-level call. Tool-program Full Permission never propagates into an unrelated nested tool.
 
-Plugin discovery accepts only top-level local manifests, rejects path traversal and unsupported hooks, verifies a 64-hex SHA-256 pin for the referenced local entry file, and binds declarations only to implementations already present in the host process. Remote arbitrary plugin upload/loading remains unsupported.
+Plugin discovery accepts only top-level local manifests, rejects path traversal and unsupported hooks, verifies a 64-hex SHA-256 pin for the referenced local entry file, and binds declarations only to tool/hook implementations already present in the host process. 1.0.59 additionally bounds Agent compatibility, skill roots, MCP dependency/provenance metadata and hot-reload behavior. The watcher validates a complete next snapshot before publication and keeps last-known-good state on malformed/tampered metadata; lifecycle-hook exceptions are isolated. Local install/update is atomic with rollback and uninstall removes only the manifest. Remote arbitrary plugin upload/loading remains unsupported.
 
 ## Delegation and memory isolation - 1.0.53
 
