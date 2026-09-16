@@ -1,5 +1,14 @@
 # Build / test status
 
+## 1.0.58 Durable Thread Runtime - executed verification (2026-09-16)
+
+- Added profile-local SQLite `thread-runtime.db` with append-only thread event journals, persisted turns/items/artifact references, goal/section metadata, fork lineage and materialized durable queue state.
+- Added seven production `thread.*` tools for create/get/append-turn/queue/search/fork/checkpoint; compaction and rollback record checkpoint projections without deleting prior audit events, and all existing-thread operations re-check the persisted project against selected workspaces.
+- RED/GREEN evidence: thread tests first failed because the Threads namespace/runtime did not exist; the first implementation then exposed a UNIQUE(position) reorder collision, fixed with a transactional temporary-position shift. Production bootstrap then failed until `AgentRuntime` published the same thread toolset/profile DB used by CLI/Desktop discovery.
+- Targeted verification: thread runtime **3 passed, 0 failed**; Windows production bootstrap **1 passed, 0 failed**; CLI and Desktop explicit builds both succeeded with **0 warnings / 0 errors**.
+- Final `dotnet test Jarvis.slnx --nologo --no-restore`: **243 passed, 0 failed** (Core 135, Windows 29, Server 79); Server integration completed in 1m46s.
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.58 and assembly/file 1.0.58.0. No push, deployment or service restart was performed.
+
 ## 1.0.57 Process Runtime V2 - executed verification (2026-09-16)
 
 - Added exact argv `process.spawn`, bounded environment overrides, structured stdout/stderr/pty/system cursor events, `process.write_stdin` and Windows `process.resize_pty` while retaining the legacy shell `process.start` contract.

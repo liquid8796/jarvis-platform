@@ -18,6 +18,10 @@ Publish CLI and select `jarvis-agent.exe` from GUI Browser integration or run `j
 
 Agent native host: `com.jarvis.agent.browser`; named pipe: `JarvisAgent-browser`. Original Jarvis Code native integration remains separate. Browser installation requires HKCU write access and a browser permitting unpacked extensions. Enterprise browser policies may forbid it; those policies are not bypassed.
 
+## Durable thread workflow - 1.0.58
+
+Use `thread__create` for project-level work that must survive Agent restart, `thread__append_turn` for bounded turn/items/artifact references, and `thread__queue` for durable ordered follow-ups. `thread__fork` records lineage at a specific parent event, while `thread__checkpoint` compaction/rollback changes the default projection without deleting append-only audit events. Use `thread__search` only inside selected project roots and `thread__get(includeCompacted=true)` when an audit needs pre-compaction history.
+
 ## Typical build/test workflow
 
 First use filesystem tools to inspect `README`, build files and tests. Use `process__spawn` with argv for exact locally approved build/test execution; retain `process__start` only when shell syntax is actually required. Poll `process__read` with its jobId and cursor; do not launch repeated duplicate builds. Interactive jobs may use `process__write_stdin` and Windows ConPTY jobs may use `process__resize_pty`. Stop with `process__cancel`. Non-zero exit codes and truncated logs are explicit. Long-lived jobs are not durable across agent exit/disconnect and do not promise continued work while ChatGPT is idle.

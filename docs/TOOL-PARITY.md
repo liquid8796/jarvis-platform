@@ -16,8 +16,9 @@ Counts below are derived from source registration, **not a captured tool list fr
 | Shell | 2 | 2 | Normal and Bash variants; detached background mode disallowed |
 | Workflow | 2 | 2 | Todo and AskUserQuestion |
 | Managed process jobs | 6 | 6 | process.start/spawn/read/write_stdin/resize_pty/cancel |
+| Durable thread runtime | 7 | 7 | create/get/append_turn/queue/search/fork/checkpoint |
 | Agent Core host tools | 3 | 3 | tool_program.run + developer.symbol_search + developer.test; plugin projections are additional/dynamic |
-| **Expected total** | **59** | **56** | Subject to Windows build/runtime verification |
+| **Expected total** | **66** | **63** | Subject to Windows build/runtime verification |
 
 Mouse move/click/double-click/right-click/drag/scroll and keyboard actions already exist in the baseline computer batch/browser computer implementations. They are reused, not replaced with a new incomplete mouse simulator. This is not a binary clone of a specific Codex proprietary tool protocol.
 
@@ -48,6 +49,12 @@ Jarvis now adds the host-owned `tool_program.run` composite tool in Agent Core. 
 The dynamic registry is now synchronized end to end rather than only inside the Agent. A hot replacement publishes generation/digest/descriptors, server-side validation/persistence completes before `catalog.ack`, and subsequent tool calls are pinned to that acknowledged identity. Plugin tools discovered by the production Windows bootstrap therefore become remotely discoverable without reconnect, while catalog presence still grants no execution permission.
 
 Process authority is also more granular than the tool-count table suggests: `process.start` and `process.spawn` require invocation-time capability leases for Full Permission. Shell-command prefixes retain boundary-aware text matching; argv spawns compare prefix tokens directly so a grant for `dotnet test` does not authorize `dotnet build`. Otherwise the normal local approval path is used.
+
+## Durable Thread Runtime - 1.0.58
+
+Seven host-owned `thread.*` tools add persistent orchestration state without exposing arbitrary SQLite access. They cover create/get/append-turn, queue mutation, bounded project search, fork lineage and non-destructive compact/rollback checkpoints. The production Windows runtime, CLI manifest and Desktop permissions view use the same descriptors.
+
+Thread events are append-only audit records. Queue rows and checkpoint columns are materialized projections for efficient state reads; neither compaction nor rollback claims to undo external tool side effects. Artifact entries store bounded references/metadata only and do not bypass filesystem/network permissions.
 
 ## Process Runtime V2 - 1.0.57
 

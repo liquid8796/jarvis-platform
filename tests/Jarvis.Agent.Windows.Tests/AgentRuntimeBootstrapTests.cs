@@ -60,6 +60,9 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
         Assert.Contains(runtime.Connection.Descriptors, descriptor => descriptor.Id == "plugin.echo");
         Assert.True(runtime.Connection.AdaptiveCoordinatorAvailable);
         Assert.Single(runtime.PluginCatalog.Manifests);
+        foreach (var id in new[] { "thread.create", "thread.get", "thread.append_turn", "thread.queue", "thread.search", "thread.fork", "thread.checkpoint" })
+            Assert.Contains(runtime.Connection.Descriptors, descriptor => descriptor.Id == id);
+        Assert.True(File.Exists(Path.Combine(_root, "thread-runtime.db")));
     }
 
     public void Dispose()

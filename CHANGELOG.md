@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.58 - 2026-09-16
+
+- Add a profile-local SQLite thread runtime with append-only project/thread event journals, persisted turns/items/artifact references, goals/sections and parent/fork-event lineage.
+- Add durable per-thread queue add/update/delete/reorder/start operations and bounded project search; queue rows are materialized for ordering while every mutation is also journaled.
+- Add non-destructive compact/rollback checkpoints: default timeline projection may hide compacted events, while audit reads can still include the complete immutable event history.
+- Publish seven production `thread.*` tools through AgentRuntime, CLI discovery and Desktop permission catalog with selected-project scope guards and bounded schemas.
+- Add persistence/reopen, compaction, queue/fork/search and production-bootstrap regression coverage; bump package/assembly/file versions to 1.0.58 / 1.0.58.0.
+
 ## 1.0.57 - 2026-09-16
 
 - Add `process.spawn` for exact argv execution without an inserted shell, bounded environment overrides and optional Windows ConPTY sessions while retaining `process.start` as the compatibility shell wrapper.

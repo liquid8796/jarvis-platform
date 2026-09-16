@@ -3,6 +3,7 @@ using System.Windows;
 using Jarvis.Agent.Core;
 using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.RemoteTasks;
+using Jarvis.Agent.Core.Threads;
 using Jarvis.Protocol;
 
 namespace Jarvis.Agent.Windows;
@@ -12,6 +13,7 @@ public sealed class AgentRuntime : IAsyncDisposable
 {
     private readonly ToolInventory _inventory;
     private readonly ProcessToolSet _processes = new();
+    private readonly ThreadRuntimeToolSet _threads;
     private readonly PluginRuntimeBootstrap _plugins;
     private readonly CancellationTokenSource _stop = new();
     private Task? _connectionTask;
@@ -29,8 +31,9 @@ public sealed class AgentRuntime : IAsyncDisposable
         _permissions = permissions ?? new ToolPermissionPolicy(new ToolPermissionStore(
             System.IO.Path.Combine(root, "tool-permissions.json")).Load());
         _inventory = new ToolInventory(questions, artifacts, mainWindow, settingsRoot);
+        _threads = new ThreadRuntimeToolSet(System.IO.Path.Combine(root, "thread-runtime.db"));
 
-        var registry = new DynamicToolRegistry(_inventory.Tools.Concat(_processes.Tools));
+        var registry = new DynamicToolRegistry(_inventory.Tools.Concat(_processes.Tools).Concat(_threads.Tools));
         var lifecycle = new AgentLifecycleHub();
         var adaptive = adaptiveCoordinator ?? new DefaultRemoteTaskAdaptiveCoordinator(registry);
         Connection = new AgentConnection(registry, approvals, Gate, _permissions,
@@ -62,6 +65,6 @@ public sealed class AgentRuntime : IAsyncDisposable
         _permissions.PermissionsRevoked -= StopOwnedActivity;
         Pause(); _stop.Cancel(); await Connection.DisposeAsync();
         if (_connectionTask is not null) try { await _connectionTask.WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
-        _processes.Dispose(); _inventory.Dispose(); _stop.Dispose();
+        _threads.Dispose(); _processes.Dispose(); _inventory.Dispose(); _stop.Dispose();
     }
 }

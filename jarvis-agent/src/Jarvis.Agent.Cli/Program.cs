@@ -2,6 +2,7 @@ using System.Security.Principal;
 using System.Text.Json;
 using Jarvis.Agent.Core;
 using Jarvis.Agent.Core.Diagnostics;
+using Jarvis.Agent.Core.Threads;
 using Jarvis.Protocol;
 using Jarvis.Agent.Windows;
 namespace Jarvis.Agent.Cli;
@@ -58,7 +59,8 @@ public static class Program
             var prompts = new ConsolePrompts();
             using var tools = new ToolInventory(prompts, new FileArtifactSink(Environment.CurrentDirectory));
             using var processes = new ProcessToolSet();
-            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(tools.Tools.Concat(processes.Tools).Select(t => t.Descriptor),
+            using var threads = new ThreadRuntimeToolSet(Path.Combine(AgentProfile.Root, "thread-runtime.db"));
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(tools.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor),
                 new System.Text.Json.JsonSerializerOptions(Jarvis.Protocol.WireJson.Options) { WriteIndented = true })); return 0;
         }
         if (command != "connect") throw new ArgumentException("Unknown command. Run jarvis-agent help.");
@@ -96,7 +98,8 @@ public static class Program
             permissionStatus = "error:" + ex.GetType().Name;
         }
 
-        var registry = new DynamicToolRegistry(tools.Tools.Concat(processes.Tools));
+        using var threads = new ThreadRuntimeToolSet(Path.Combine(AgentProfile.Root, "thread-runtime.db"));
+        var registry = new DynamicToolRegistry(tools.Tools.Concat(processes.Tools).Concat(threads.Tools));
         var gate = new LocalControlGate();
         await using var connection = new AgentConnection(registry, prompts, gate, permissions);
         var assembly = typeof(Program).Assembly.GetName().Version ?? new Version(0, 0, 0, 0);

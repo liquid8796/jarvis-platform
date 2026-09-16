@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Threads;
 using Jarvis.Protocol;
 using Jarvis.Agent.Desktop.Infrastructure;
 using Jarvis.Agent.Desktop.Services;
@@ -58,7 +59,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             var prompts = new LocalPrompts(owner);
             using var inventory = new ToolInventory(prompts, new DesktopArtifactSink(owner), () => owner, _settingsRoot);
             using var processes = new ProcessToolSet();
-            var descriptors = inventory.Tools.Concat(processes.Tools).Select(t => t.Descriptor).ToArray();
+            using var threads = new ThreadRuntimeToolSet(System.IO.Path.Combine(_settingsRoot, "thread-runtime.db"));
+            var descriptors = inventory.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor).ToArray();
             foreach (var tool in descriptors) Tools.Add(tool.Name);
             Permissions = new ToolPermissionsViewModel(descriptors, _permissions, permissionStore);
         }

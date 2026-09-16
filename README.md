@@ -1,6 +1,6 @@
-# Jarvis Control - 1.0.57
+# Jarvis Control - 1.0.58
 
-**Version 1.0.57 adds Process Runtime V2: exact argv spawning without an inserted shell, bounded environment overrides, structured stdout/stderr cursor events, stdin streaming, Windows ConPTY resize and owned-process cancellation while preserving the existing `process.start/read/cancel` compatibility surface.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
+**Version 1.0.58 adds a durable append-only Thread Runtime: project-scoped threads persist turns/items/artifact references, queue state, goals/sections, fork lineage, search and non-destructive compact/rollback checkpoints through seven production `thread.*` tools.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
 
 Jarvis Control là control plane cho MCP; Jarvis Agent là ứng dụng C# .NET 10 trên Windows 10/11, gồm WPF desktop và CLI. Tên web được chọn vì yêu cầu ban đầu chưa điền tên. Một repository chứa hai project sản phẩm và shared protocol; giữ nguyên các thư mục `shared` và `vendor` khi mở solution con.
 
@@ -34,7 +34,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.57/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.57/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
+Build thành công sẽ tạo `artifacts/agent/1.0.58/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.58/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
 
 ## Chạy local
 
@@ -51,11 +51,11 @@ Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.57\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.57\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.57\cli\jarvis-agent.exe doctor --json
-.\artifacts\agent\1.0.57\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.57\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.58\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.58\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.58\cli\jarvis-agent.exe doctor --json
+.\artifacts\agent\1.0.58\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.58\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -101,7 +101,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.57**, assembly/file **1.0.57.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.58**, assembly/file **1.0.58.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 
@@ -148,6 +148,12 @@ The plugin SDK is metadata-first: local `*.plugin.json` manifests declare an ID/
 `agent_task_create` accepts optional `parentTaskId`. The local Agent verifies that the parent exists for the same owner/device, forces the child onto the same resolved project, prevents execution-mode broadening, caps lineage depth at 3 and direct children at 8, then persists `parentTaskId`, `rootTaskId` and `depth` in the normal durable task snapshot. Top-level create digests are unchanged, so pre-1.0.53 idempotent retries remain compatible.
 
 `SqliteMemoryStore` is now genuinely durable. It stores memories in SQLite partitions keyed by owner/project/namespace, retains provenance and timestamps, supports TTL expiration and bounded text search, and keeps the legacy `IAgentMemory.Save/Get(string)` facade mapped to a default partition. SQLite connections are short-lived/non-pooled and use WAL/busy-timeout semantics for concurrent writers.
+
+## Durable Thread Runtime (1.0.58)
+
+The production Agent now persists a profile-local `thread-runtime.db` and publishes seven `thread.*` tools for project-scoped orchestration. A thread records append-only events for turns, typed items, artifact references, metadata, queue mutations and fork lineage; queue rows are materialized only for efficient reorder/start operations.
+
+`thread.checkpoint` compact/rollback operations are deliberately non-destructive. Compaction stores a summary plus an event watermark used by the default timeline projection, and rollback records a target event without deleting later audit history. `thread.get` can request compacted history explicitly; `thread.search` is bounded and restricted to selected project roots. The CLI/Desktop tool catalog and production runtime use the same store/tool descriptors.
 
 ## Process Runtime V2 (1.0.57)
 

@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.57
+# Architecture decisions · 1.0.58
 
 ## Transport choice
 
@@ -40,6 +40,12 @@ Standing consent remains separate from discovery. `ToolPermissionPolicy` adds ex
 `WireMessage.Version` remains 1; protocol v2 is additive metadata in hello/welcome, so older peers continue deserializing the same envelope. The agent advertises a bounded capability-name set, the server intersects it with supported names, and a missing/zero protocol version is normalized to legacy v1. Feature handlers still validate their own fields and never treat capability advertisement as authorization.
 
 `AgentDoctor` is a read-only Core diagnostic projection, and the CLI exposes it as `doctor --json`. The snapshot deliberately contains only counts, booleans, generic status/type names, versions and catalog identity. Plugin/task checks are bounded and no credential, raw local path, permission tool ID, lease/session ID, command argument/result or manifest body is serialized. Doctor health is operational evidence, not an Arm/permission grant or a substitute for tests.
+
+## Durable thread journal - 1.0.58
+
+The Agent profile owns a separate SQLite `thread-runtime.db` used by `ThreadRuntimeToolSet`. The normalized thread row carries current project/title/goal/section, fork lineage and checkpoint watermarks; `thread_events` is the append-only audit journal for thread creation, turns/items/artifact references, queue changes, metadata, forks and checkpoints. Queue rows are materialized to support deterministic reorder/start without replaying journal history.
+
+Compaction and rollback are projections, not destructive rewrites. A compact checkpoint stores a summary and `compact_through_event_id`; ordinary timeline reads start after that watermark while audit reads may include all prior events. Rollback records `rollback_target_event_id` and a journal event but does not delete later facts. All thread tools verify that the persisted project stays inside the current selected workspace set.
 
 ## Long jobs
 

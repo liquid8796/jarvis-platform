@@ -70,6 +70,12 @@ Protocol capability names describe supported features only and are not trusted a
 
 `jarvis-agent doctor --json` is intentionally local and redacted. It emits versions, generic status/error-type labels, booleans, counts and catalog generation/digest only. It does not emit enrollment/OAuth credentials, raw workspace/plugin/task paths, saved permission tool IDs, capability lease IDs/session IDs, plugin manifest bodies, commands, tool arguments/results or screenshot/browser content. Doctor performs bounded read-only metadata checks and cannot Arm the agent or grant permission.
 
+## Durable thread data boundary - 1.0.58
+
+Thread history is stored locally under the Agent profile in SQLite and is not itself a permission grant. `thread.create/search` resolve projects through the current selected workspace set; every operation on an existing thread re-checks its persisted project before reading or mutating state. Tool schemas and runtime validation bound title/goal/item/artifact/queue/search sizes.
+
+Compaction and rollback never erase journal rows. This avoids presenting a compacted or rolled-back projection as proof that earlier side effects vanished. Artifact entries are references/metadata, not automatic file reads or uploads; callers still need the separate file/tool permissions to access referenced content.
+
 ## Owned interactive process boundary - 1.0.57
 
 `process.spawn` never inserts a shell: executable and arguments are passed separately. Environment overrides are bounded and cannot contain invalid environment names. `process.write_stdin`, `process.resize_pty`, `process.read` and `process.cancel` resolve only opaque IDs in the Agent-owned registry; there is no PID attach surface.
