@@ -41,6 +41,22 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
     }
 
     [Fact]
+    public async Task Runtime_loads_persistent_constrained_process_approvals_from_disk()
+    {
+        Directory.CreateDirectory(_root);
+        new ToolPermissionStore(Path.Combine(_root, "tool-permissions.json")).Save(
+            new ToolPermissionSettings(["process.start"], ["process.start"]));
+
+        await using var runtime = new AgentRuntime(new Approval(), new Questions(), new Artifacts(), settingsRoot: _root,
+            pluginDirectory: Path.Combine(_root, "plugins"));
+        var field = typeof(AgentRuntime).GetField("_permissions", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        Assert.NotNull(field);
+        var policy = Assert.IsType<ToolPermissionPolicy>(field.GetValue(runtime));
+        Assert.True(policy.HasFullPermission("process.start"));
+        Assert.True(policy.HasAlwaysApprovedConstrainedTool("process.start"));
+    }
+
+    [Fact]
     public async Task Runtime_bootstraps_plugin_catalog_and_default_adaptive_coordinator()
     {
         var pluginRoot = Path.Combine(_root, "plugins");

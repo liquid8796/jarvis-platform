@@ -11,11 +11,22 @@ public sealed class ToolPermissionPolicy
     private sealed record LeaseRegistration(ToolCapabilityLease Lease, CancellationTokenSource Stop);
 
     private FrozenSet<string> _grants = Array.Empty<string>().ToFrozenSet(StringComparer.Ordinal);
+    private FrozenSet<string> _alwaysApprovedConstrained = Array.Empty<string>().ToFrozenSet(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, LeaseRegistration> _leases = new(StringComparer.Ordinal);
     public event Action? PermissionsRevoked;
-    public ToolPermissionPolicy(IEnumerable<string>? grants = null) => Replace(grants ?? []);
+    public event Action? PermissionsChanged;
+
+    public ToolPermissionPolicy(IEnumerable<string>? grants = null, IEnumerable<string>? alwaysApprovedConstrainedTools = null)
+    {
+        Replace(grants ?? []);
+        ReplaceAlwaysApprovedConstrainedTools(alwaysApprovedConstrainedTools ?? []);
+    }
+
+    public static bool SupportsPermanentApproval(string toolId) => toolId is "process.start" or "process.spawn";
     public bool HasFullPermission(string toolId) => Volatile.Read(ref _grants).Contains(toolId);
+    public bool HasAlwaysApprovedConstrainedTool(string toolId) => Volatile.Read(ref _alwaysApprovedConstrained).Contains(toolId);
     public IReadOnlyList<string> FullPermissionTools => Volatile.Read(ref _grants).Order(StringComparer.Ordinal).ToArray();
+    public IReadOnlyList<string> AlwaysApprovedConstrainedTools => Volatile.Read(ref _alwaysApprovedConstrained).Order(StringComparer.Ordinal).ToArray();
     public IReadOnlyList<ToolCapabilityLease> ActiveLeases => _leases.Values
         .Select(x => x.Lease).Where(x => x.ExpiresUtc > DateTimeOffset.UtcNow).OrderBy(x => x.ExpiresUtc).ToArray();
 
@@ -24,13 +35,15 @@ public sealed class ToolPermissionPolicy
         ArgumentException.ThrowIfNullOrWhiteSpace(toolId);
         ArgumentNullException.ThrowIfNull(context);
         var now = DateTimeOffset.UtcNow;
-        var constrained = toolId is "process.start" or "process.spawn";
+        var constrained = SupportsPermanentApproval(toolId);
+        if (constrained && HasAlwaysApprovedConstrainedTool(toolId)) return true;
         if (!constrained && HasFullPermission(toolId)) return true;
         return _leases.Values.Any(registration => registration.Lease.Matches(toolId, arguments, context, now));
     }
 
     public bool RequiresApproval(ToolDescriptor tool) =>
-        !HasFullPermission(tool.Id) && (!tool.ReadOnly || tool.Sensitive);
+        !(SupportsPermanentApproval(tool.Id) ? HasAlwaysApprovedConstrainedTool(tool.Id) : HasFullPermission(tool.Id)) &&
+        (!tool.ReadOnly || tool.Sensitive);
 
     public bool RequiresApproval(ToolDescriptor tool, JsonElement arguments, AgentExecutionContext context) =>
         !HasFullPermission(tool.Id, arguments, context) && (!tool.ReadOnly || tool.Sensitive);
@@ -40,7 +53,32 @@ public sealed class ToolPermissionPolicy
         ArgumentNullException.ThrowIfNull(toolIds);
         var next = toolIds.Select(ValidateId).ToFrozenSet(StringComparer.Ordinal);
         var previous = Interlocked.Exchange(ref _grants, next);
+        var changed = !previous.SetEquals(next);
         if (previous.Any(id => !next.Contains(id))) PermissionsRevoked?.Invoke();
+        if (changed) PermissionsChanged?.Invoke();
+    }
+
+    public void ReplaceAlwaysApprovedConstrainedTools(IEnumerable<string> toolIds)
+    {
+        ArgumentNullException.ThrowIfNull(toolIds);
+        var next = toolIds.Select(ValidateAlwaysApprovedId).ToFrozenSet(StringComparer.Ordinal);
+        var previous = Interlocked.Exchange(ref _alwaysApprovedConstrained, next);
+        var changed = !previous.SetEquals(next);
+        if (previous.Any(id => !next.Contains(id))) PermissionsRevoked?.Invoke();
+        if (changed) PermissionsChanged?.Invoke();
+    }
+
+    public void GrantAlwaysApprovedConstrainedTool(string toolId)
+    {
+        var validated = ValidateAlwaysApprovedId(toolId);
+        ReplaceAlwaysApprovedConstrainedTools(AlwaysApprovedConstrainedTools.Append(validated));
+    }
+
+    public bool RevokeAlwaysApprovedConstrainedTool(string toolId)
+    {
+        if (!HasAlwaysApprovedConstrainedTool(toolId)) return false;
+        ReplaceAlwaysApprovedConstrainedTools(AlwaysApprovedConstrainedTools.Where(id => !StringComparer.Ordinal.Equals(id, toolId)));
+        return true;
     }
 
     public void GrantLease(ToolCapabilityLease lease)
@@ -99,30 +137,48 @@ public sealed class ToolPermissionPolicy
     private static string ValidateId(string id) =>
         !string.IsNullOrWhiteSpace(id) && id.Length <= 256 && !id.Contains('*') && !id.Any(char.IsWhiteSpace)
             ? id : throw new ArgumentException("An exact tool ID is required; wildcard grants are not supported.");
+
+    private static string ValidateAlwaysApprovedId(string id) =>
+        SupportsPermanentApproval(ValidateId(id))
+            ? id : throw new ArgumentException("Permanent approval is supported only for process.start and process.spawn.");
 }
+
+public sealed record ToolPermissionSettings(IReadOnlyList<string> FullPermissionTools, IReadOnlyList<string> AlwaysApprovedConstrainedTools);
 
 /// <summary>Separate from DPAPI enrollment credentials. Atomic writes; damaged files fail closed.</summary>
 public sealed class ToolPermissionStore(string filePath)
 {
-    private sealed record Document(int Version, string[] FullPermissionTools);
-    public IReadOnlyList<string> Load()
+    private sealed record Document(int Version, string[] FullPermissionTools, string[]? AlwaysApprovedConstrainedTools = null);
+
+    public IReadOnlyList<string> Load() => LoadSettings().FullPermissionTools;
+
+    public ToolPermissionSettings LoadSettings()
     {
-        if (!File.Exists(filePath)) return [];
+        if (!File.Exists(filePath)) return new([], []);
         var document = JsonSerializer.Deserialize<Document>(File.ReadAllText(filePath), WireJson.Options)
             ?? throw new InvalidDataException("Tool permission settings are empty.");
-        if (document.Version != 1 || document.FullPermissionTools is null)
+        if (document.FullPermissionTools is null || document.Version is not (1 or 2))
             throw new InvalidDataException("Unsupported tool permission settings.");
-        return new ToolPermissionPolicy(document.FullPermissionTools).FullPermissionTools;
+        if (document.Version == 2 && document.AlwaysApprovedConstrainedTools is null)
+            throw new InvalidDataException("Unsupported tool permission settings.");
+        var policy = new ToolPermissionPolicy(document.FullPermissionTools,
+            document.Version == 1 ? [] : document.AlwaysApprovedConstrainedTools!);
+        return new(policy.FullPermissionTools, policy.AlwaysApprovedConstrainedTools);
     }
 
-    public void Save(IEnumerable<string> toolIds)
+    public void Save(IEnumerable<string> toolIds) => Save(new ToolPermissionSettings(toolIds.ToArray(), []));
+
+    public void Save(ToolPermissionSettings settings)
     {
-        var grants = new ToolPermissionPolicy(toolIds).FullPermissionTools.ToArray();
+        ArgumentNullException.ThrowIfNull(settings);
+        var policy = new ToolPermissionPolicy(settings.FullPermissionTools, settings.AlwaysApprovedConstrainedTools);
+        var grants = policy.FullPermissionTools.ToArray();
+        var always = policy.AlwaysApprovedConstrainedTools.ToArray();
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
         var temp = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllText(temp, JsonSerializer.Serialize(new Document(1, grants),
+            File.WriteAllText(temp, JsonSerializer.Serialize(new Document(2, grants, always),
                 new JsonSerializerOptions(WireJson.Options) { WriteIndented = true }));
             File.Move(temp, filePath, overwrite: true);
         }

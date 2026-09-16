@@ -30,8 +30,12 @@ public sealed class AgentRuntime : IAsyncDisposable
         IRemoteTaskAdaptiveCoordinator? adaptiveCoordinator = null, IEnumerable<IPluginLifecycleHook>? pluginHooks = null)
     {
         var root = settingsRoot ?? AgentProfile.Root;
-        _permissions = permissions ?? new ToolPermissionPolicy(new ToolPermissionStore(
-            System.IO.Path.Combine(root, "tool-permissions.json")).Load());
+        if (permissions is not null) _permissions = permissions;
+        else
+        {
+            var permissionSettings = new ToolPermissionStore(System.IO.Path.Combine(root, "tool-permissions.json")).LoadSettings();
+            _permissions = new ToolPermissionPolicy(permissionSettings.FullPermissionTools, permissionSettings.AlwaysApprovedConstrainedTools);
+        }
         _inventory = new ToolInventory(questions, artifacts, mainWindow, settingsRoot);
         _threads = new ThreadRuntimeToolSet(System.IO.Path.Combine(root, "thread-runtime.db"));
 

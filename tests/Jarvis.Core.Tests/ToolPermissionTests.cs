@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using Jarvis.Agent.Core;
 using Jarvis.Protocol;
@@ -73,6 +74,57 @@ public sealed class ToolPermissionTests : IDisposable
         store.Save(["a.one"]); var before = File.ReadAllText(file);
         Assert.Throws<ArgumentException>(() => store.Save(["*"]));
         Assert.Equal(before, File.ReadAllText(file));
+    }
+    [Fact] public void New_permission_documents_reserve_persistent_constrained_approvals()
+    {
+        var file = Path.Combine(_root, "tool-permissions-v2.json"); var store = new ToolPermissionStore(file);
+        store.Save(["shell.PowerShell"]);
+        using var document = JsonDocument.Parse(File.ReadAllText(file));
+        Assert.Equal(2, document.RootElement.GetProperty("version").GetInt32());
+        Assert.Equal(JsonValueKind.Array, document.RootElement.GetProperty("alwaysApprovedConstrainedTools").ValueKind);
+    }
+    [Fact] public void Legacy_v1_permission_documents_still_load_full_permissions()
+    {
+        var file = Path.Combine(_root, "legacy-v1.json");
+        File.WriteAllText(file, "{\"version\":1,\"fullPermissionTools\":[\"shell.PowerShell\"]}");
+        Assert.Equal(new[] { "shell.PowerShell" }, new ToolPermissionStore(file).Load());
+    }
+    [Fact] public void Permanent_approval_is_supported_only_for_the_two_constrained_process_tools()
+    {
+        var method = typeof(ToolPermissionPolicy).GetMethod("SupportsPermanentApproval", BindingFlags.Public | BindingFlags.Static);
+        Assert.NotNull(method);
+        Assert.True((bool)method.Invoke(null, ["process.start"])!);
+        Assert.True((bool)method.Invoke(null, ["process.spawn"])!);
+        Assert.False((bool)method.Invoke(null, ["shell.PowerShell"])!);
+        Assert.False((bool)method.Invoke(null, ["process.read"])!);
+    }
+    [Fact] public void Permanent_approval_can_be_applied_and_revoked_without_changing_full_permission_selection()
+    {
+        var policy = new ToolPermissionPolicy(["process.start"]);
+        var replace = typeof(ToolPermissionPolicy).GetMethod("ReplaceAlwaysApprovedConstrainedTools", BindingFlags.Public | BindingFlags.Instance);
+        Assert.NotNull(replace);
+        var args = WireJson.Element(new { command = "dotnet test" });
+        var context = new AgentExecutionContext(Path.GetTempPath(), "call-permanent", "session-permanent");
+        Assert.False(policy.HasFullPermission("process.start", args, context));
+        replace.Invoke(policy, [new[] { "process.start" }]);
+        Assert.True(policy.HasFullPermission("process.start", args, context));
+        Assert.True(policy.HasFullPermission("process.start"));
+        replace.Invoke(policy, [Array.Empty<string>()]);
+        Assert.False(policy.HasFullPermission("process.start", args, context));
+        Assert.True(policy.HasFullPermission("process.start"));
+    }
+    [Fact] public void Permanent_approval_changes_notify_observers_while_only_removal_revokes()
+    {
+        var policy = new ToolPermissionPolicy(); var changed = 0; var revoked = 0;
+        var changedEvent = typeof(ToolPermissionPolicy).GetEvent("PermissionsChanged", BindingFlags.Public | BindingFlags.Instance);
+        Assert.NotNull(changedEvent);
+        Action handler = () => changed++;
+        changedEvent.AddEventHandler(policy, handler);
+        policy.PermissionsRevoked += () => revoked++;
+        policy.GrantAlwaysApprovedConstrainedTool("process.start");
+        Assert.Equal(1, changed); Assert.Equal(0, revoked);
+        policy.RevokeAlwaysApprovedConstrainedTool("process.start");
+        Assert.Equal(2, changed); Assert.Equal(1, revoked);
     }
     [Fact] public void Full_permissions_do_not_arm_a_new_process()
     {

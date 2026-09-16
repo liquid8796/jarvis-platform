@@ -1,6 +1,6 @@
-# Jarvis Control - 1.0.62
+# Jarvis Control - 1.0.63
 
-**Version 1.0.62 adds MCP output schemas and matching structured results to every published tool, including all six `agent_task_*` operations. Existing text content and image blocks remain available; task snapshots, artifact pagination and tool descriptors now have explicit output contracts. The MCP image adapter also uses the SDK's decoded-image factory to preserve correct base64 on the wire.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
+**Version 1.0.63 adds a persistent `Always approve` choice for the constrained `process.start` and `process.spawn` prompts. The approval is stored separately from ordinary Full permission, survives Agent restart/reconnect, applies only to the exact selected process tool, and can be revoked with `Require approval again` in Tool permissions. Existing scoped capability leases remain supported and Full permission alone still does not bypass the constrained-process exception.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
 
 Jarvis Control là control plane cho MCP; Jarvis Agent là ứng dụng C# .NET 10 trên Windows 10/11, gồm WPF desktop và CLI. Tên web được chọn vì yêu cầu ban đầu chưa điền tên. Một repository chứa hai project sản phẩm và shared protocol; giữ nguyên các thư mục `shared` và `vendor` khi mở solution con.
 
@@ -34,7 +34,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.62/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.62/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
+Build thành công sẽ tạo `artifacts/agent/1.0.63/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.63/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
 
 ## Chạy local
 
@@ -46,16 +46,18 @@ Script hỏi mật khẩu an toàn, không có admin mặc định. Mở `http:/
 
 Đăng nhập admin → user/device/tools được quản lý trên web. User mới đăng ký ở trạng thái **pending**; admin phải approve trước khi đăng nhập. Trong **Devices**, enroll thiết bị và lưu token một lần. Mở Jarvis Agent, nhập URL/device ID/token, chọn workspace, bật tùy chọn HTTP loopback **chỉ khi test local**, rồi Connect. Kết nối thành công chưa cho phép điều khiển: cần **Arm control** (until Pause, Disconnect or Exit) tại máy. Pause qua GUI/tray hoặc `Ctrl+Alt+Pause`.
 
+Trong **Tool permissions**, Full permission vẫn áp dụng cho các tool thông thường. Riêng `process.start` và `process.spawn` là constrained exceptions: hộp thoại local có `Deny`, `Approve once` và `Always approve`. `Always approve` được lưu vĩnh viễn theo exact tool ID trên máy đó và có thể thu hồi bằng **Require approval again**; Arm/Pause và các boundary Windows hiện có vẫn áp dụng.
+
 Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, kiểm tra rồi bật tool cần thiết. Tool mới import mặc định tắt. Catalog CRUD quản lý alias/metadata/availability của tool đã cài trên agent; **không upload script tùy ý để chạy trên máy người dùng**.
 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.62\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.62\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.62\cli\jarvis-agent.exe doctor --json
-.\artifacts\agent\1.0.62\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.62\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.63\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.63\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.63\cli\jarvis-agent.exe doctor --json
+.\artifacts\agent\1.0.63\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.63\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -101,7 +103,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.62**, assembly/file **1.0.62.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.63**, assembly/file **1.0.63.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 

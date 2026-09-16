@@ -7,7 +7,7 @@ using Jarvis.Agent.Windows;
 using Jarvis.Protocol;
 using JarvisCode.Core.Tools.BuiltIn;
 namespace Jarvis.Agent.Desktop.Services;
-public sealed class LocalPrompts(Window owner) : IApprovalService, IUserQuestions
+public sealed class LocalPrompts(Window owner, ToolPermissionPolicy permissions, ToolPermissionStore permissionStore) : IApprovalService, IUserQuestions
 {
     private readonly SemaphoreSlim _serial = new(1, 1);
     public async Task<bool> ApproveAsync(ToolDescriptor tool, JsonElement arguments, CancellationToken ct)
@@ -21,13 +21,48 @@ public sealed class LocalPrompts(Window owner) : IApprovalService, IUserQuestion
                 var window = Create("Approve one action", out var panel, out var footer);
                 panel.Children.Add(new TextBlock { Text = tool.Name, FontSize = 21, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0,0,0,10) });
                 panel.Children.Add(new TextBlock { Text = "An authorized remote client requested this action. Review the exact arguments. Deny anything you did not intend.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,15), Foreground = Brushes.LightGray });
+                if (ToolPermissionPolicy.SupportsPermanentApproval(tool.Id))
+                    panel.Children.Add(new Border
+                    {
+                        Background = new SolidColorBrush(Color.FromRgb(46, 38, 25)), BorderBrush = new SolidColorBrush(Color.FromRgb(112, 82, 38)), BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(8), Padding = new Thickness(10), Margin = new Thickness(0,0,0,15),
+                        Child = new TextBlock { Text = "Always approve permanently allows future requests for this tool on this device without another Jarvis permission prompt. You can revoke it later in Tool permissions.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.Wheat }
+                    });
                 panel.Children.Add(new TextBox { Text = JsonSerializer.Serialize(arguments, new JsonSerializerOptions { WriteIndented = true }),
                     IsReadOnly = true, Height = 260, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                     FontFamily = new FontFamily("Consolas"), FontSize = 12 });
                 var deny = new Button { Content = "Deny", IsCancel = true, IsDefault = true, Margin = new Thickness(0,0,10,0) };
                 var allow = new Button { Content = "Approve once", Style = (Style)owner.FindResource("Primary") };
-                deny.Click += (_, _) => window.DialogResult = false; allow.Click += (_, _) => window.DialogResult = true;
-                footer.Children.Add(deny); footer.Children.Add(allow);
+                deny.Click += (_, _) => window.DialogResult = false;
+                allow.Click += (_, _) => window.DialogResult = true;
+                footer.Children.Add(deny);
+                if (ToolPermissionPolicy.SupportsPermanentApproval(tool.Id))
+                {
+                    allow.Margin = new Thickness(0,0,10,0);
+                    var always = new Button
+                    {
+                        Content = "Always approve",
+                        ToolTip = "Permanently approve this exact tool on this device until revoked in Tool permissions."
+                    };
+                    always.Click += (_, _) =>
+                    {
+                        try
+                        {
+                            var next = permissions.AlwaysApprovedConstrainedTools.Append(tool.Id).Distinct(StringComparer.Ordinal).ToArray();
+                            permissionStore.Save(new ToolPermissionSettings(permissions.FullPermissionTools, next));
+                            permissions.GrantAlwaysApprovedConstrainedTool(tool.Id);
+                            window.DialogResult = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(window, "Could not save permanent approval. The action was not approved.\n\n" + ex.Message,
+                                "Jarvis Agent", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    };
+                    footer.Children.Add(allow);
+                    footer.Children.Add(always);
+                }
+                else footer.Children.Add(allow);
                 using var registration = ct.Register(() => owner.Dispatcher.BeginInvoke(() => { if (window.IsLoaded) window.Close(); }));
                 return window.ShowDialog() == true && !ct.IsCancellationRequested;
             });

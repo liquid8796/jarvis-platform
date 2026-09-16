@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.63 - 2026-09-17
+
+- Add a persistent `Always approve` choice to the local approval dialog only for the constrained `process.start` and `process.spawn` tools; persistence is exact-tool scoped and is written atomically before the active request is approved.
+- Keep permanent constrained-process grants separate from ordinary Full permission and scoped capability leases. AgentRuntime/CLI reload the new permission-file v2 format while v1 files remain supported.
+- Show active permanent process grants as `Always approved` in Tool permissions with a `Require approval again` revocation action; revocation immediately restores scoped-lease/interactive approval behavior and signals owned activity to stop.
+- Clarify Desktop permission copy so Full permission no longer appears to promise bypass of the constrained-process exception; add focused policy, invocation and runtime-reload regressions.
+- Bump package/assembly/file versions to 1.0.63 / 1.0.63.0.
+
 ## 1.0.62 - 2026-09-16
 
 - Publish object-root `outputSchema` definitions for every dynamic MCP tool and all six `agent_task_*` operations; return matching `structuredContent` on success and tool-level errors.

@@ -109,13 +109,27 @@ internal static class Program
             PermissionCommand("SaveCommand");
             if (!string.IsNullOrEmpty((string)PermissionGet("Error")!)) throw new InvalidOperationException((string)PermissionGet("Error")!);
             var permissionFile = Path.Combine(settingsRoot, "tool-permissions.json");
+            string[] savedFullPermissions;
             using (var saved = JsonDocument.Parse(File.ReadAllText(permissionFile)))
+            {
+                if (saved.RootElement.GetProperty("version").GetInt32() != 2) throw new InvalidOperationException("Permission settings did not migrate to v2.");
                 if (saved.RootElement.GetProperty("fullPermissionTools").GetArrayLength() != 1) throw new InvalidOperationException("Single-tool save failed.");
+                if (saved.RootElement.GetProperty("alwaysApprovedConstrainedTools").GetArrayLength() != 0) throw new InvalidOperationException("Fresh permission save unexpectedly granted permanent process approval.");
+                savedFullPermissions = saved.RootElement.GetProperty("fullPermissionTools").EnumerateArray().Select(value => value.GetString()!).ToArray();
+            }
+            File.WriteAllText(permissionFile, JsonSerializer.Serialize(new { version = 2, fullPermissionTools = savedFullPermissions,
+                alwaysApprovedConstrainedTools = new[] { "process.start" } }, new JsonSerializerOptions { WriteIndented = true }));
             // Reload the real view model using isolated settings only, never the current user's profile.
             var reloaded = Activator.CreateInstance(modelType, [window, settingsRoot, false])!;
             var reloadedPermissions = modelType.GetProperty("Permissions")!.GetValue(reloaded)!;
-            var reloadedItems = ((IEnumerable)reloadedPermissions.GetType().GetProperty("Items")!.GetValue(reloadedPermissions)!).Cast<object>();
+            var reloadedItems = ((IEnumerable)reloadedPermissions.GetType().GetProperty("Items")!.GetValue(reloadedPermissions)!).Cast<object>().ToArray();
             if (reloadedItems.Count(Selected) != 1) throw new InvalidOperationException("Permission persistence reload failed.");
+            var processStart = reloadedItems.Single(item => (string)item.GetType().GetProperty("Id")!.GetValue(item)! == "process.start");
+            if (!(bool)processStart.GetType().GetProperty("AlwaysApproved")!.GetValue(processStart)!) throw new InvalidOperationException("Persistent process approval did not reload into Tool permissions.");
+            ((ICommand)processStart.GetType().GetProperty("RevokeAlwaysApprovalCommand")!.GetValue(processStart)!).Execute(null);
+            if ((bool)processStart.GetType().GetProperty("AlwaysApproved")!.GetValue(processStart)!) throw new InvalidOperationException("Require approval again did not clear UI state.");
+            using (var revoked = JsonDocument.Parse(File.ReadAllText(permissionFile)))
+                if (revoked.RootElement.GetProperty("alwaysApprovedConstrainedTools").GetArrayLength() != 0) throw new InvalidOperationException("Require approval again did not persist revocation.");
             permissionsType.GetProperty("Search")!.SetValue(permissions, "PowerShell");
             PermissionCommand("SelectAllCommand");
             if (items.Count(Selected) != items.Length) throw new InvalidOperationException("Select all did not include filtered-out tools.");
@@ -134,7 +148,8 @@ internal static class Program
                 iconLoaded = true, makePrimaryPassed = true, removeDirectoryPassed = true,
                 settingsSidebarNavigationPassed = true, runtimeVersionLabelPassed = true,
                 installedTools = items.Length, permissionTabRendered = true, singleToolSave = true,
-                reloadPersistence = true, selectAllIncludesFilteredOut = true, draftDoesNotApplyBeforeSave = true,
+                reloadPersistence = true, permissionSettingsV2 = true, alwaysApprovalReload = true, alwaysApprovalRevoke = true,
+                selectAllIncludesFilteredOut = true, draftDoesNotApplyBeforeSave = true,
                 resetRestoresSaved = true, clearAllRevokes = true, isolatedPermissionSettingsOnly = true,
                 profileSaved = false, connectionStarted = false, controlArmed = false };
             var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });

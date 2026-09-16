@@ -48,8 +48,8 @@
 <TextBlock Text="Tool permissions" FontSize="28" FontWeight="SemiBold"/>
 <TextBlock Text="Preapprove the tools you trust. Your choice, saved on this computer." Foreground="{StaticResource Muted}" Margin="0,8,0,16" TextWrapping="Wrap"/>
 <Border Background="#24203C" BorderBrush="#41335F" BorderThickness="1" CornerRadius="12" Padding="16">
-<StackPanel><TextBlock Text="Full permission = no repeated Jarvis approval" FontWeight="SemiBold" Foreground="#C4AEFC"/>
-<TextBlock Text="Selected tools can access files outside project folders and act with your Windows account permissions. Arm control is still required; Pause stops control. This does not elevate to Administrator or override browser/Windows policy." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,7,0,0"/>
+<StackPanel><TextBlock Text="Full permission = no repeated Jarvis approval for ordinary tools" FontWeight="SemiBold" Foreground="#C4AEFC"/>
+<TextBlock Text="process.start and process.spawn are constrained exceptions: Full permission alone still asks each time unless you choose Always approve in their prompt. Permanent approvals are listed below and can be revoked at any time. Arm control is still required; Pause stops control." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,7,0,0"/>
 </StackPanel></Border>
 </StackPanel>
 <Grid Grid.Row="1" Margin="0,16,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -64,9 +64,14 @@
 </WrapPanel>
 <ListBox Grid.Row="3" ItemsSource="{Binding FilteredTools}" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" AutomationProperties.Name="Tool permission list">
 <ListBox.ItemTemplate><DataTemplate><Border Padding="12,10" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
-<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
 <StackPanel Margin="0,0,12,0" ToolTip="{Binding Description}"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" FontFamily="Consolas"/><TextBlock Text="{Binding Category}" Foreground="#BBA2EF" FontSize="11" Margin="0,5,0,0"/><TextBlock Text="{Binding DefaultBehavior}" Foreground="{StaticResource Muted}" FontSize="10" Margin="0,4,0,0"/></StackPanel>
 <CheckBox Grid.Column="1" Content="Full permission" IsChecked="{Binding FullPermission, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="0" AutomationProperties.Name="{Binding Name}"/>
+<StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0">
+<StackPanel.Style><Style TargetType="{x:Type StackPanel}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding AlwaysApproved}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+<TextBlock Text="{Binding AlwaysApprovalStatus}" Foreground="#8CD8B7" FontWeight="SemiBold" FontSize="11"/>
+<Button Content="Require approval again" Command="{Binding RevokeAlwaysApprovalCommand}" Padding="10,6" Margin="0,6,0,0" AutomationProperties.Name="Require approval again"/>
+</StackPanel>
 </Grid></Border></DataTemplate></ListBox.ItemTemplate>
 </ListBox>
 <StackPanel Grid.Row="4" Margin="0,12,0,0"><TextBlock Text="{Binding Status}" Foreground="#8CD8B7" TextWrapping="Wrap" FontSize="11"/><TextBlock Text="{Binding Error}" Foreground="#FFA5B7" TextWrapping="Wrap" Margin="0,5,0,0"/>

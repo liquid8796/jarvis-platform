@@ -22,7 +22,7 @@ public static class Program
         var command = args.FirstOrDefault() ?? "help";
         if (command == "help")
         {
-            Console.WriteLine($"Jarvis Agent {typeof(Program).Assembly.GetName().Version?.ToString(3)}\n  configure       Save server, device, project directories and DPAPI-encrypted token\n  connect         Connect interactively; Ctrl+C disconnects and stops owned jobs\n  list-tools      Print the installed CLI tool manifest as JSON\n  doctor --json   Print redacted runtime/protocol/catalog health as JSON\n  browser-install Register the isolated native browser host for this user\n\nSaved per-tool Full permission is configured in the desktop Tool permissions tab; startup still requires local Arm."); return 0;
+            Console.WriteLine($"Jarvis Agent {typeof(Program).Assembly.GetName().Version?.ToString(3)}\n  configure       Save server, device, project directories and DPAPI-encrypted token\n  connect         Connect interactively; Ctrl+C disconnects and stops owned jobs\n  list-tools      Print the installed CLI tool manifest as JSON\n  doctor --json   Print redacted runtime/protocol/catalog health as JSON\n  browser-install Register the isolated native browser host for this user\n\nSaved per-tool Full permission is configured in the desktop Tool permissions tab; persistent process.start/process.spawn approval is granted from their local prompt and revoked there. Startup still requires local Arm."); return 0;
         }
         if (command == "doctor")
         {
@@ -88,8 +88,9 @@ public static class Program
         var permissionStatus = "ok";
         try
         {
-            permissions = new ToolPermissionPolicy(new ToolPermissionStore(
-                Path.Combine(AgentProfile.Root, "tool-permissions.json")).Load());
+            var permissionSettings = new ToolPermissionStore(
+                Path.Combine(AgentProfile.Root, "tool-permissions.json")).LoadSettings();
+            permissions = new ToolPermissionPolicy(permissionSettings.FullPermissionTools, permissionSettings.AlwaysApprovedConstrainedTools);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or ArgumentException)
         {

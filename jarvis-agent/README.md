@@ -1,10 +1,10 @@
-# Jarvis Agent - 1.0.62
+# Jarvis Agent - 1.0.63
 
 Open `Jarvis Agent.slnx` with the entire repository present. Keep its Vendor projects loaded:
 those assemblies implement reused tools, while the standalone Jarvis Code application is excluded
 from Agent build/publish output. Root solution `../Jarvis.slnx` also includes the complete graph.
 
-The platform assembly version is 1.0.62.0. This release adds output schemas and structured tool results in the MCP server transport; Agent execution, permission policy and the agent/server wire contract are unchanged. The settings navigation and assembly-derived footer introduced in 1.0.61 are retained. Deploying the server and refreshing client tool definitions are separate operator steps; no running Agent restart is required to test the transport patch.
+The platform assembly version is 1.0.63.0. This release adds persistent constrained-process approvals to the Agent. `process.start` and `process.spawn` still ignore ordinary Full permission by default, but their local approval prompt now offers `Always approve`; that exact-tool grant is stored separately, survives restart/reconnect, and can be revoked from Tool permissions. Existing scoped capability leases, Arm/Pause behavior and other tool permissions remain unchanged.
 Desktop/CLI publish and Windows startup acceptance from earlier versions remains historical evidence. See [verification evidence](../docs/BUILD-STATUS.md)
 for exact scope, the separate Visual Studio license limitation, and remaining production acceptance.
 
@@ -15,6 +15,12 @@ dotnet build 'jarvis-agent/Jarvis Agent.slnx' -c Debug --no-restore
 ```
 
 Set `Jarvis.Agent.Desktop` as Startup Project to debug the UI. See the [agent guide](../docs/AGENT.md).
+
+## 1.0.63: persistent process approval
+
+The local approval dialog for `process.start` and `process.spawn` has three choices: `Deny`, `Approve once`, and `Always approve`. The permanent choice is persisted only after a successful atomic permission-file write, is keyed to the exact tool ID, and is reloaded by Desktop, AgentRuntime and CLI doctor/connect paths. Ordinary Full permission remains a separate setting and does not silently become a permanent constrained-process grant.
+
+Tool permissions shows an `Always approved` state for active permanent process grants and a **Require approval again** action. Revoking the grant takes effect immediately and raises the same revocation signal used to stop owned activity; future calls return to scoped-lease/interactive approval behavior.
 
 ## 1.0.61: settings navigation cleanup
 

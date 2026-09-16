@@ -1,6 +1,6 @@
 # jarvis-mcp-server
 
-See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.62**, assembly/file: **1.0.62.0**. Source publication and local packaging do not deploy or restart the live service.
+See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.63**, assembly/file: **1.0.63.0**. Source publication and local packaging do not deploy or restart the live service.
 
 ## MCP output contracts (1.0.62)
 

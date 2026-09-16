@@ -16,6 +16,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly Window _owner;
     private readonly string _settingsRoot;
     private readonly ToolPermissionPolicy _permissions = new();
+    private readonly ToolPermissionStore _permissionStore;
     private int _selectedTab;
     public int SelectedTab { get => _selectedTab; set => Set(ref _selectedTab, value); }
     public ToolPermissionsViewModel Permissions { get; }
@@ -50,21 +51,21 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         _owner = owner;
         _settingsRoot = settingsRoot ?? AgentProfile.Root;
-        var permissionStore = new ToolPermissionStore(System.IO.Path.Combine(_settingsRoot, "tool-permissions.json"));
+        _permissionStore = new ToolPermissionStore(System.IO.Path.Combine(_settingsRoot, "tool-permissions.json"));
         try
         {
-            var prompts = new LocalPrompts(owner);
+            var prompts = new LocalPrompts(owner, _permissions, _permissionStore);
             using var inventory = new ToolInventory(prompts, new DesktopArtifactSink(owner), () => owner, _settingsRoot);
             using var processes = new ProcessToolSet();
             using var threads = new ThreadRuntimeToolSet(System.IO.Path.Combine(_settingsRoot, "thread-runtime.db"));
             var descriptors = inventory.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor)
                 .Concat(AgentCoreHostTools.Descriptors).DistinctBy(t => t.Id).ToArray();
             foreach (var tool in descriptors) Tools.Add(tool.Name);
-            Permissions = new ToolPermissionsViewModel(descriptors, _permissions, permissionStore);
+            Permissions = new ToolPermissionsViewModel(descriptors, _permissions, _permissionStore);
         }
         catch (Exception ex)
         {
-            Permissions = new ToolPermissionsViewModel([], _permissions, permissionStore);
+            Permissions = new ToolPermissionsViewModel([], _permissions, _permissionStore);
             Fail(ex);
         }
         ConnectCommand = new AsyncCommand(ToggleConnection, Fail);
@@ -124,7 +125,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         var folders = new WorkspaceDirectories(Workspace, AdditionalDirectories);
         var options = new AgentOptions(ServerUrl, DeviceId, folders.Primary, AllowLoopbackHttp, folders.Additional);
         AgentProfile.Save(options, Token);
-        var prompts = new LocalPrompts(_owner);
+        var prompts = new LocalPrompts(_owner, _permissions, _permissionStore);
         _runtime = new AgentRuntime(prompts, prompts, new DesktopArtifactSink(_owner), () => _owner, _permissions, _settingsRoot);
         _runtime.Gate.Changed += armed => _owner.Dispatcher.InvokeAsync(() =>
             Control = armed ? "Armed · until you pause" : "Control paused");
@@ -139,7 +140,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private void Arm()
     {
         if (_runtime?.Connection.IsConnected != true) { Error = "Connect the agent before arming control."; return; }
-        if (MessageBox.Show(_owner, "Allow your authorized MCP client to request actions until you pause or disconnect?\n\nThere is no automatic expiry. Temporary network reconnects keep this choice; restarting the app starts paused. Tools selected in Tool permissions run without asking again. Other sensitive actions still require approval. Project directories are working context, not a sandbox. Windows permissions still apply.\n\nPause any time with Ctrl + Alt + Pause.",
+        if (MessageBox.Show(_owner, "Allow your authorized MCP client to request actions until you pause or disconnect?\n\nThere is no automatic expiry. Temporary network reconnects keep this choice; restarting the app starts paused. Tools selected in Tool permissions run without asking again, except process.start and process.spawn unless you explicitly choose Always approve for that tool. Other sensitive actions still require approval. Project directories are working context, not a sandbox. Windows permissions still apply.\n\nPause any time with Ctrl + Alt + Pause.",
             "Arm local control", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
         _runtime.Arm(); Control = "Armed · until you pause"; Error = "";
     }

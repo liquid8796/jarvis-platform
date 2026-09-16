@@ -9,14 +9,27 @@ using Jarvis.Protocol;
 
 namespace Jarvis.Agent.Desktop.ViewModels;
 
-public sealed class ToolPermissionItem(ToolDescriptor descriptor) : INotifyPropertyChanged
+public sealed class ToolPermissionItem : INotifyPropertyChanged
 {
+    private readonly ToolDescriptor _descriptor;
     private bool _fullPermission;
-    public string Id => descriptor.Id;
-    public string Name => descriptor.Name;
-    public string Category => descriptor.Category;
-    public string Description => descriptor.Description;
-    public string DefaultBehavior => descriptor.ReadOnly && !descriptor.Sensitive ? "Default: read-only, no prompt" : "Default: ask before each action";
+    private bool _alwaysApproved;
+
+    public ToolPermissionItem(ToolDescriptor descriptor, Action<ToolPermissionItem> revokeAlwaysApproval)
+    {
+        _descriptor = descriptor;
+        RevokeAlwaysApprovalCommand = new RelayCommand(() => revokeAlwaysApproval(this));
+    }
+
+    public string Id => _descriptor.Id;
+    public string Name => _descriptor.Name;
+    public string Category => _descriptor.Category;
+    public string Description => _descriptor.Description;
+    public string DefaultBehavior => _descriptor.ReadOnly && !_descriptor.Sensitive ? "Default: read-only, no prompt" : "Default: ask before each action";
+    public bool SupportsAlwaysApproval => ToolPermissionPolicy.SupportsPermanentApproval(Id);
+    public string AlwaysApprovalStatus => AlwaysApproved ? "Always approved" : "";
+    public ICommand RevokeAlwaysApprovalCommand { get; }
+
     public bool FullPermission
     {
         get => _fullPermission;
@@ -27,6 +40,19 @@ public sealed class ToolPermissionItem(ToolDescriptor descriptor) : INotifyPrope
             PropertyChanged?.Invoke(this, new(nameof(FullPermission)));
         }
     }
+
+    public bool AlwaysApproved
+    {
+        get => _alwaysApproved;
+        set
+        {
+            if (_alwaysApproved == value) return;
+            _alwaysApproved = value;
+            PropertyChanged?.Invoke(this, new(nameof(AlwaysApproved)));
+            PropertyChanged?.Invoke(this, new(nameof(AlwaysApprovalStatus)));
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
@@ -46,7 +72,7 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
     public string Status { get => _status; private set { _status = value; Changed(); } }
     public string Error { get => _error; private set { _error = value; Changed(); } }
     public string SelectionSummary => $"{Items.Count(i => i.FullPermission)} of {Items.Count} tools selected";
-    public string SavedSummary => $"{_policy.FullPermissionTools.Count} tools preapproved";
+    public string SavedSummary => $"{_policy.FullPermissionTools.Count} tools preapproved · {_policy.AlwaysApprovedConstrainedTools.Count} process tools always approved";
     public bool HasChanges => !Items.Where(i => i.FullPermission).Select(i => i.Id).ToHashSet(StringComparer.Ordinal)
         .SetEquals(_policy.FullPermissionTools);
     public ICommand SelectAllCommand { get; }
@@ -58,7 +84,7 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
     public ToolPermissionsViewModel(IEnumerable<ToolDescriptor> descriptors, ToolPermissionPolicy policy, ToolPermissionStore store)
     {
         _policy = policy; _store = store;
-        Items = new(descriptors.OrderBy(t => t.Category).ThenBy(t => t.Name).Select(t => new ToolPermissionItem(t)));
+        Items = new(descriptors.OrderBy(t => t.Category).ThenBy(t => t.Name).Select(t => new ToolPermissionItem(t, RevokeAlwaysApproval)));
         FilteredTools = CollectionViewSource.GetDefaultView(Items);
         FilteredTools.Filter = item => item is ToolPermissionItem tool &&
             (tool.Name.Contains(Search, StringComparison.OrdinalIgnoreCase) ||
@@ -71,15 +97,19 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         try
         {
             var installed = Items.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
-            _policy.Replace(_store.Load().Where(installed.Contains));
+            var settings = _store.LoadSettings();
+            _policy.Replace(settings.FullPermissionTools.Where(installed.Contains));
+            _policy.ReplaceAlwaysApprovedConstrainedTools(settings.AlwaysApprovedConstrainedTools.Where(installed.Contains));
             Reset();
-            Status = "Changes take effect only after Save permissions.";
+            Status = "Changes take effect only after Save permissions. Always-approved process tools can be revoked immediately below.";
         }
         catch (Exception ex)
         {
             _policy.Replace([]);
+            _policy.ReplaceAlwaysApprovedConstrainedTools([]);
             Error = "Permissions were not loaded; no tools were preapproved. " + ex.Message;
         }
+        _policy.PermissionsChanged += RefreshPermissionIndicators;
     }
     private void SetAll(bool value)
     {
@@ -89,7 +119,11 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
     }
     private void Reset()
     {
-        foreach (var item in Items) item.FullPermission = _policy.HasFullPermission(item.Id);
+        foreach (var item in Items)
+        {
+            item.FullPermission = _policy.HasFullPermission(item.Id);
+            item.AlwaysApproved = _policy.HasAlwaysApprovedConstrainedTool(item.Id);
+        }
         Status = "Restored the active permission selection."; Error = "";
         SelectionChanged();
     }
@@ -99,13 +133,33 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         {
             var selected = Items.Where(i => i.FullPermission).Select(i => i.Id).ToArray();
             // Persist first. A failed write must not leave an unsaved permission active in memory.
-            _store.Save(selected);
+            _store.Save(new ToolPermissionSettings(selected, _policy.AlwaysApprovedConstrainedTools));
             _policy.Replace(selected);
             Error = "";
-            Status = "Saved. Selected tools run without another Jarvis permission prompt while control is armed.";
+            Status = "Saved. Selected tools run without another Jarvis permission prompt while control is armed. Constrained process tools still require approval unless separately marked Always approved.";
             Changed(nameof(SavedSummary)); SelectionChanged();
         }
         catch (Exception ex) { Error = "Could not save tool permissions: " + ex.Message; }
+    }
+    private void RevokeAlwaysApproval(ToolPermissionItem item)
+    {
+        if (!item.SupportsAlwaysApproval || !_policy.HasAlwaysApprovedConstrainedTool(item.Id)) return;
+        try
+        {
+            var next = _policy.AlwaysApprovedConstrainedTools.Where(id => !StringComparer.Ordinal.Equals(id, item.Id)).ToArray();
+            _store.Save(new ToolPermissionSettings(_policy.FullPermissionTools, next));
+            _policy.RevokeAlwaysApprovedConstrainedTool(item.Id);
+            item.AlwaysApproved = false;
+            Error = "";
+            Status = $"{item.Name} will require approval again.";
+            Changed(nameof(SavedSummary)); SelectionChanged();
+        }
+        catch (Exception ex) { Error = "Could not revoke permanent approval: " + ex.Message; }
+    }
+    private void RefreshPermissionIndicators()
+    {
+        foreach (var item in Items) item.AlwaysApproved = _policy.HasAlwaysApprovedConstrainedTool(item.Id);
+        Changed(nameof(SavedSummary));
     }
     private void SelectionChanged() { Changed(nameof(SelectionSummary)); Changed(nameof(HasChanges)); }
     private void Changed([CallerMemberName] string name = "") => PropertyChanged?.Invoke(this, new(name));

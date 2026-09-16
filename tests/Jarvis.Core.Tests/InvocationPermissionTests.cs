@@ -66,6 +66,17 @@ public sealed class InvocationPermissionTests
         Assert.False(response.Result!.IsError); Assert.Equal(expectedApprovals, approval.Calls);
         Assert.Equal(1, tool.Calls); Assert.Equal(full, tool.Context!.FullPermission);
     }
+    [Fact] public async Task Permanent_constrained_process_approval_bypasses_future_prompt_for_exact_tool()
+    {
+        var tool = new Tool("process.start"); var approval = new Approval(false); var gate = new LocalControlGate(); gate.Arm();
+        var policy = new ToolPermissionPolicy([tool.Descriptor.Id]);
+        var replace = typeof(ToolPermissionPolicy).GetMethod("ReplaceAlwaysApprovedConstrainedTools", BindingFlags.Public | BindingFlags.Instance);
+        Assert.NotNull(replace); replace.Invoke(policy, [new[] { tool.Descriptor.Id }]);
+        await using var connection = new AgentConnection([tool], approval, gate, policy);
+        using var socket = new Socket(); var response = await Invoke(connection, socket, tool.Descriptor.Id);
+        Assert.False(response.Result!.IsError); Assert.Equal(0, approval.Calls); Assert.Equal(1, tool.Calls);
+        Assert.True(tool.Context!.FullPermission);
+    }
     [Fact] public async Task Grant_for_one_tool_does_not_authorize_another()
     {
         var tool = new Tool("shell.Bash"); var approval = new Approval(false); var gate = new LocalControlGate(); gate.Arm();
