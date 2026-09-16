@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.61 - 2026-09-16
+
+- Make the Jarvis Agent settings sidebar the single visible navigation surface for `Connection center` and `Tool permissions`, with persistent selected/hover/focus treatment and two-way `SelectedTab` synchronization.
+- Keep the existing `TabControl` only as an internal content host: its header strip is removed and the host itself is no longer keyboard-focusable, avoiding a second invisible navigation stop.
+- Remove the redundant tab-selection commands, bind the desktop footer version to the running assembly, extend the UI smoke harness with sidebar/content/version regressions, make its layout verification avoid same-thread `ApplicationIdle` deadlocks, and make desktop shutdown tolerate a detached WPF `Application` in the reflection-based smoke host.
+- Bump package/assembly/file versions to 1.0.61 / 1.0.61.0.
+
 ## 1.0.60 - 2026-09-16
 
 - Add `tool_script.run`, a fresh-engine Jint JavaScript sandbox with statement/memory/time/script/call/argument/output bounds and exactly one host capability: guarded `invokeTool(toolId, argsJson)`; CLR/Node/filesystem/network/process globals are not enabled.

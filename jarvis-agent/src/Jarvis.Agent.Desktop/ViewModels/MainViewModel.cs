@@ -19,8 +19,6 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private int _selectedTab;
     public int SelectedTab { get => _selectedTab; set => Set(ref _selectedTab, value); }
     public ToolPermissionsViewModel Permissions { get; }
-    public ICommand ConnectionTabCommand { get; }
-    public ICommand PermissionsTabCommand { get; }
     private string _server = "https://jarvis.example.com", _device = "", _workspace = "", _status = "Not connected", _control = "Control paused", _error = "";
     private bool _loopback;
     public string ServerUrl { get => _server; set => Set(ref _server, value); }
@@ -36,6 +34,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public string Error { get => _error; private set => Set(ref _error, value); }
     public string ConnectLabel => _runtime is null ? "Save & connect" : "Disconnect";
     public string ToolCount => Tools.Count.ToString();
+    public string DesktopVersion => $"Windows desktop · v{typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "unknown"}";
     public ObservableCollection<AgentEvent> Events { get; } = [];
     public ObservableCollection<string> Tools { get; } = [];
     public ICommand ConnectCommand { get; }
@@ -51,8 +50,6 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         _owner = owner;
         _settingsRoot = settingsRoot ?? AgentProfile.Root;
-        ConnectionTabCommand = new RelayCommand(() => SelectedTab = 0);
-        PermissionsTabCommand = new RelayCommand(() => SelectedTab = 1);
         var permissionStore = new ToolPermissionStore(System.IO.Path.Combine(_settingsRoot, "tool-permissions.json"));
         try
         {

@@ -9,10 +9,10 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 
 internal static class Program
 {
@@ -54,12 +54,42 @@ internal static class Program
             if (folders.Contains(a) || folders.Count != 1) throw new InvalidOperationException("Remove directory failed.");
             folders.Add(a);
             if (window.Icon is null) throw new InvalidOperationException("Window icon is not loaded.");
+            var preShowSettingsTabs = window.FindName("SettingsTabs") as TabControl
+                ?? throw new InvalidOperationException("Settings content host is missing.");
+            if (preShowSettingsTabs.Focusable || KeyboardNavigation.GetIsTabStop(preShowSettingsTabs))
+                throw new InvalidOperationException("Hidden settings content host must not be keyboard-focusable or a tab stop.");
             window.Show();
-            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+
             window.UpdateLayout();
+
+            var navigation = window.FindName("WorkspaceNavigation") as ListBox
+                ?? throw new InvalidOperationException("Workspace navigation list is missing.");
+            if (navigation.Items.Count != 2) throw new InvalidOperationException("Workspace navigation must expose exactly two destinations.");
+            Set("SelectedTab", 1); window.UpdateLayout();
+            if (navigation.SelectedIndex != 1) throw new InvalidOperationException("Sidebar selection did not follow SelectedTab.");
+            navigation.SelectedIndex = 0; window.UpdateLayout();
+            if ((int)Get("SelectedTab")! != 0) throw new InvalidOperationException("SelectedTab did not follow sidebar selection.");
+            var settingsTabs = window.FindName("SettingsTabs") as TabControl
+                ?? throw new InvalidOperationException("Settings content host is missing.");
+            if (settingsTabs.Focusable || KeyboardNavigation.GetIsTabStop(settingsTabs))
+                throw new InvalidOperationException("Hidden settings content host must not be keyboard-focusable or a tab stop.");
+            bool ContainsTabHeaderPanel(DependencyObject root)
+            {
+                if (root is TabPanel) return true;
+                for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+                    if (ContainsTabHeaderPanel(VisualTreeHelper.GetChild(root, i))) return true;
+                return false;
+            }
+            if (ContainsTabHeaderPanel(settingsTabs))
+                throw new InvalidOperationException("Settings content host still renders a duplicate tab-header strip.");
+            var versionText = window.FindName("DesktopVersionText") as TextBlock
+                ?? throw new InvalidOperationException("Desktop version label is missing.");
+            var expectedVersionLabel = $"Windows desktop · v{assembly.GetName().Version!.ToString(3)}";
+            if (!string.Equals(versionText.Text, expectedVersionLabel, StringComparison.Ordinal))
+                throw new InvalidOperationException($"Desktop version label drifted: '{versionText.Text}' != '{expectedVersionLabel}'.");
+
             void Capture(string filename)
             {
-                window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
                 window.UpdateLayout();
                 var bitmap = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32);
                 bitmap.Render(window);
@@ -67,6 +97,7 @@ internal static class Program
                 using var output = File.Create(Path.Combine(report, filename)); encoder.Save(output);
             }
             Capture("agent-connection.png");
+
             var permissions = Get("Permissions")!; var permissionsType = permissions.GetType();
             object? PermissionGet(string property) => permissionsType.GetProperty(property)!.GetValue(permissions);
             void PermissionCommand(string name) => ((ICommand)PermissionGet(name)!).Execute(null);
@@ -101,12 +132,14 @@ internal static class Program
                 if (saved.RootElement.GetProperty("fullPermissionTools").GetArrayLength() != 0) throw new InvalidOperationException("Clear all did not revoke the saved selection.");
             var result = new { version = assembly.GetName().Version!.ToString(), windowRendered = true,
                 iconLoaded = true, makePrimaryPassed = true, removeDirectoryPassed = true,
+                settingsSidebarNavigationPassed = true, runtimeVersionLabelPassed = true,
                 installedTools = items.Length, permissionTabRendered = true, singleToolSave = true,
                 reloadPersistence = true, selectAllIncludesFilteredOut = true, draftDoesNotApplyBeforeSave = true,
                 resetRestoresSaved = true, clearAllRevokes = true, isolatedPermissionSettingsOnly = true,
                 profileSaved = false, connectionStarted = false, controlArmed = false };
             var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(Path.Combine(report, "ui-smoke.json"), json); Console.WriteLine(json);
+
             return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

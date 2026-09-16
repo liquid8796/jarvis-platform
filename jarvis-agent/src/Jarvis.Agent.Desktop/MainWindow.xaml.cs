@@ -54,7 +54,7 @@ public partial class MainWindow : Window
         if (_exiting) return; _exiting = true;
         await _model.DisposeAsync();
         UnregisterHotKey(new WindowInteropHelper(this).Handle, PauseHotkey); _source?.RemoveHook(WindowMessage);
-        _tray.Visible = false; _tray.Dispose(); _trayIcon.Dispose(); Close(); Application.Current.Shutdown();
+        _tray.Visible = false; _tray.Dispose(); _trayIcon.Dispose(); Close(); Application.Current?.Shutdown();
     }
     [DllImport("user32.dll", SetLastError = true)] private static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool UnregisterHotKey(IntPtr hwnd, int id);
