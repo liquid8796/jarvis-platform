@@ -120,15 +120,21 @@ public sealed class AgentTaskRobustnessTests
     }
 
     [Fact]
-    public async Task Revoking_standing_permission_cancels_running_task_without_rearming()
+    public async Task Revoking_process_capability_lease_cancels_running_task_without_rearming()
     {
         using var app = new ServerFixture(); using var admin = await app.Admin();
         await using var peer = await TaskAgentPeer.ConnectAsync(app, admin);
-        peer.Permissions.Replace(["process.start"]);
-        var task = await peer.CreateAsync(admin, Plan(LongStep()));
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var owner = (await db.Devices.AsNoTracking().SingleAsync(d => d.Id == peer.DeviceId)).OwnerId;
+        var taskId = Guid.NewGuid().ToString("N");
+        var prefix = OperatingSystem.IsWindows() ? "Write-Output" : "echo";
+        peer.Permissions.GrantLease(new ToolCapabilityLease("task-process", "process.start", ToolCapabilityScope.Session,
+            "task:" + owner + ":" + taskId, null, DateTimeOffset.UtcNow.AddMinutes(5), [peer.Workspace], [prefix]));
+        var task = await peer.CreateAsync(admin, Plan(LongStep()), taskId);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         while (peer.StartedJobId is null) await Task.Delay(50, timeout.Token);
-        peer.Permissions.Replace([]);
+        Assert.True(peer.Permissions.RevokeLease("task-process"));
         Assert.Equal("CANCELLED", (await peer.TerminalAsync(admin, task.TaskId)).Status);
         Assert.True(peer.Gate.IsArmed); Assert.Equal(0, peer.Approval.Calls);
     }

@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.54
+# Architecture decisions · 1.0.55
 
 ## Transport choice
 
@@ -28,6 +28,12 @@ A lost connection faults in-flight requests with completion unknown. Reconnect d
 Installed tools are represented by immutable registry snapshots. Each snapshot includes the exact implementation map, schemas, ordered descriptors, generation and digest, so one invocation cannot observe half of a hot catalog replacement. The handshake advertises the current descriptor snapshot; later calls and task-plan validation deliberately resolve the latest local snapshot. Catalog replacement is not an authorization event: `ToolPermissionPolicy` remains exact-ID and local approval remains in the invocation path.
 
 Optional `threadId` and `turnId` fields correlate calls without becoming authorization inputs. Local interrupt/stop/subagent-stop notifications are fan-out cleanup signals only and cannot arm control or grant permissions.
+
+### Runtime closure and catalog synchronization - 1.0.55
+
+The Windows composition root now owns one production registry and injects both the conservative adaptive coordinator and the validated local plugin bootstrap into `AgentConnection`; these are no longer test-only seams. A registry replacement sends the complete immutable catalog snapshot as `catalog.changed`. The server validates schemas/descriptors, persists the bound device manifest, updates peer generation/digest and replies `catalog.ack`; subsequent calls carry that acknowledged identity and stale calls fail locally before tool lookup/schema execution.
+
+Standing consent remains separate from discovery. `ToolPermissionPolicy` adds expiring capability leases scoped to a session or turn with optional workspace roots, command prefixes and network allowance. Legacy exact-ID Full Permission remains for ordinary tools, but `process.start`/`process.spawn` require a matching invocation-time lease rather than treating an arbitrary shell/process surface as one unconstrained saved capability. Lease expiry/revocation reuses the existing in-flight cancellation path.
 
 ## Long jobs
 

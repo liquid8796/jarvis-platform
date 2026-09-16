@@ -57,3 +57,9 @@ Durable memory uses parameterized SQL and bounded keys/values/provenance/search 
 `developer.symbol_search` rejects paths outside selected workspaces and skips dependency/VCS/build directories. `developer.test` does not accept an arbitrary command: it always starts `dotnet test` with argument-list encoding, shell execution disabled, bounded timeout/output and owned-process cancellation; it remains sensitive/mutating for local approval purposes.
 
 DAP support exposes no generic attach, injection or process-control tool. A launcher may start one explicit existing adapter executable and the resulting session can stop only that owned process. The offline evaluation script executes repository tests locally and contains no credential/model dependency.
+
+## Scoped process authority and catalog freshness - 1.0.55
+
+A saved exact-ID grant for `process.start` is no longer sufficient to authorize arbitrary commands without prompting. Full-permission execution for process surfaces requires an active capability lease whose session/turn, expiry, allowed workspace roots and command prefix match the actual invocation; lease expiry or revocation emits the same cancellation signal used for standing-permission revocation. These checks do not turn workspace roots into a kernel sandbox and do not undo effects already performed before cancellation.
+
+Dynamic catalog discovery remains non-authoritative. The agent sends immutable generation/digest-tagged snapshots, the server validates and persists them before acknowledging, and later calls are bound to the acknowledged catalog identity. A stale generation/digest is rejected by the agent before tool lookup/schema execution. Catalog ACK protects synchronization/TOCTOU; it is not a permission grant and cannot Arm the Agent.

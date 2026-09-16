@@ -67,3 +67,9 @@ The former dictionary-backed `SqliteMemoryStore` now uses parameterized SQLite o
 The host bootstrap now adds `developer.symbol_search` and `developer.test` to the same dynamic registry as `tool_program.run`. Symbol search applies a selected-workspace path boundary plus file/result/line-size caps. The test tool uses a fixed `dotnet test` process shape, owns cancellation/cleanup and parses bounded structured counts; because tests may build/write, it is marked mutating+sensitive.
 
 `DapAdapterLauncher` is a non-tool Core contract: an adapter path must be an existing absolute local file, working directory must remain inside selected workspace directories, arguments are bounded, shell execution is disabled and the returned session can kill only its owned process. `HarnessEvaluator` records scenario success/duration/tool/security metrics, while the PowerShell harness runs real test groups offline and emits JSON.
+
+## Production runtime closure in 1.0.55
+
+`AgentRuntime` now constructs the production `DynamicToolRegistry` itself, injects `DefaultRemoteTaskAdaptiveCoordinator`, loads the local pinned plugin catalog and applies it before transport startup. The default coordinator is deliberately conservative: it may repair only currently installed read-only/non-sensitive steps, keeps the same logical step and arguments, and cannot broaden permission or replay an ambiguous mutating action.
+
+Catalog changes are now a live control-plane protocol rather than a local-only event. Agent registry changes emit `catalog.changed`; the server validates/persists the descriptor set and returns `catalog.ack`; future calls are pinned to the acknowledged generation/digest. Invocation checks this identity before tool/schema execution. Capability leases add invocation-time session/turn/workspace/command constraints for dangerous process authority, and expiry/revocation cancels guarded work through the existing policy event.

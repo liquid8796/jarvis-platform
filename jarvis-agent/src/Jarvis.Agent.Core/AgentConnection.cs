@@ -37,6 +37,7 @@ public sealed class AgentConnection : IAsyncDisposable
     public bool IsConnected { get; private set; }
     public DynamicToolRegistry ToolRegistry => _registry;
     public IReadOnlyList<ToolDescriptor> Descriptors => _registry.Snapshot.Descriptors;
+    public bool AdaptiveCoordinatorAvailable => _adaptiveCoordinator is not null;
 
     public AgentConnection(IEnumerable<IAgentTool> tools, IApprovalService approval, LocalControlGate gate, ToolPermissionPolicy? permissions = null,
         string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null)
@@ -55,6 +56,7 @@ public sealed class AgentConnection : IAsyncDisposable
         _gate.Changed += OnGateChanged;
         _permissions = permissions ?? new ToolPermissionPolicy();
         _permissions.PermissionsRevoked += CancelInFlight;
+        _registry.Changed += OnRegistryChanged;
         EnsureCompositeTools();
     }
 
@@ -88,6 +90,27 @@ public sealed class AgentConnection : IAsyncDisposable
             _registry.Replace(current.Values);
             _pluginToolIds = catalog.Tools.Keys.ToHashSet(StringComparer.Ordinal);
         }
+    }
+
+    private void OnRegistryChanged(DynamicToolSnapshot snapshot)
+    {
+        var wire = _current;
+        if (wire is null || wire.State != WebSocketState.Open) return;
+        Track("catalog-" + snapshot.Generation, PushCatalogChangedAsync(wire, snapshot));
+    }
+
+    private async Task PushCatalogChangedAsync(WireSocket wire, DynamicToolSnapshot snapshot)
+    {
+        try
+        {
+            await wire.SendAsync(new WireMessage("catalog.changed")
+            {
+                CatalogGeneration = snapshot.Generation,
+                CatalogDigest = snapshot.Digest,
+                CatalogTools = snapshot.Descriptors
+            }, _lifetime.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is WebSocketException or IOException or OperationCanceledException) { }
     }
 
     private void OnGateChanged(bool armed)
@@ -127,13 +150,14 @@ public sealed class AgentConnection : IAsyncDisposable
                 Emit("connection", attempt == 0 ? "Connecting securely…" : "Reconnecting; interrupted calls will not be replayed.");
                 using var socket = await _socketConnector(endpoint, token, stop.Token).ConfigureAwait(false);
                 var wire = _current = new WireSocket(socket);
+                var catalog = _registry.Snapshot;
                 using var session = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
                 await wire.SendAsync(new WireMessage("hello")
                 {
                     Hello = new AgentHello(options.DeviceId,
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown",
-                        Environment.OSVersion.ToString(), Environment.MachineName, Descriptors)
-                    { TaskProtocolVersion = RemoteTaskRules.ProtocolVersion }
+                        Environment.OSVersion.ToString(), Environment.MachineName, catalog.Descriptors)
+                    { TaskProtocolVersion = RemoteTaskRules.ProtocolVersion, CatalogGeneration = catalog.Generation, CatalogDigest = catalog.Digest }
                 }, session.Token).ConfigureAwait(false);
                 using (var welcomeTimeout = CancellationTokenSource.CreateLinkedTokenSource(session.Token))
                 {
@@ -154,6 +178,7 @@ public sealed class AgentConnection : IAsyncDisposable
                         switch (message.Type)
                         {
                             case "pong": Interlocked.Exchange(ref _lastPong, Environment.TickCount64); break;
+                            case "catalog.ack": break;
                             case "ping": await wire.SendAsync(new WireMessage("pong") { Timestamp = message.Timestamp }, session.Token); break;
                             case "cancel":
                                 if (message.Id is not null && _running.TryGetValue(message.Id, out var pending))
@@ -229,7 +254,8 @@ public sealed class AgentConnection : IAsyncDisposable
             { await ReplyAsync(wire, id, cached.Reply, cts.Token); return; }
             var result = await InvokeInstalledToolAsync(call.ToolId!, call.Arguments!.Value,
                 new AgentExecutionContext(workspace.Primary, id, call.SessionId ?? "remote")
-                { AdditionalDirectories = workspace.Additional, ThreadId = call.ThreadId, TurnId = call.TurnId }, cts.Token);
+                { AdditionalDirectories = workspace.Additional, ThreadId = call.ThreadId, TurnId = call.TurnId }, cts.Token,
+                call.ExpectedCatalogGeneration, call.ExpectedCatalogDigest);
             _completed[id] = (DateTimeOffset.UtcNow, result);
             await ReplyAsync(wire, id, result, cts.Token);
         }
@@ -251,8 +277,12 @@ public sealed class AgentConnection : IAsyncDisposable
     }
 
     // One policy path for ordinary MCP calls and every task step. Remote mode never grants FullPermission.
+    private Task<ToolReply> InvokeInstalledToolAsync(string toolId, JsonElement arguments,
+        AgentExecutionContext context, CancellationToken ct) =>
+        InvokeInstalledToolAsync(toolId, arguments, context, ct, null, null);
+
     private async Task<ToolReply> InvokeInstalledToolAsync(string toolId, JsonElement arguments,
-        AgentExecutionContext context, CancellationToken ct)
+        AgentExecutionContext context, CancellationToken ct, long? expectedCatalogGeneration, string? expectedCatalogDigest)
     {
         var acquired = false; var interactiveAcquired = false;
         try
@@ -260,6 +290,10 @@ public sealed class AgentConnection : IAsyncDisposable
             ct.ThrowIfCancellationRequested();
             if (!_gate.IsArmed) throw new UnauthorizedAccessException("Local control is paused.");
             var snapshot = _registry.Snapshot;
+            if (expectedCatalogGeneration is { } generation && generation != snapshot.Generation)
+                throw new InvalidOperationException("Tool catalog changed; refresh descriptors before invoking this call.");
+            if (!string.IsNullOrWhiteSpace(expectedCatalogDigest) && !StringComparer.Ordinal.Equals(expectedCatalogDigest, snapshot.Digest))
+                throw new InvalidOperationException("Tool catalog changed; refresh descriptors before invoking this call.");
             if (!snapshot.Tools.TryGetValue(toolId, out var tool)) throw new InvalidOperationException("Tool is not installed on this agent.");
             if (!SchemaGuard.Matches(snapshot.Schemas[toolId], arguments)) throw new ArgumentException("Arguments do not match the local tool schema.");
             var composite = tool is ICompositeAgentTool;
@@ -267,7 +301,7 @@ public sealed class AgentConnection : IAsyncDisposable
             if (!tool.Descriptor.ReadOnly || tool.Descriptor.Sensitive)
             { await _interactive.WaitAsync(ct); interactiveAcquired = true; }
             if (!_gate.IsArmed) throw new UnauthorizedAccessException("Local control was paused.");
-            if (_permissions.RequiresApproval(tool.Descriptor) && !await _approval.ApproveAsync(tool.Descriptor, arguments, ct))
+            if (_permissions.RequiresApproval(tool.Descriptor, arguments, context) && !await _approval.ApproveAsync(tool.Descriptor, arguments, ct))
                 throw new UnauthorizedAccessException("The local user denied this action.");
             ct.ThrowIfCancellationRequested();
             if (!_gate.IsArmed) throw new UnauthorizedAccessException("Local control was paused.");
@@ -278,7 +312,7 @@ public sealed class AgentConnection : IAsyncDisposable
             }
             Emit("tool", "Started " + tool.Descriptor.Name);
             var result = await tool.ExecuteAsync(arguments,
-                context with { FullPermission = _permissions.HasFullPermission(toolId) }, ct);
+                context with { FullPermission = _permissions.HasFullPermission(toolId, arguments, context) }, ct);
             Emit("tool", (result.IsError ? "Failed " : "Completed ") + tool.Descriptor.Name);
             return result;
         }
@@ -346,6 +380,7 @@ public sealed class AgentConnection : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _permissions.PermissionsRevoked -= CancelInFlight;
+        _registry.Changed -= OnRegistryChanged;
         _gate.Changed -= OnGateChanged;
         Disconnect();
         try { await Task.WhenAll(_tasks.Values).WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.55 - 2026-09-16
+
+- Wire the existing adaptive Task Gateway extension point and pinned local plugin catalog into the production Windows `AgentRuntime` composition root; the default coordinator may repair only installed read-only/non-sensitive steps and cannot broaden tool arguments or permission.
+- Add live catalog synchronization: registry changes send generation/digest/descriptors, the server validates/persists and acknowledges them, later calls are pinned to the acknowledged catalog identity, and stale calls fail locally before tool/schema execution.
+- Add expiring session/turn capability leases with workspace and command-prefix constraints. `process.start`/future `process.spawn` require a matching invocation-time lease for Full Permission rather than treating one saved arbitrary-process tool grant as unconstrained authority.
+- Reuse the existing permission-revocation cancellation path for lease expiry/revocation, preserving local Arm/Pause and no-replay behavior.
+- Add production-composition, catalog-race/stale-state and capability-lease regression coverage; document the runtime-closure architecture and security boundary.
+
 ## 1.0.54 - 2026-09-16
 
 - Add `developer.symbol_search`, a bounded workspace-scoped source/text search that skips VCS/build/dependency directories and returns structured file/line matches.

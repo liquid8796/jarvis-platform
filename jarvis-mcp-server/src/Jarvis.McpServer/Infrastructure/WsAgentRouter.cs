@@ -51,6 +51,7 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                 throw new InvalidDataException("Invalid agent manifest.");
             foreach (var descriptor in hello.Tools) _ = SchemaGuard.Compile(descriptor.InputSchema);
             peer.TaskProtocolVersion = hello.TaskProtocolVersion;
+            peer.UpdateCatalog(hello.CatalogGeneration, hello.CatalogDigest);
             // A new connection replaces only this enrolled device, never other users' connections.
             _peers.AddOrUpdate(device.Id, peer, (_, previous) => { previous.Wire.Abort(); return peer; });
             var current = await db.Devices.SingleAsync(d => d.Id == device.Id, stop.Token);
@@ -72,6 +73,9 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                     {
                         case "ping": await peer.Wire.SendAsync(new WireMessage("pong") { Timestamp = message.Timestamp }, stop.Token); break;
                         case "pong": break;
+                        case "catalog.changed":
+                            await ApplyCatalogChangedAsync(peer, message, stop.Token);
+                            break;
                         case "task.result" when message.Id is not null && message.TaskReply is not null:
                             if (peer.TaskPending.TryRemove(message.Id, out var taskCompletion)) taskCompletion.TrySetResult(message.TaskReply);
                             break;
@@ -96,6 +100,33 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             peer.Wire.Abort();
         }
     }
+    private async Task ApplyCatalogChangedAsync(Peer peer, WireMessage message, CancellationToken ct)
+    {
+        var tools = message.CatalogTools;
+        var generation = message.CatalogGeneration;
+        var digest = message.CatalogDigest;
+        if (generation is null || generation <= peer.CatalogGeneration || string.IsNullOrWhiteSpace(digest) || digest.Length > 128 ||
+            tools is null || tools.Count is < 1 or > 256 ||
+            tools.Any(t => t is null || string.IsNullOrEmpty(t.Id) || string.IsNullOrEmpty(t.Name) || t.Description is null ||
+                !IdPattern().IsMatch(t.Id) || t.Name.Length > 64 || t.Description.Length > 8000 ||
+                t.InputSchema.ValueKind != JsonValueKind.Object || t.InputSchema.GetRawText().Length > 65536) ||
+            tools.Select(t => t.Id).Distinct().Count() != tools.Count)
+            throw new InvalidDataException("Invalid catalog update.");
+        foreach (var descriptor in tools) _ = SchemaGuard.Compile(descriptor.InputSchema);
+
+        await using var db = await contexts.CreateDbContextAsync(ct);
+        var device = await db.Devices.SingleAsync(d => d.Id == peer.DeviceId && d.OwnerId == peer.OwnerId, ct);
+        device.CapabilitiesJson = JsonSerializer.Serialize(tools, WireJson.Options);
+        device.LastSeenAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        await db.SaveChangesAsync(ct);
+        peer.UpdateCatalog(generation.Value, digest);
+        await peer.Wire.SendAsync(new WireMessage("catalog.ack")
+        {
+            CatalogGeneration = generation.Value,
+            CatalogDigest = digest
+        }, ct);
+    }
+
     private async Task<bool> IsAuthorizedAsync(string id, string owner, string hash, CancellationToken ct)
     {
         await using var db = await contexts.CreateDbContextAsync(ct);
@@ -132,7 +163,9 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
         try
         {
             await peer.Wire.SendAsync(new WireMessage("call") { Id = id, ToolId = toolId, SessionId = sessionId,
-                Arguments = arguments, DeadlineUtc = DateTimeOffset.UtcNow.AddSeconds(options.ToolTimeoutSeconds) }, timeout.Token);
+                Arguments = arguments, DeadlineUtc = DateTimeOffset.UtcNow.AddSeconds(options.ToolTimeoutSeconds),
+                ExpectedCatalogGeneration = peer.CatalogGeneration > 0 ? peer.CatalogGeneration : null,
+                ExpectedCatalogDigest = peer.CatalogDigest }, timeout.Token);
             return await completion.Task.WaitAsync(timeout.Token);
         }
         catch (OperationCanceledException)
@@ -154,6 +187,13 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
         public SemaphoreSlim Slots { get; } = new(4, 4);
         public ConcurrentDictionary<string, TaskCompletionSource<ToolReply>> Pending { get; } = new();
         public int TaskProtocolVersion { get; set; }
+        public long CatalogGeneration { get; private set; }
+        public string? CatalogDigest { get; private set; }
+        public void UpdateCatalog(long generation, string? digest)
+        {
+            CatalogGeneration = generation;
+            CatalogDigest = string.IsNullOrWhiteSpace(digest) ? null : digest;
+        }
         public ConcurrentDictionary<string, TaskCompletionSource<RemoteTaskReply>> TaskPending { get; } = new();
     }
 }

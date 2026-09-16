@@ -43,6 +43,12 @@ Foreground/focus/accessibility observation is bounded to 200 UI Automation nodes
 
 Jarvis now adds the host-owned `tool_program.run` composite tool in Agent Core. It is deliberately smaller than an unrestricted Node/Python REPL but supports conditional and bounded iterative composition while retaining per-tool policy checks. Plugin manifests may extend the dynamic catalog only when the local host already supplies the implementation; the SDK does not claim binary compatibility with Codex plugins and does not execute manifest-referenced code.
 
+## Runtime tool-catalog closure - 1.0.55
+
+The dynamic registry is now synchronized end to end rather than only inside the Agent. A hot replacement publishes generation/digest/descriptors, server-side validation/persistence completes before `catalog.ack`, and subsequent tool calls are pinned to that acknowledged identity. Plugin tools discovered by the production Windows bootstrap therefore become remotely discoverable without reconnect, while catalog presence still grants no execution permission.
+
+Process authority is also more granular than the tool-count table suggests: `process.start` retains the same public tool ID, but saved exact-ID Full Permission alone no longer authorizes its arbitrary command surface. A matching expiring session/turn capability lease must satisfy invocation workspace/command constraints; otherwise the normal local approval path is used.
+
 ## Developer power tools - 1.0.54
 
 `developer.symbol_search` scans at most 2,000 workspace files, skips common VCS/build/dependency directories, clips long lines and caps returned matches. `developer.test` only invokes the fixed `dotnet test` executable/verb against a selected-workspace project or directory and returns structured test counts with bounded output; callers cannot replace the executable or inject an arbitrary command string through this tool.

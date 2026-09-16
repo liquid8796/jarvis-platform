@@ -52,7 +52,8 @@ public sealed class DynamicAgentConnectionTests
         additionalProperties = false
     });
 
-    private static Task<WireMessage> Invoke(AgentConnection connection, Socket socket, JsonElement arguments)
+    private static Task<WireMessage> Invoke(AgentConnection connection, Socket socket, JsonElement arguments,
+        long? expectedCatalogGeneration = null, string? expectedCatalogDigest = null)
     {
         var message = new WireMessage("call")
         {
@@ -62,7 +63,9 @@ public sealed class DynamicAgentConnectionTests
             DeadlineUtc = DateTimeOffset.UtcNow.AddSeconds(15),
             SessionId = "session-1",
             ThreadId = "thread-1",
-            TurnId = "turn-1"
+            TurnId = "turn-1",
+            ExpectedCatalogGeneration = expectedCatalogGeneration,
+            ExpectedCatalogDigest = expectedCatalogDigest
         };
         typeof(AgentConnection).GetMethod("Dispatch", BindingFlags.NonPublic | BindingFlags.Instance)!
             .Invoke(connection, [new WireSocket(socket), message, new WorkspaceDirectories(Path.GetTempPath()), CancellationToken.None]);
@@ -92,5 +95,46 @@ public sealed class DynamicAgentConnectionTests
         Assert.Equal(1, first.Calls);
         Assert.Equal(1, second.Calls);
         Assert.Single(connection.Descriptors);
+    }
+
+    [Fact]
+    public async Task Registry_change_pushes_live_catalog_notification()
+    {
+        var first = new Tool("first", Schema("value"));
+        var second = new Tool("second", Schema("message"));
+        var registry = new DynamicToolRegistry([first]);
+        var gate = new LocalControlGate(); gate.Arm();
+        await using var connection = new AgentConnection(registry, new Approval(), gate);
+        using var socket = new Socket();
+        typeof(AgentConnection).GetField("_current", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(connection, new WireSocket(socket));
+
+        var snapshot = registry.Replace([second]);
+        var notification = await socket.Replies.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal("catalog.changed", notification.Type);
+        Assert.Equal(snapshot.Generation, notification.CatalogGeneration);
+        Assert.Equal(snapshot.Digest, notification.CatalogDigest);
+        Assert.Single(notification.CatalogTools!);
+    }
+
+    [Fact]
+    public async Task Invocation_rejects_stale_catalog_identity_before_tool_execution()
+    {
+        var first = new Tool("first", Schema("value"));
+        var second = new Tool("second", Schema("message"));
+        var registry = new DynamicToolRegistry([first]);
+        var expectedGeneration = registry.Snapshot.Generation;
+        var expectedDigest = registry.Snapshot.Digest;
+        var gate = new LocalControlGate(); gate.Arm();
+        await using var connection = new AgentConnection(registry, new Approval(), gate);
+        using var socket = new Socket();
+
+        registry.Replace([second]);
+        var reply = await Invoke(connection, socket, WireJson.Element(new { message = "ok" }), expectedGeneration, expectedDigest);
+
+        Assert.True(reply.Result!.IsError);
+        Assert.Contains("catalog", reply.Result.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, second.Calls);
     }
 }

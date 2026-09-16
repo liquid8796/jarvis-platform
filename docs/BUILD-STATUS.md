@@ -1,5 +1,14 @@
 # Build / test status
 
+## 1.0.55 Runtime Closure / Scoped Permissions - executed verification (2026-09-16)
+
+- Production `AgentRuntime` now boots the validated local plugin catalog and conservative adaptive coordinator; dynamic registry replacement is synchronized to the server with `catalog.changed`/`catalog.ack` and later calls are generation/digest-pinned.
+- Added expiring session/turn capability leases with workspace/command-prefix constraints. `process.start` no longer treats a legacy arbitrary-process Full Permission grant as sufficient invocation authority; lease expiry/revocation cancels guarded work through the existing policy signal.
+- RED/GREEN evidence: stale-catalog tests first failed because wire identity fields did not exist; capability tests first failed on the absent lease model/policy overloads; Windows production-bootstrap tests first failed because `AgentRuntime` did not accept/load plugins or inject adaptive coordination; server integration first failed because catalog changes were unexpected/unpinned, then exposed a generation-1 race until catalog ACK was introduced. The first full-suite rerun correctly exposed one robustness fixture still using the old unconstrained `process.start` grant; its setup was migrated to a scoped lease and the focused cancellation test passed.
+- Targeted verification: Core runtime/catalog/lease/permission group **12 passed, 0 failed**; Windows production-bootstrap **1 passed, 0 failed**; server bridge **2 passed, 0 failed**; scoped-lease task-cancellation regression **1 passed, 0 failed**.
+- Final `dotnet test Jarvis.slnx --nologo`: **232 passed, 0 failed** (Core 125, Windows 29, Server 78).
+- `python scripts/Verify-CurrentVersion.py`: passed for package 1.0.55 and assembly/file 1.0.55.0. No push, package deployment, service restart or production permission mutation was performed.
+
 ## 1.0.54 Developer Tools / Harness Evaluation - executed verification (2026-09-16)
 
 - Added workspace-bounded `developer.symbol_search`, sensitive fixed-shape `developer.test`, an owned DAP adapter session contract, reusable `HarnessEvaluator`, and `scripts/Run-HarnessEvaluation.ps1`. The two published developer tools are injected through the dynamic registry and remain under local schema/Arm/Pause/permission/approval policy.
