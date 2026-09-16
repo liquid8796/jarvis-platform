@@ -1,4 +1,4 @@
-# Architecture decisions · 1.0.59
+# Architecture decisions · 1.0.60
 
 ## Transport choice
 
@@ -69,11 +69,13 @@ Archive is a source release, not evidence that these workflows have all passed r
 
 Adaptive orchestration is an Agent Core policy layer, not a new authority. Plans are validated DAGs and repairs can replace only the currently failed logical action; completed actions are not replayed. The Task Gateway coordinator hook is optional and receives no direct tool execution capability: returned replacement steps go back through local schema validation and `AgentConnection` guarded invocation.
 
-Default composition supplies no model planner/coordinator. This keeps deterministic task execution and security behavior stable while providing a concrete extension point for a future model/plugin planner.
+Default composition supplies no model planner. It does supply the conservative production repair coordinator introduced in 1.0.55, which may retry only the same installed read-only/non-sensitive logical step without changing arguments or authority. The generic adaptive DAG loop can run independent ready actions concurrently only when a live-registry policy marks them read-only/non-sensitive; concurrency is bounded to 1..8, while mutating/sensitive actions and repairs remain serialized.
 
-## Composite tool and plugin boundary - 1.0.52
+## Composite tool and plugin boundary - 1.0.52 / 1.0.60
 
-Composite tools are orchestration surfaces, not alternate execution authorities. AgentConnection still owns the guarded nested invoker. The composite marker changes semaphore lifetime only: approval occurs before slots are released, and nested calls independently reacquire policy/limits.
+Composite tools are orchestration surfaces, not alternate execution authorities. AgentConnection still owns the guarded nested invoker. The composite marker changes semaphore lifetime only: approval occurs before slots are released, and nested calls independently reacquire policy/limits. `AgentCoreHostTools` is the descriptor/implementation factory for host-owned composites and developer tools, so live runtime registration, CLI discovery and Desktop permission UI cannot silently diverge.
+
+`tool_script.run` adds a fresh Jint engine per call with explicit script/statement/memory/time/tool-call/argument/output budgets. Jint CLR interop is never enabled and no Node/process/filesystem/network host objects are injected. The only host delegate is async `invokeTool(toolId,argsJson)`, and any failure/denial recorded by that delegate fails the complete script even if JavaScript catches the Promise rejection. Nested invocation of either code-mode composite is rejected.
 
 Plugin manifests are discovery/integrity metadata. Hash pins protect the referenced local entry file, but a manifest does not cause Jarvis to load that file. A host must provide matching `IAgentTool` instances explicitly; only those instances can be projected into the dynamic tool registry.
 
@@ -87,4 +89,4 @@ Durable autonomous memory is SQLite-backed and explicitly partitioned; it is not
 
 Developer convenience is layered on top of existing governance rather than bypassing it. Published developer tools remain normal `IAgentTool` instances in `DynamicToolRegistry`; test execution is not treated as read-only. DAP support is deliberately a local owned-process contract without remote attach/injection semantics.
 
-Evaluation is credential-free and deterministic. `HarnessEvaluator` is a generic metrics runner; `Run-HarnessEvaluation.ps1` binds it operationally to the regression suites that exercise dynamic catalog refresh, schema/policy rejection, stale desktop state, adaptive no-replay, code-mode budgets, delegation/memory and task transport behavior.
+Evaluation is credential-free and deterministic. Harness V2 binds Core contract tests to shipping Windows/server composition tests so production bootstrap, Process V2, durable threads, plugin lifecycle, protocol/doctor, stale desktop state, adaptive no-replay/read-only parallelism, both code modes, delegation/memory and task transport are all named scenario groups. The PowerShell report records targeted-test throughput and p95 scenario duration; `HarnessEvaluator` can additionally consume bounded tool-latency samples and emit p50/p95/max metrics.

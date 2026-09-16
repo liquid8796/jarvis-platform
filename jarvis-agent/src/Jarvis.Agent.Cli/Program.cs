@@ -60,7 +60,7 @@ public static class Program
             using var tools = new ToolInventory(prompts, new FileArtifactSink(Environment.CurrentDirectory));
             using var processes = new ProcessToolSet();
             using var threads = new ThreadRuntimeToolSet(Path.Combine(AgentProfile.Root, "thread-runtime.db"));
-            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(tools.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor),
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(tools.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor).Concat(AgentCoreHostTools.Descriptors).DistinctBy(t => t.Id),
                 new System.Text.Json.JsonSerializerOptions(Jarvis.Protocol.WireJson.Options) { WriteIndented = true })); return 0;
         }
         if (command != "connect") throw new ArgumentException("Unknown command. Run jarvis-agent help.");

@@ -22,6 +22,10 @@ Agent native host: `com.jarvis.agent.browser`; named pipe: `JarvisAgent-browser`
 
 Use `thread__create` for project-level work that must survive Agent restart, `thread__append_turn` for bounded turn/items/artifact references, and `thread__queue` for durable ordered follow-ups. `thread__fork` records lineage at a specific parent event, while `thread__checkpoint` compaction/rollback changes the default projection without deleting append-only audit events. Use `thread__search` only inside selected project roots and `thread__get(includeCompacted=true)` when an audit needs pre-compaction history.
 
+## Safe code composition - 1.0.60
+
+Prefer deterministic `tool_program__run` when JSON instructions are sufficient. Use `tool_script__run` only for bounded JavaScript control flow; it has no enabled Node/CLR/filesystem/network/process host API and can cause effects only through `await invokeTool(toolId, JSON.stringify(args))`. Every nested tool independently re-enters the normal local guard path. A denied/failed nested call fails the complete script and cannot be converted into a successful result by catching it in JavaScript. Both code modes are composite sensitive tools and cannot recursively invoke either code mode.
+
 ## Typical build/test workflow
 
 First use filesystem tools to inspect `README`, build files and tests. Use `process__spawn` with argv for exact locally approved build/test execution; retain `process__start` only when shell syntax is actually required. Poll `process__read` with its jobId and cursor; do not launch repeated duplicate builds. Interactive jobs may use `process__write_stdin` and Windows ConPTY jobs may use `process__resize_pty`. Stop with `process__cancel`. Non-zero exit codes and truncated logs are explicit. Long-lived jobs are not durable across agent exit/disconnect and do not promise continued work while ChatGPT is idle.

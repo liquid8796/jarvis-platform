@@ -3,6 +3,7 @@
   <ItemGroup><ProjectReference Include="../../../shared/Jarvis.Protocol/Jarvis.Protocol.csproj" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="Jarvis.Core.Tests" /></ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Jint" Version="4.16.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.11" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />

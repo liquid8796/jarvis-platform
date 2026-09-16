@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.60 - 2026-09-16
+
+- Add `tool_script.run`, a fresh-engine Jint JavaScript sandbox with statement/memory/time/script/call/argument/output bounds and exactly one host capability: guarded `invokeTool(toolId, argsJson)`; CLR/Node/filesystem/network/process globals are not enabled.
+- Fail the complete script when any nested tool call is rejected or fails, even if JavaScript attempts to catch the Promise rejection, and reject recursion into either composite code mode.
+- Add bounded adaptive DAG concurrency for independent ready actions only when the live tool registry marks them read-only and non-sensitive; mutating/sensitive actions and repairs remain serialized.
+- Centralize Core host-tool descriptors so live runtime, CLI `list-tools` and Desktop permissions expose the same `tool_program`, `tool_script` and developer tools.
+- Upgrade Harness V2 with production-bootstrap/process/thread/plugin/protocol/doctor/safe-script/parallel-DAG groups, schema-v2 throughput/p95 scenario metrics and bounded p50/p95/max real tool-latency metrics; bump package/assembly/file versions to 1.0.60 / 1.0.60.0.
+
 ## 1.0.59 - 2026-09-16
 
 - Activate a managed plugin runtime that hot-reloads validated local manifests into the live dynamic tool catalog while retaining the last-known-good snapshot when validation fails.

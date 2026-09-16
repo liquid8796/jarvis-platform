@@ -2,10 +2,8 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text.Json;
-using Jarvis.Agent.Core.DeveloperTools;
 using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.RemoteTasks;
-using Jarvis.Agent.Core.ToolPrograms;
 using Jarvis.Protocol;
 namespace Jarvis.Agent.Core;
 
@@ -63,14 +61,10 @@ public sealed class AgentConnection : IAsyncDisposable
     private void EnsureCompositeTools()
     {
         var snapshot = _registry.Snapshot;
-        var additions = new List<IAgentTool>();
-        if (!snapshot.Tools.ContainsKey("tool_program.run"))
-            additions.Add(new ToolProgramTool(new ToolProgramEngine(InvokeInstalledToolAsync)));
-        if (!snapshot.Tools.ContainsKey("developer.symbol_search"))
-            additions.Add(new DeveloperSymbolSearchTool());
-        if (!snapshot.Tools.ContainsKey("developer.test"))
-            additions.Add(new DeveloperTestTool());
-        if (additions.Count > 0) _registry.Replace(snapshot.Tools.Values.Concat(additions));
+        var additions = AgentCoreHostTools.Create(InvokeInstalledToolAsync)
+            .Where(tool => !snapshot.Tools.ContainsKey(tool.Descriptor.Id))
+            .ToArray();
+        if (additions.Length > 0) _registry.Replace(snapshot.Tools.Values.Concat(additions));
     }
     public void ApplyPluginCatalog(PluginCatalogSnapshot catalog)
     {
@@ -147,7 +141,7 @@ public sealed class AgentConnection : IAsyncDisposable
         {
             try
             {
-                Emit("connection", attempt == 0 ? "Connecting securely…" : "Reconnecting; interrupted calls will not be replayed.");
+                Emit("connection", attempt == 0 ? "Connecting securelyâ€¦" : "Reconnecting; interrupted calls will not be replayed.");
                 using var socket = await _socketConnector(endpoint, token, stop.Token).ConfigureAwait(false);
                 var wire = _current = new WireSocket(socket);
                 var catalog = _registry.Snapshot;

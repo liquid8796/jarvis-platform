@@ -17,8 +17,8 @@ Counts below are derived from source registration, **not a captured tool list fr
 | Workflow | 2 | 2 | Todo and AskUserQuestion |
 | Managed process jobs | 6 | 6 | process.start/spawn/read/write_stdin/resize_pty/cancel |
 | Durable thread runtime | 7 | 7 | create/get/append_turn/queue/search/fork/checkpoint |
-| Agent Core host tools | 3 | 3 | tool_program.run + developer.symbol_search + developer.test; plugin projections are additional/dynamic |
-| **Expected total** | **66** | **63** | Subject to Windows build/runtime verification |
+| Agent Core host tools | 4 | 4 | tool_program.run + tool_script.run + developer.symbol_search + developer.test; plugin projections are additional/dynamic |
+| **Expected total** | **67** | **64** | Subject to Windows build/runtime verification |
 
 Mouse move/click/double-click/right-click/drag/scroll and keyboard actions already exist in the baseline computer batch/browser computer implementations. They are reused, not replaced with a new incomplete mouse simulator. This is not a binary clone of a specific Codex proprietary tool protocol.
 
@@ -40,9 +40,11 @@ The public Computer surface intentionally differs from the reused baseline: Jarv
 
 Foreground/focus/accessibility observation is bounded to 200 UI Automation nodes and 32,000 output characters. A target that denies UI Automation produces partial metadata; Jarvis does not escalate privileges or bypass Windows/UAC boundaries.
 
-## Tool Code Mode and plugin projection - 1.0.52
+## Tool Code Modes and plugin projection - 1.0.52 / 1.0.60
 
-Jarvis now adds the host-owned `tool_program.run` composite tool in Agent Core. It is deliberately smaller than an unrestricted Node/Python REPL but supports conditional and bounded iterative composition while retaining per-tool policy checks. Plugin manifests may extend the dynamic catalog only when the local host already supplies the implementation; the SDK does not claim binary compatibility with Codex plugins and does not execute manifest-referenced code.
+Jarvis retains deterministic `tool_program.run` and now adds `tool_script.run` for bounded JavaScript control flow. Safe Script runs a fresh Jint engine with no enabled CLR/Node/file/network/process host surface; its only host capability is guarded `invokeTool`, so nested effects still traverse installed schema, local Arm/Pause, permission and approval checks. Script/statement/memory/time/call/argument/output budgets are enforced and nested failures cannot be swallowed into a successful composite result. `AgentCoreHostTools` supplies the same four Core host descriptors to runtime, CLI discovery and Desktop permissions.
+
+Plugin manifests may extend the dynamic catalog only when the local host already supplies the implementation; the SDK does not claim binary compatibility with Codex plugins and does not execute manifest-referenced code.
 
 ## Managed plugin lifecycle - 1.0.59
 

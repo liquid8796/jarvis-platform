@@ -60,7 +60,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             using var inventory = new ToolInventory(prompts, new DesktopArtifactSink(owner), () => owner, _settingsRoot);
             using var processes = new ProcessToolSet();
             using var threads = new ThreadRuntimeToolSet(System.IO.Path.Combine(_settingsRoot, "thread-runtime.db"));
-            var descriptors = inventory.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor).ToArray();
+            var descriptors = inventory.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor)
+                .Concat(AgentCoreHostTools.Descriptors).DistinctBy(t => t.Id).ToArray();
             foreach (var tool in descriptors) Tools.Add(tool.Name);
             Permissions = new ToolPermissionsViewModel(descriptors, _permissions, permissionStore);
         }

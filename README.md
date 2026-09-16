@@ -1,6 +1,6 @@
-# Jarvis Control - 1.0.59
+# Jarvis Control - 1.0.60
 
-**Version 1.0.59 activates the managed plugin lifecycle: hash-pinned manifests now support compatibility ranges, validated skill roots/MCP dependencies/provenance, host-bound lifecycle hooks, atomic local install/update/uninstall and last-known-good hot reload into the live tool catalog.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
+**Version 1.0.60 adds Safe Script Code Mode and Harness V2: bounded in-process JavaScript can compose only published tools through the existing guarded invoker, read-only adaptive DAG frontiers gain bounded parallel execution, Core host-tool descriptors are unified across runtime/CLI/Desktop, and the evaluation harness now exercises production bootstrap plus the 1.0.55-1.0.60 runtime surfaces with throughput/p95 timing.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
 
 Jarvis Control là control plane cho MCP; Jarvis Agent là ứng dụng C# .NET 10 trên Windows 10/11, gồm WPF desktop và CLI. Tên web được chọn vì yêu cầu ban đầu chưa điền tên. Một repository chứa hai project sản phẩm và shared protocol; giữ nguyên các thư mục `shared` và `vendor` khi mở solution con.
 
@@ -34,7 +34,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.59/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.59/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
+Build thành công sẽ tạo `artifacts/agent/1.0.60/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.60/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
 
 ## Chạy local
 
@@ -51,11 +51,11 @@ Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.59\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.59\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.59\cli\jarvis-agent.exe doctor --json
-.\artifacts\agent\1.0.59\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.59\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.60\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.60\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.60\cli\jarvis-agent.exe doctor --json
+.\artifacts\agent\1.0.60\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.60\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -101,7 +101,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.59**, assembly/file **1.0.59.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.60**, assembly/file **1.0.60.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 
@@ -149,6 +149,14 @@ The plugin SDK is metadata-first: local `*.plugin.json` manifests declare an ID/
 
 `SqliteMemoryStore` is now genuinely durable. It stores memories in SQLite partitions keyed by owner/project/namespace, retains provenance and timestamps, supports TTL expiration and bounded text search, and keeps the legacy `IAgentMemory.Save/Get(string)` facade mapped to a default partition. SQLite connections are short-lived/non-pooled and use WAL/busy-timeout semantics for concurrent writers.
 
+## Safe Script Code Mode and Harness V2 (1.0.60)
+
+`tool_script.run` is a fresh-engine Jint JavaScript sandbox for control-flow-heavy tool composition. It exposes standard ECMAScript plus one host capability, `invokeTool(toolId, argsJson)`. CLR interop is not enabled and Node/process/filesystem/network globals are not injected. Script size, statements, memory, wall time, nested tool calls, argument JSON and output are bounded; a failed or denied nested tool call fails the whole script even if script code tries to catch it. Every nested effect re-enters the same installed-schema, Arm/Pause, permission and local-approval path as `tool_program.run`.
+
+`AdaptiveAgentExecutionLoop` can now run independent ready actions concurrently only when the live registry marks their tool read-only and non-sensitive, with a configurable cap of 1..8. Mutating/sensitive actions and repair attempts remain serialized. `AgentCoreHostTools` is the single descriptor source used by the live connection, CLI `list-tools` and Desktop permissions surface, preventing host-tool catalog drift.
+
+Harness V2 expands the deterministic offline evaluation to production runtime bootstrap, Process V2, durable threads, plugin lifecycle, protocol/doctor, Safe Script, read-only DAG parallelism and existing no-replay/state/permission scenarios. Its machine-readable schema includes targeted-test throughput and p95 scenario duration; `HarnessEvaluator` also accepts bounded real tool-latency samples and reports p50/p95/max without granting authority.
+
 ## Managed Plugin + Hook Runtime (1.0.59)
 
 Plugin manifests remain metadata-only: Jarvis never loads or downloads the pinned entry file as arbitrary executable code. Tools and lifecycle hooks must be implementations already supplied by the local host. Manifests now support minimum/maximum Agent compatibility, validated relative skill roots, bounded MCP dependency declarations and provenance metadata in addition to the existing SHA-256 entry pin.
@@ -185,5 +193,5 @@ Registry replacements now emit `catalog.changed`; the server validates and persi
 
 Agent Core now publishes `developer.symbol_search` and `developer.test` alongside `tool_program.run`. Symbol search is read-only, workspace-scoped and bounded; test execution is intentionally marked mutating+sensitive because `dotnet test` may build/write project artifacts, so it still requires the ordinary local policy path. The DAP launcher is a Core contract rather than a remotely exposed attach/injection tool: it starts one validated adapter executable, owns that process and can stop only that owned process.
 
-Run `powershell -ExecutionPolicy Bypass -File scripts/Run-HarnessEvaluation.ps1` to execute the offline harness evaluation. It runs named regression groups against the real Core/Windows/Server test projects and writes machine-readable JSON to `artifacts/evaluation/harness-eval.json`. This benchmark is deterministic and requires no model/API credentials.
+Run `powershell -ExecutionPolicy Bypass -File scripts/Run-HarnessEvaluation.ps1` to execute Harness V2. It runs named regression groups against the real Core/Windows/Server test projects, including shipping runtime bootstrap rather than Core seams alone, and writes schema-v2 JSON with targeted-test totals, throughput and p95 scenario duration to `artifacts/evaluation/harness-eval.json`. This benchmark is deterministic and requires no model/API credentials.
 

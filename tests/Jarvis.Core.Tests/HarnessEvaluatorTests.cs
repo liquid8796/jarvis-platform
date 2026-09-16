@@ -34,6 +34,23 @@ public sealed class HarnessEvaluatorTests : IDisposable
     }
 
     [Fact]
+    public async Task Evaluator_reports_bounded_tool_latency_percentiles()
+    {
+        var samples = Enumerable.Range(1, 100).Select(value => (double)value).ToArray();
+        var report = await new HarnessEvaluator().RunAsync([
+            new DelegateHarnessScenario("latency", _ => Task.FromResult(new HarnessScenarioResult(
+                true, ToolCalls: 100, ToolLatencyMs: samples)))
+        ]);
+
+        var latency = report.Scenarios.Single().ToolLatency;
+        Assert.NotNull(latency);
+        Assert.Equal(100, latency!.Samples);
+        Assert.Equal(50, latency.P50Ms);
+        Assert.Equal(95, latency.P95Ms);
+        Assert.Equal(100, latency.MaxMs);
+    }
+
+    [Fact]
     public async Task Json_report_is_machine_readable()
     {
         Directory.CreateDirectory(_root);

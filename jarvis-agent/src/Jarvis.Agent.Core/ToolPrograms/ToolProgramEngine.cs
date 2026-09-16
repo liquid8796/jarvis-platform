@@ -61,8 +61,8 @@ public sealed class ToolProgramEngine
                 case "call":
                 {
                     var tool = RequiredString(instruction, "tool");
-                    if (StringComparer.Ordinal.Equals(tool, "tool_program.run"))
-                        throw new InvalidOperationException("Recursive tool_program.run is not allowed.");
+                    if (StringComparer.Ordinal.Equals(tool, "tool_program.run") || StringComparer.Ordinal.Equals(tool, "tool_script.run"))
+                        throw new InvalidOperationException("Recursive composite tool execution is not allowed.");
                     if (++state.ToolCalls > _limits.MaxToolCalls) throw new InvalidOperationException("Tool program tool-call budget exceeded.");
                     var args = instruction.TryGetProperty("args", out var argsNode) ? Substitute(argsNode, state.Variables) : WireJson.Element(new { });
                     var reply = await _invoke(tool, args, context, cancellationToken).ConfigureAwait(false);
