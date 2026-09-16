@@ -11,6 +11,7 @@ internal static class AgentTaskMcpTools
     public static IReadOnlyList<Tool> List() => new[] { "create", "plan", "get", "artifacts", "cancel", "tools" }.Select(operation => new Tool
     {
         Name = RemoteTaskRules.McpName(operation), InputSchema = Schema(operation),
+        OutputSchema = McpOutputSchemas.ForTask(operation),
         Description = operation switch
         {
             "create" => "Create a durable task on your OAuth-bound local agent. Optional parentTaskId creates a bounded child task on the same owner/device/project; child mode may only narrow and depth/child count are locally capped. A goal alone returns NEEDS_PLAN; this is not a model planner. Supply explicit ordered steps or submit them with agent_task_plan. Each step retains local permission/Arm gates. Provide taskId to safely query after a lost acknowledgement; never blindly replay mutations.",
@@ -50,13 +51,23 @@ internal static class AgentTaskMcpTools
             var limit = args.TryGetProperty("limit", out var size) ? size.GetInt32() : 20;
             var reply = await tasks.SendAsync(owner, device, operation, id, plan, offset, limit, parentTaskId, ct);
             return new CallToolResult { IsError = reply.Error is not null,
+                StructuredContent = WireJson.Element(reply),
                 Content = [new TextContentBlock { Text = JsonSerializer.Serialize(reply, WireJson.Options) }] };
         }
         catch (Exception ex) when (ex is ArgumentException or JsonException or InvalidOperationException or UnauthorizedAccessException or KeyNotFoundException)
         { return Error(ex.Message); }
     }
-    private static CallToolResult Text(object value) => new() { Content = [new TextContentBlock { Text = JsonSerializer.Serialize(value, WireJson.Options) }] };
-    private static CallToolResult Error(string message) => new() { IsError = true, Content = [new TextContentBlock { Text = message }] };
+    private static CallToolResult Text(IReadOnlyList<ToolDescriptor> value) => new()
+    {
+        // Preserve the legacy JSON-array text; old MCP clients require an object root for structured output.
+        Content = [new TextContentBlock { Text = JsonSerializer.Serialize(value, WireJson.Options) }],
+        StructuredContent = WireJson.Element(new { tools = value })
+    };
+    private static CallToolResult Error(string message) => new()
+    {
+        IsError = true, Content = [new TextContentBlock { Text = message }],
+        StructuredContent = WireJson.Element(new { error = message })
+    };
 
     private static JsonElement Schema(string operation)
     {

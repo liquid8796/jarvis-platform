@@ -1,1 +1,1 @@
-feat(tasks): integrate device-bound agent task gateway
+feat(mcp): add output schemas and structured tool results

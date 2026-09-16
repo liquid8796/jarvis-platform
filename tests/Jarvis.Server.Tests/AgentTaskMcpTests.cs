@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace Jarvis.Server.Tests;
 
-public sealed class AgentTaskMcpTests
+public sealed partial class AgentTaskMcpTests
 {
     [Fact]
     public async Task OAuth_client_discovers_creates_and_reads_tasks_without_forging_device()
@@ -58,6 +58,16 @@ public sealed class AgentTaskMcpTests
         var pendingId = pendingReply.GetProperty("task").GetProperty("taskId").GetString();
         var cancelled = await CallAsync(client, "agent_task_cancel", new { taskId = pendingId });
         Assert.Contains("CANCELLED", cancelled.GetRawText());
+        foreach (var (name, result) in new (string, JsonElement)[]
+        {
+            ("agent_task_tools", tools), ("agent_task_create", create), ("agent_task_create", child),
+            ("agent_task_get", get), ("agent_task_plan", planned), ("agent_task_artifacts", artifacts),
+            ("agent_task_get", otherRead), ("agent_task_create", forged),
+            ("agent_task_create", pending), ("agent_task_cancel", cancelled)
+        }) AssertOutputMatches(listed, name, result);
+        AssertLegacyTaskJson(create, create.GetProperty("structuredContent"));
+        AssertLegacyTaskJson(child, child.GetProperty("structuredContent"));
+        AssertLegacyTaskJson(otherRead, otherRead.GetProperty("structuredContent"));
     }
     private static async Task<JsonElement> CallAsync(HttpClient client, string name, object arguments) =>
         (await RpcAsync(client, "tools/call", new { name, arguments })).GetProperty("result").Clone();

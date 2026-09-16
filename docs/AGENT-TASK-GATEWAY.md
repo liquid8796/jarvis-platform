@@ -56,7 +56,19 @@ Poll `agent_task_get` with `taskId`; fetch `agent_task_artifacts` after progress
 
 Creating without `steps` persists a `NEEDS_PLAN` task. Submit `agent_task_plan` with the same taskId, goal, project, mode and overall timeout, plus non-empty steps. Existing executing/terminal tasks cannot be replanned; a client that generates a repair must inspect failures and deliberately create a new task ID. There is no autonomous error-to-source-code patch generator in the agent.
 
-For the cookie HTTP APIs, include `deviceId` in create/plan bodies and in query/cancel URLs. HTTP create/plan return the snapshot directly; MCP returns a JSON-encoded `RemoteTaskReply` in text content. The server logs operation/outcome/correlation IDs, not goal, command text or artifact contents.
+For the cookie HTTP APIs, include `deviceId` in create/plan bodies and in query/cancel URLs. HTTP create/plan return the snapshot directly; MCP returns the same `RemoteTaskReply` as both structured content and legacy JSON-encoded text (since 1.0.62). The server logs operation/outcome/correlation IDs, not goal, command text or artifact contents.
+
+## Structured MCP results - 1.0.62
+
+Every published tool has an object-root `outputSchema`, validated against `structuredContent` in OAuth/WebSocket integration tests. Ordinary installed tools use `{ "text": "...", "isError": false }`; image data remains exclusively in image content blocks, encoded using the SDK image factory. No local widget HTML is copied to structured output.
+
+For `agent_task_create`, `agent_task_plan`, `agent_task_get` and `agent_task_cancel`, structured content is the existing task reply: `{ "task": { ... } }` on success, or `{ "error": "...", "errorCode": "..." }` for a remote failure. Gateway validation/exception errors may omit `errorCode` and retain their original plain text. A successful read of a FAILED task is not itself a tool-call error.
+
+`agent_task_artifacts` describes the snapshot and paged artifacts. Each artifact requires `sequence`, `stepId`, `stage`, `toolId`, `attempt`, `success`, `output`, `truncated` and `createdAt`; `exitCode` and `error` are omitted when unavailable. Process exit codes are integers, including negative codes. `nextOffset` is present only when another page exists. Follow it until absent; an empty artifact page is valid. `currentStep`, task error and optional lineage fields follow the same null-omission rules as the wire DTOs.
+
+`agent_task_tools` returns `{ "tools": [ ... ] }` as structured content while its legacy text remains the original JSON descriptor array. Descriptor fields are `id`, `name`, `category`, `description`, `inputSchema`, `readOnly` and `sensitive`. They describe availability, not permission grants.
+
+Tool names, inputs, OAuth owner/device routing, local Arm/Pause/approval enforcement and the agent wire protocol are unchanged. The server must be deployed separately; refresh/review and republish client tool definitions where supported (some ChatGPT plans require recreating the app). A source push alone does not update an existing app snapshot. See [server README](../jarvis-mcp-server/README.md) for protocol and client-update references.
 
 ## Runtime, recovery and local controls
 

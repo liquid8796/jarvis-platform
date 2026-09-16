@@ -1,10 +1,10 @@
-# Jarvis Agent - 1.0.61
+# Jarvis Agent - 1.0.62
 
 Open `Jarvis Agent.slnx` with the entire repository present. Keep its Vendor projects loaded:
 those assemblies implement reused tools, while the standalone Jarvis Code application is excluded
 from Agent build/publish output. Root solution `../Jarvis.slnx` also includes the complete graph.
 
-The platform assembly version is 1.0.61.0. This patch simplifies Agent settings navigation: the persistent left sidebar is now the single navigation surface for Connection center and Tool permissions, the duplicated tab-header row is no longer rendered, the hidden content host is removed from keyboard focus, and the selected sidebar destination stays synchronized with the active settings content. The desktop footer now reads its version from the running assembly instead of a hard-coded label.
+The platform assembly version is 1.0.62.0. This release adds output schemas and structured tool results in the MCP server transport; Agent execution, permission policy and the agent/server wire contract are unchanged. The settings navigation and assembly-derived footer introduced in 1.0.61 are retained. Deploying the server and refreshing client tool definitions are separate operator steps; no running Agent restart is required to test the transport patch.
 Desktop/CLI publish and Windows startup acceptance from earlier versions remains historical evidence. See [verification evidence](../docs/BUILD-STATUS.md)
 for exact scope, the separate Visual Studio license limitation, and remaining production acceptance.
 

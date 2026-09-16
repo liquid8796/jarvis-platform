@@ -26,6 +26,7 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
             {
                 Name = t.Name, Description = t.Description,
                 InputSchema = capabilities[t.AgentToolId].InputSchema,
+                OutputSchema = McpOutputSchemas.ToolReply,
                 Annotations = new ToolAnnotations { ReadOnlyHint = capabilities[t.AgentToolId].ReadOnly,
                     DestructiveHint = !capabilities[t.AgentToolId].ReadOnly, OpenWorldHint = true }
             }).Concat(tasks.SupportsTasks(user.Id, device.Id) ? AgentTaskMcpTools.List() : []).ToList()
@@ -53,10 +54,14 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
             var reply = await router.CallAsync(user.Id, device.Id, entry.AgentToolId, arguments,
                 "oauth:" + user.Id + ":" + device.Id, ct);
             var content = new List<ContentBlock> { new TextContentBlock { Text = reply.Text } };
-            if (reply.Images is not null) content.AddRange(reply.Images.Select(i => new ImageContentBlock { Data = Convert.FromBase64String(i.Base64), MimeType = i.MimeType }));
+            if (reply.Images is not null) content.AddRange(reply.Images.Select(i => ImageContentBlock.FromBytes(Convert.FromBase64String(i.Base64), i.MimeType)));
             await FinishAsync(reply.IsError ? "error" : "completed");
             // Widgets are rendered locally in the agent; returning an artifact does not claim ChatGPT embedded rendering support.
-            return new CallToolResult { Content = content, IsError = reply.IsError };
+            return new CallToolResult
+            {
+                Content = content, IsError = reply.IsError,
+                StructuredContent = WireJson.Element(new { text = reply.Text, isError = reply.IsError })
+            };
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or System.Net.WebSockets.WebSocketException or OperationCanceledException)
         {
@@ -75,7 +80,11 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
         var json = await db.Devices.Where(d => d.OwnerId == owner && d.Id == id).Select(d => d.CapabilitiesJson).SingleAsync(ct);
         return (JsonSerializer.Deserialize<ToolDescriptor[]>(json, WireJson.Options) ?? []).ToDictionary(t => t.Id);
     }
-    private static CallToolResult Error(string message) => new() { IsError = true, Content = [new TextContentBlock { Text = message }] };
+    private static CallToolResult Error(string message) => new()
+    {
+        IsError = true, Content = [new TextContentBlock { Text = message }],
+        StructuredContent = WireJson.Element(new { text = message, isError = true })
+    };
 }
 
 

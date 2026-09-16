@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.62 - 2026-09-16
+
+- Publish object-root `outputSchema` definitions for every dynamic MCP tool and all six `agent_task_*` operations; return matching `structuredContent` on success and tool-level errors.
+- Keep ordinary tool text opaque in `{text, isError}`; expose typed task snapshots, artifact pages and errors, and wrap task tool descriptors in `{tools: [...]}` only in structured content. Preserve legacy text and omit unavailable nullable fields.
+- Preserve image content without duplicating base64 or local widget HTML in structured results. Correct the existing image adapter to use SDK `ImageContentBlock.FromBytes`, preventing decoded image bytes from being serialized as base64 text.
+- Add OAuth/WebSocket contract regressions for discovery, task lifecycle and owner/device isolation, local validation/permission errors, descriptor wrapping, artifact pagination, omitted fields, malformed output types and binary image round-tripping. No permission policy or agent wire-contract changes.
+- Bump package/assembly/file versions to 1.0.62 / 1.0.62.0. Live server deployment and ChatGPT tool-definition refresh remain separate from source publication.
+
 ## 1.0.61 - 2026-09-16
 
 - Make the Jarvis Agent settings sidebar the single visible navigation surface for `Connection center` and `Tool permissions`, with persistent selected/hover/focus treatment and two-way `SelectedTab` synchronization.
