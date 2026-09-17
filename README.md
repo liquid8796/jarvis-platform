@@ -1,56 +1,56 @@
-# Jarvis Control - 1.0.68
+﻿# Jarvis Control - 1.0.69
 
-**Version 1.0.68 makes rendered frontend verification a completion requirement for autonomous coding tasks.** Frontend-affecting work is classified from goal and changed-path evidence, then must provide typed URL/title, rendered DOM/accessibility, framework-overlay, console-health, screenshot and interaction proof; visual/layout work additionally requires desktop, mobile and overflow evidence. Missing or failing evidence is fed back as verification debt and blocks `COMPLETED`. See [AGENT.md](docs/AGENT.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
+**Version 1.0.69 adds progressive coding-skill context and stale browser-reference protection.** Validated plugin `SKILL.md` roots now expose bounded metadata to agentic planning/verification and load full instructions only after explicit selection; browser refs from `read_page/find` are scoped to the latest observation and rejected after material navigation or interaction changes. See [AGENT.md](docs/AGENT.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
 
 A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; the browser extension remains **1.2.0**.
 
-Jarvis Control là control plane cho MCP; Jarvis Agent là ứng dụng C# .NET 10 trên Windows 10/11, gồm WPF desktop và CLI. Tên web được chọn vì yêu cầu ban đầu chưa điền tên. Một repository chứa hai project sản phẩm và shared protocol; giữ nguyên các thư mục `shared` và `vendor` khi mở solution con.
+Jarvis Control lÃ  control plane cho MCP; Jarvis Agent lÃ  á»©ng dá»¥ng C# .NET 10 trÃªn Windows 10/11, gá»“m WPF desktop vÃ  CLI. TÃªn web Ä‘Æ°á»£c chá»n vÃ¬ yÃªu cáº§u ban Ä‘áº§u chÆ°a Ä‘iá»n tÃªn. Má»™t repository chá»©a hai project sáº£n pháº©m vÃ  shared protocol; giá»¯ nguyÃªn cÃ¡c thÆ° má»¥c `shared` vÃ  `vendor` khi má»Ÿ solution con.
 
 ```text
 ChatGPT / MCP client
-  │ HTTPS · MCP Streamable HTTP · OAuth + PKCE S256
-  ▼
-jarvis-mcp-server  ── Jarvis Control web UI
-  │ WSS · outbound connection initiated by the agent
-  ▼
-Jarvis Agent · Windows user session
-  ├─ Local control lease / explicit consent / emergency pause
-  ├─ Baseline computer-use, browser, visualize, filesystem, Git
-  └─ Owned process jobs for build/test with bounded logs
+  â”‚ HTTPS Â· MCP Streamable HTTP Â· OAuth + PKCE S256
+  â–¼
+jarvis-mcp-server  â”€â”€ Jarvis Control web UI
+  â”‚ WSS Â· outbound connection initiated by the agent
+  â–¼
+Jarvis Agent Â· Windows user session
+  â”œâ”€ Local control lease / explicit consent / emergency pause
+  â”œâ”€ Baseline computer-use, browser, visualize, filesystem, Git
+  â””â”€ Owned process jobs for build/test with bounded logs
 ```
 
-## Mở source
+## Má»Ÿ source
 
-Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.NET desktop development**, **ASP.NET and web development**. Solution con: `jarvis-agent/Jarvis Agent.slnx`, `jarvis-mcp-server/jarvis-mcp-server.slnx`. Windows target là x64, không phải Windows Service; desktop phải có session tương tác của người dùng.
+Má»Ÿ `Jarvis.slnx` báº±ng Visual Studio 2026 vá»›i .NET 10 SDK vÃ  workload **.NET desktop development**, **ASP.NET and web development**. Solution con: `jarvis-agent/Jarvis Agent.slnx`, `jarvis-mcp-server/jarvis-mcp-server.slnx`. Windows target lÃ  x64, khÃ´ng pháº£i Windows Service; desktop pháº£i cÃ³ session tÆ°Æ¡ng tÃ¡c cá»§a ngÆ°á»i dÃ¹ng.
 
 ```powershell
-# Chạy kiểm thử C# và xuất bản server + agent trên máy Windows có SDK/dependencies.
+# Cháº¡y kiá»ƒm thá»­ C# vÃ  xuáº¥t báº£n server + agent trÃªn mÃ¡y Windows cÃ³ SDK/dependencies.
 .\scripts\Build.ps1 -Component All -ServerRuntime linux-arm64
 
-# OCI x86_64 dùng linux-x64; xác định kiến trúc VM trước, không đoán.
+# OCI x86_64 dÃ¹ng linux-x64; xÃ¡c Ä‘á»‹nh kiáº¿n trÃºc VM trÆ°á»›c, khÃ´ng Ä‘oÃ¡n.
 .\scripts\Build.ps1 -Component Server -ServerRuntime linux-x64
 
-# Chỉ GUI + CLI.
+# Chá»‰ GUI + CLI.
 .\scripts\Build.ps1 -Component Agent
 ```
 
-Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
+Script sáº½ restore package theo cÃ¡c version Ä‘Ã£ pin náº¿u chÆ°a cÃ³ cache. `-NoRestore` chá»‰ dÃ¹ng sau má»™t láº§n restore phÃ¹ há»£p cÃ¹ng RID. GÃ³i khÃ´ng chá»©a NuGet cache; khÃ´ng cÃ³ lá»‡nh Maven. `-SkipTests` tá»“n táº¡i Ä‘á»ƒ Ä‘iá»u tra lá»—i build nhÆ°ng **khÃ´ng** dÃ¹ng lÃ m báº±ng chá»©ng kiá»ƒm thá»­. ChÆ°a cÃ³ lockfile transitive Ä‘Æ°á»£c táº¡o bá»Ÿi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.65/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.65/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
+Build thÃ nh cÃ´ng sáº½ táº¡o `artifacts/agent/1.0.65/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.65/cli/jarvis-agent.exe`, ZIP agent vÃ  tar.gz self-contained server. Giá»¯ cáº£ thÆ° má»¥c publish, khÃ´ng copy riÃªng executable. WebView2 Runtime lÃ  Ä‘iá»u kiá»‡n riÃªng cho visualize WPF. Browser integration cáº§n CLI executable Ä‘Ã£ publish, ká»ƒ cáº£ khi dÃ¹ng giao diá»‡n desktop.
 
-## Chạy local
+## Cháº¡y local
 
 ```powershell
 .\scripts\Run-Server.Dev.ps1 -AdminEmail 'admin@example.test'
 ```
 
-Script hỏi mật khẩu an toàn, không có admin mặc định. Mở `http://localhost:18765`. Development dùng ephemeral OAuth keys: restart sẽ làm mất hiệu lực các grant cũ. Không expose chế độ này ra Internet.
+Script há»i máº­t kháº©u an toÃ n, khÃ´ng cÃ³ admin máº·c Ä‘á»‹nh. Má»Ÿ `http://localhost:18765`. Development dÃ¹ng ephemeral OAuth keys: restart sáº½ lÃ m máº¥t hiá»‡u lá»±c cÃ¡c grant cÅ©. KhÃ´ng expose cháº¿ Ä‘á»™ nÃ y ra Internet.
 
-Đăng nhập admin → user/device/tools được quản lý trên web. User mới đăng ký ở trạng thái **pending**; admin phải approve trước khi đăng nhập. Trong **Devices**, enroll thiết bị và lưu token một lần. Mở Jarvis Agent, nhập URL/device ID/token, chọn workspace, bật tùy chọn HTTP loopback **chỉ khi test local**, rồi Connect. Kết nối thành công chưa cho phép điều khiển: cần **Arm control** (until Pause, Disconnect or Exit) tại máy. Pause qua GUI/tray hoặc `Ctrl+Alt+Pause`.
+ÄÄƒng nháº­p admin â†’ user/device/tools Ä‘Æ°á»£c quáº£n lÃ½ trÃªn web. User má»›i Ä‘Äƒng kÃ½ á»Ÿ tráº¡ng thÃ¡i **pending**; admin pháº£i approve trÆ°á»›c khi Ä‘Äƒng nháº­p. Trong **Devices**, enroll thiáº¿t bá»‹ vÃ  lÆ°u token má»™t láº§n. Má»Ÿ Jarvis Agent, nháº­p URL/device ID/token, chá»n workspace, báº­t tÃ¹y chá»n HTTP loopback **chá»‰ khi test local**, rá»“i Connect. Káº¿t ná»‘i thÃ nh cÃ´ng chÆ°a cho phÃ©p Ä‘iá»u khiá»ƒn: cáº§n **Arm control** (until Pause, Disconnect or Exit) táº¡i mÃ¡y. Pause qua GUI/tray hoáº·c `Ctrl+Alt+Pause`.
 
-Trong **Tool permissions**, Full permission vẫn áp dụng cho các tool thông thường. Riêng `process.start` và `process.spawn` là constrained exceptions: hộp thoại local có `Deny`, `Approve once` và `Always approve`. `Always approve` được lưu vĩnh viễn theo exact tool ID trên máy đó và có thể thu hồi bằng **Require approval again**; Arm/Pause và các boundary Windows hiện có vẫn áp dụng.
+Trong **Tool permissions**, Full permission váº«n Ã¡p dá»¥ng cho cÃ¡c tool thÃ´ng thÆ°á»ng. RiÃªng `process.start` vÃ  `process.spawn` lÃ  constrained exceptions: há»™p thoáº¡i local cÃ³ `Deny`, `Approve once` vÃ  `Always approve`. `Always approve` Ä‘Æ°á»£c lÆ°u vÄ©nh viá»…n theo exact tool ID trÃªn mÃ¡y Ä‘Ã³ vÃ  cÃ³ thá»ƒ thu há»“i báº±ng **Require approval again**; Arm/Pause vÃ  cÃ¡c boundary Windows hiá»‡n cÃ³ váº«n Ã¡p dá»¥ng.
 
-Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, kiểm tra rồi bật tool cần thiết. Tool mới import mặc định tắt. Catalog CRUD quản lý alias/metadata/availability của tool đã cài trên agent; **không upload script tùy ý để chạy trên máy người dùng**.
+Sau khi agent gá»­i manifest, admin vÃ o **Tool catalog â†’ Import installed**, kiá»ƒm tra rá»“i báº­t tool cáº§n thiáº¿t. Tool má»›i import máº·c Ä‘á»‹nh táº¯t. Catalog CRUD quáº£n lÃ½ alias/metadata/availability cá»§a tool Ä‘Ã£ cÃ i trÃªn agent; **khÃ´ng upload script tÃ¹y Ã½ Ä‘á»ƒ cháº¡y trÃªn mÃ¡y ngÆ°á»i dÃ¹ng**.
 
 CLI:
 
@@ -62,29 +62,29 @@ CLI:
 .\artifacts\agent\1.0.65\cli\jarvis-agent.exe browser-install
 ```
 
-`configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
+`configure` há»i token trÃªn stdin áº©n; khÃ´ng nháº­n token qua URL/command line. `connect` cáº§n terminal tÆ°Æ¡ng tÃ¡c vÃ  xÃ¡c nháº­n local. KhÃ´ng tá»± khá»Ÿi Ä‘á»™ng cÃ¹ng Windows, khÃ´ng tá»± arm sau reconnect, khÃ´ng yÃªu cáº§u admin. GUI vÃ  CLI dÃ¹ng má»™t single-instance mutex theo Windows user.
 
-## Kết nối ChatGPT
+## Káº¿t ná»‘i ChatGPT
 
-Production endpoint: `https://<your-domain>/mcp`. Đăng ký kết nối MCP với OAuth trong client được cấp quyền. Cấu hình **đúng callback URL mà client cung cấp** vào `Jarvis:OAuthRedirectUris`; không dùng wildcard. Discovery/DCR/code+PKCE/refresh được triển khai bằng OpenIddict. Consent chọn một device thuộc user hiện tại. Gói này chưa được thử trong một phiên ChatGPT thực.
+Production endpoint: `https://<your-domain>/mcp`. ÄÄƒng kÃ½ káº¿t ná»‘i MCP vá»›i OAuth trong client Ä‘Æ°á»£c cáº¥p quyá»n. Cáº¥u hÃ¬nh **Ä‘Ãºng callback URL mÃ  client cung cáº¥p** vÃ o `Jarvis:OAuthRedirectUris`; khÃ´ng dÃ¹ng wildcard. Discovery/DCR/code+PKCE/refresh Ä‘Æ°á»£c triá»ƒn khai báº±ng OpenIddict. Consent chá»n má»™t device thuá»™c user hiá»‡n táº¡i. GÃ³i nÃ y chÆ°a Ä‘Æ°á»£c thá»­ trong má»™t phiÃªn ChatGPT thá»±c.
 
-Hướng dẫn chi tiết: [OAuth & MCP](docs/OAUTH-MCP.md), [agent](docs/AGENT.md), [API](docs/API.md), [OCI deployment](docs/DEPLOYMENT-OCI.md).
+HÆ°á»›ng dáº«n chi tiáº¿t: [OAuth & MCP](docs/OAUTH-MCP.md), [agent](docs/AGENT.md), [API](docs/API.md), [OCI deployment](docs/DEPLOYMENT-OCI.md).
 
-## Cấu trúc và tài liệu
+## Cáº¥u trÃºc vÃ  tÃ i liá»‡u
 
-| Thư mục | Trách nhiệm |
+| ThÆ° má»¥c | TrÃ¡ch nhiá»‡m |
 |---|---|
 | `jarvis-mcp-server/src/Jarvis.McpServer` | ASP.NET Core, Identity, OAuth, MCP adapter, routing, CRUD, web assets |
-| `jarvis-agent/src/Jarvis.Agent.Core` | Connection lifecycle, policy, process jobs; không phụ thuộc WPF |
-| `jarvis-agent/src/Jarvis.Agent.Windows` | Adapter tới tool baseline, browser native bridge, profile DPAPI |
+| `jarvis-agent/src/Jarvis.Agent.Core` | Connection lifecycle, policy, process jobs; khÃ´ng phá»¥ thuá»™c WPF |
+| `jarvis-agent/src/Jarvis.Agent.Windows` | Adapter tá»›i tool baseline, browser native bridge, profile DPAPI |
 | `jarvis-agent/src/Jarvis.Agent.Desktop` | WPF MVVM, tray, local prompts, WebView2 artifacts |
-| `jarvis-agent/src/Jarvis.Agent.Cli` | Interactive terminal host và browser native messaging host |
+| `jarvis-agent/src/Jarvis.Agent.Cli` | Interactive terminal host vÃ  browser native messaging host |
 | `shared/Jarvis.Protocol` | Envelope, bounded transport, schema validation, workspace guard |
-| `vendor/jarvis-code` | Source baseline được cung cấp, dùng qua ProjectReference |
-| `tests`, `.github/workflows` | C# test source/CI và kiểm thử UI với API giả lập |
+| `vendor/jarvis-code` | Source baseline Ä‘Æ°á»£c cung cáº¥p, dÃ¹ng qua ProjectReference |
+| `tests`, `.github/workflows` | C# test source/CI vÃ  kiá»ƒm thá»­ UI vá»›i API giáº£ láº­p |
 | `deploy`, `scripts` | Build, private configuration, read-only preflight, isolated deployment |
 
-Đọc [architecture](docs/ARCHITECTURE.md), [security boundaries](docs/SECURITY.md), [tool parity](docs/TOOL-PARITY.md), [test status](docs/BUILD-STATUS.md), [manual acceptance](docs/ACCEPTANCE.md), [changelog](CHANGELOG.md).
+Äá»c [architecture](docs/ARCHITECTURE.md), [security boundaries](docs/SECURITY.md), [tool parity](docs/TOOL-PARITY.md), [test status](docs/BUILD-STATUS.md), [manual acceptance](docs/ACCEPTANCE.md), [changelog](CHANGELOG.md).
 
 ## UI preview
 
@@ -93,13 +93,13 @@ The web screenshot uses real web assets with synthetic API fixtures. The Agent s
 ![Jarvis Control dashboard](docs/screenshots/web-dashboard.png)
 ![Jarvis Agent 1.0.23](docs/screenshots/agent-1.0.23.png)
 
-## Giới hạn quan trọng
+## Giá»›i háº¡n quan trá»ng
 
-Đây là deployment **một server instance**, broker WebSocket trong RAM + SQLite WAL. Không tuyên bố HA, exactly-once, resumable jobs qua restart, production-ready hay nhanh nhất trong benchmark. Call mất kết nối có thể đã tạo side effect; không tự replay. Một call ngắn tối đa 120 giây mặc định; build/test dài dùng `process__start/read/cancel`. Debug qua command/log/UI đã có đường triển khai; **chưa có DAP/breakpoint API chuyên dụng**.
+ÄÃ¢y lÃ  deployment **má»™t server instance**, broker WebSocket trong RAM + SQLite WAL. KhÃ´ng tuyÃªn bá»‘ HA, exactly-once, resumable jobs qua restart, production-ready hay nhanh nháº¥t trong benchmark. Call máº¥t káº¿t ná»‘i cÃ³ thá»ƒ Ä‘Ã£ táº¡o side effect; khÃ´ng tá»± replay. Má»™t call ngáº¯n tá»‘i Ä‘a 120 giÃ¢y máº·c Ä‘á»‹nh; build/test dÃ i dÃ¹ng `process__start/read/cancel`. Debug qua command/log/UI Ä‘Ã£ cÃ³ Ä‘Æ°á»ng triá»ƒn khai; **chÆ°a cÃ³ DAP/breakpoint API chuyÃªn dá»¥ng**.
 
-Source tool computer/browser/visualize được giữ lại; host áp dụng giới hạn mới để dùng từ xa. HTML visualize chạy local không network, không `sendPrompt`, không inline MCP Apps trong ChatGPT. 114 optional third-party font binaries không được phân phối lại; system font dùng cho UI. Tham khảo manifest parity thay vì coi ZIP là bản sao bit-for-bit của toàn bộ archive đầu vào.
+Source tool computer/browser/visualize Ä‘Æ°á»£c giá»¯ láº¡i; host Ã¡p dá»¥ng giá»›i háº¡n má»›i Ä‘á»ƒ dÃ¹ng tá»« xa. HTML visualize cháº¡y local khÃ´ng network, khÃ´ng `sendPrompt`, khÃ´ng inline MCP Apps trong ChatGPT. 114 optional third-party font binaries khÃ´ng Ä‘Æ°á»£c phÃ¢n phá»‘i láº¡i; system font dÃ¹ng cho UI. Tham kháº£o manifest parity thay vÃ¬ coi ZIP lÃ  báº£n sao bit-for-bit cá»§a toÃ n bá»™ archive Ä‘áº§u vÃ o.
 
-## Export và commit
+## Export vÃ  commit
 
 ```powershell
 python .\scripts\Export-Source.py
@@ -152,6 +152,12 @@ The default hosts still do not silently configure a paid/model planner; NORMAL/R
 Autonomous frontend completion now fails closed through `FrontendVerificationGate`. `FrontendChangeClassifier` recognizes common rendered source extensions (`.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.sass`, `.less`, `.html`) plus frontend/visual intent in the goal. Base rendered proof requires target identity, rendered DOM/accessibility state, no framework overlay, console health, a screenshot and a target interaction with post-state evidence. Visual/layout work additionally requires desktop and mobile viewport checks plus overflow/clipping evidence.
 
 Evidence is typed, the latest evidence for a kind wins, and missing/failing kinds are projected back into the agentic prompt as `verification-debt` before another goal-repair round. `RemoteTaskSnapshot.verification` exposes the requirement type, pass state, retained evidence, missing kinds and failed kinds; the MCP output schema advertises this field as optional so deterministic/legacy task JSON remains compatible.
+
+## Progressive Coding Skills and Browser State (1.0.69)
+
+`PluginSkillLoader` turns validated plugin skill roots into bounded coding context without executing plugin entry files. Discovery reads only bounded front matter metadata, rejects reparse-point traversal and paths outside declared roots, isolates oversized/invalid skills as diagnostics, and exposes compact `plugin/name: description` metadata to agentic planning/verification. Full UTF-8 Markdown instructions are loaded only through explicit `LoadSelectedSkills(...)` selection and are revalidated against the current enabled plugin catalog at load time.
+
+Each per-session browser suite now owns a `BrowserObservationTracker`. Element refs produced by `browser.read_page` or `browser.find` belong to the current observation generation. Material navigation, form input, clicks/typing/scrolling, JavaScript, uploads, tab/browser switches and viewport resize invalidate that generation. A later ref-bearing call must use a ref from a fresh observation; stale refs fail locally before the raw Chrome tool runs. Failed mutations do not invalidate the prior generation.
 
 ## Restricted Tool Code Mode and Plugins (1.0.52)
 

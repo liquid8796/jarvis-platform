@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text.Json;
@@ -26,6 +26,9 @@ public sealed partial class AgentConnection : IAsyncDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly object _pluginSync = new();
     private HashSet<string> _pluginToolIds = new(StringComparer.Ordinal);
+    private readonly PluginSkillLoader _pluginSkillLoader = new();
+    private PluginCatalogSnapshot? _pluginCatalog;
+    private PluginSkillCatalogSnapshot _pluginSkills = new([], []);
     private WireSocket? _current;
     private int _started;
     private long _lastPong;
@@ -79,6 +82,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
     public void ApplyPluginCatalog(PluginCatalogSnapshot catalog)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        var skills = _pluginSkillLoader.Discover(catalog);
         lock (_pluginSync)
         {
             EnsureCompositeTools();
@@ -93,7 +97,24 @@ public sealed partial class AgentConnection : IAsyncDisposable
             }
             _registry.Replace(current.Values);
             _pluginToolIds = catalog.Tools.Keys.ToHashSet(StringComparer.Ordinal);
+            _pluginCatalog = catalog;
+            _pluginSkills = skills;
         }
+        ConfigureRemoteTaskSkills();
+    }
+
+    private void ConfigureRemoteTaskSkills()
+    {
+        PluginCatalogSnapshot? catalog;
+        PluginSkillCatalogSnapshot skills;
+        lock (_pluginSync)
+        {
+            catalog = _pluginCatalog;
+            skills = _pluginSkills;
+        }
+        var tasks = _remoteTasks;
+        if (tasks is null || catalog is null) return;
+        tasks.ConfigureSkills(skills.Skills, ids => _pluginSkillLoader.LoadSelected(catalog, skills.Skills, ids));
     }
 
     private void OnRegistryChanged(DynamicToolSnapshot snapshot)
@@ -147,6 +168,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
         InitializeExecutionSettings(options.ExecutionSettings);
         _remoteTasks = new RemoteTaskHost(taskRoot, folders, _registry, () => _gate.IsArmed,
             InvokeInstalledToolAsync, CancelOwnedJobAsync, _adaptiveCoordinator, ResolveTaskSession, ExecutionSettings);
+        ConfigureRemoteTaskSkills();
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
         var attempt = 0;
         while (!stop.IsCancellationRequested)
@@ -154,7 +176,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
             try
             {
                 SetReachability(attempt == 0 ? "CONNECTING" : "RECONNECTING",
-                    attempt == 0 ? "Connecting securely…" : "Reconnecting; interrupted calls will not be replayed.", false);
+                    attempt == 0 ? "Connecting securelyâ€¦" : "Reconnecting; interrupted calls will not be replayed.", false);
                 using var socket = await _socketConnector(endpoint, token, stop.Token).ConfigureAwait(false);
                 var wire = _current = new WireSocket(socket);
                 var catalog = _registry.Snapshot;

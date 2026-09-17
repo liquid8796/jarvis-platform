@@ -1,4 +1,5 @@
-using System.Text.Json;
+﻿using System.Text.Json;
+using Jarvis.Agent.Core.Plugins;
 using Jarvis.Protocol;
 
 namespace Jarvis.Agent.Core.RemoteTasks;
@@ -15,6 +16,8 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
     private readonly Func<string, AgentExecutionContext, Task> _cancelJob;
     private readonly IRemoteTaskAdaptiveCoordinator? _adaptive;
     private readonly IRemoteTaskAgenticCoordinator? _agentic;
+    private IReadOnlyList<PluginSkillDescriptor> _availableSkills = [];
+    private Func<IReadOnlyCollection<string>, IReadOnlyList<PluginSkillDocument>>? _skillLoader;
     private readonly Dictionary<string, Active> _active = new(StringComparer.Ordinal);
     private readonly HashSet<string> _storageFaults = new(StringComparer.Ordinal);
     private bool _disposed;
@@ -23,6 +26,17 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
         Func<bool> armed, Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> invoke,
         Func<string, AgentExecutionContext, Task> cancelJob, IRemoteTaskAdaptiveCoordinator? adaptive = null, Func<RemoteTaskRequest, AgentExecutionContext?>? resolveSession = null, AgentExecutionSettings? settings = null)
     { _store = new(root); _folders = folders; _registry = registry; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; _adaptive = adaptive; _agentic = adaptive as IRemoteTaskAgenticCoordinator; _resolveSession = resolveSession; if (settings is not null) ConfigureExecutionSettings(settings); }
+
+    public void ConfigureSkills(IReadOnlyList<PluginSkillDescriptor> skills, Func<IReadOnlyCollection<string>, IReadOnlyList<PluginSkillDocument>> loader)
+    {
+        ArgumentNullException.ThrowIfNull(skills);
+        ArgumentNullException.ThrowIfNull(loader);
+        lock (_sync)
+        {
+            _availableSkills = skills.OrderBy(skill => skill.Id, StringComparer.Ordinal).ToArray();
+            _skillLoader = loader;
+        }
+    }
 
     public Task<RemoteTaskReply> HandleAsync(string operation, RemoteTaskRequest request, CancellationToken sessionToken)
     {

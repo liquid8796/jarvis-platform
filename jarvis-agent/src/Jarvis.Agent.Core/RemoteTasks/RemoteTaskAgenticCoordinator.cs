@@ -1,4 +1,5 @@
 using Jarvis.Agent.Core.Autonomous.Verification;
+using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.Prompting;
 using Jarvis.Protocol;
 
@@ -20,7 +21,13 @@ public sealed record RemoteTaskPlanningContext(
     string Project,
     IReadOnlyList<ToolDescriptor> Tools)
 {
+    private Func<IReadOnlyCollection<string>, IReadOnlyList<PluginSkillDocument>>? SkillLoader { get; init; }
     public IReadOnlyList<CodingPromptLayer> PromptLayers { get; init; } = [];
+    public IReadOnlyList<PluginSkillDescriptor> AvailableSkills { get; init; } = [];
+    public IReadOnlyList<PluginSkillDocument> LoadSelectedSkills(IReadOnlyCollection<string> ids) =>
+        SkillLoader?.Invoke(ids) ?? [];
+    internal RemoteTaskPlanningContext WithSkillLoader(Func<IReadOnlyCollection<string>, IReadOnlyList<PluginSkillDocument>>? loader) =>
+        this with { SkillLoader = loader };
 }
 
 public sealed record RemoteTaskGoalContext(
@@ -28,7 +35,13 @@ public sealed record RemoteTaskGoalContext(
     string Project,
     IReadOnlyList<RemoteTaskArtifact> Artifacts)
 {
+    private Func<IReadOnlyCollection<string>, IReadOnlyList<PluginSkillDocument>>? SkillLoader { get; init; }
     public IReadOnlyList<CodingPromptLayer> PromptLayers { get; init; } = [];
+    public IReadOnlyList<PluginSkillDescriptor> AvailableSkills { get; init; } = [];
+    public IReadOnlyList<PluginSkillDocument> LoadSelectedSkills(IReadOnlyCollection<string> ids) =>
+        SkillLoader?.Invoke(ids) ?? [];
+    internal RemoteTaskGoalContext WithSkillLoader(Func<IReadOnlyCollection<string>, IReadOnlyList<PluginSkillDocument>>? loader) =>
+        this with { SkillLoader = loader };
     public FrontendVerificationRequirement FrontendRequirement { get; init; } = FrontendVerificationRequirement.None;
     public IReadOnlyList<FrontendEvidence> FrontendEvidence { get; init; } = [];
 }

@@ -1,4 +1,11 @@
-# Jarvis Agent operator guide
+﻿# Jarvis Agent operator guide
+
+## 1.0.69 progressive skill context and browser observations
+
+Agentic planning and goal verification can now discover enabled plugin skills as compact metadata and explicitly load selected `SKILL.md` instructions. Discovery is bounded to catalog-validated `SkillRoots`, does not execute plugin code, rejects reparse traversal/out-of-root paths, limits skill size to 256 KiB and isolates invalid skills as diagnostics. Full Markdown bodies are decoded only after explicit selection; both planner and goal-verifier contexts expose the same selection contract.
+
+Browser automation now carries a per-session observation generation. `browser.read_page` and `browser.find` replace the current ref set. Material mutations invalidate it, including navigation, form input, JavaScript, uploads, tab/browser switching, viewport resize and interactive `browser.computer` actions. Any later `ref`/`ref_id` is checked against the current generation before the underlying browser tool executes. This complements tab ownership and computer `stateId` checks: browser DOM refs and desktop coordinates now both have explicit freshness semantics.
+
 
 ## Prompt continuity in 1.0.65
 

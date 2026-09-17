@@ -1,4 +1,11 @@
-# Changelog
+﻿# Changelog
+
+## 1.0.69 - 2026-09-17
+
+- Add `PluginSkillLoader` progressive disclosure for catalog-validated `SKILL.md` roots: bounded metadata discovery, reparse/out-of-root protection, size/UTF-8 validation and per-skill diagnostics; full instructions are decoded only after explicit planner/verifier selection.
+- Project compact skill metadata into agentic planning and goal-verification prompts, expose explicit `LoadSelectedSkills(...)` on both contexts, and wire discovery/loading through `PluginRuntimeBootstrap`, `AgentConnection` and Windows startup without executing plugin entry code.
+- Add per-session `BrowserObservationTracker` freshness semantics: refs from the latest `browser.read_page/find` generation are invalidated after material browser mutations and stale `ref`/`ref_id` usage is rejected before raw Chrome execution.
+- Add Core/Windows regressions for lazy skill loading, outside-root/oversize rejection, skill-context projection and browser ref invalidation; bump package/assembly/file versions to 1.0.69 / 1.0.69.0.
 
 ## 1.0.68 - 2026-09-17
 

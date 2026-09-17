@@ -1,4 +1,5 @@
 using Jarvis.Agent.Core.Autonomous.Verification;
+using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.Prompting;
 using Jarvis.Protocol;
 
@@ -13,10 +14,15 @@ internal sealed partial class RemoteTaskHost
         RequireArmed();
         task = Save(task with { Snapshot = task.Snapshot with { Status = "PLANNING", CurrentStep = null, UpdatedAt = DateTimeOffset.UtcNow } });
         var tools = _registry.Snapshot.Descriptors;
-        var promptLayers = new CodingPromptAssembler().Assemble(new CodingPromptRequest(task.Plan.Goal, task.Snapshot.Project, tools));
-        var generated = await _agentic.PlanAsync(
-            new RemoteTaskPlanningContext(task.Plan, task.Snapshot.Project, tools) { PromptLayers = promptLayers },
-            active.Stop.Token).ConfigureAwait(false);
+        var skillMetadata = _availableSkills.Select(skill => $"{skill.Id}: {skill.Description}").ToArray();
+        var promptLayers = new CodingPromptAssembler().Assemble(new CodingPromptRequest(
+            task.Plan.Goal, task.Snapshot.Project, tools, SkillMetadata: skillMetadata));
+        var planningContext = new RemoteTaskPlanningContext(task.Plan, task.Snapshot.Project, tools)
+        {
+            PromptLayers = promptLayers,
+            AvailableSkills = _availableSkills
+        }.WithSkillLoader(_skillLoader);
+        var generated = await _agentic.PlanAsync(planningContext, active.Stop.Token).ConfigureAwait(false);
         ValidateAgenticPlan(task.Plan, generated, task.Snapshot.Project);
         var persisted = Clone(generated);
         return Save(task with
@@ -155,17 +161,18 @@ internal sealed partial class RemoteTaskHost
             task = Save(task with { Snapshot = task.Snapshot with { Status = "VERIFYING", CurrentStep = "goal.verify", UpdatedAt = DateTimeOffset.UtcNow } });
             var outcomes = task.Artifacts.Select(ArtifactSummary).ToArray();
             var verificationDebt = FrontendVerificationGate.DescribeDebt(frontendRequirement, frontendEvidence);
+            var skillMetadata = _availableSkills.Select(skill => $"{skill.Id}: {skill.Description}").ToArray();
             var promptLayers = new CodingPromptAssembler().Assemble(new CodingPromptRequest(
                 task.Plan.Goal, task.Snapshot.Project, _registry.Snapshot.Descriptors,
-                OutcomeSummaries: outcomes, VerificationDebt: verificationDebt));
-            var verification = await _agentic.VerifyGoalAsync(
-                new RemoteTaskGoalContext(task.Plan, task.Snapshot.Project, task.Artifacts)
-                {
-                    PromptLayers = promptLayers,
-                    FrontendRequirement = frontendRequirement,
-                    FrontendEvidence = frontendEvidence.ToArray()
-                },
-                active.Stop.Token).ConfigureAwait(false);
+                SkillMetadata: skillMetadata, OutcomeSummaries: outcomes, VerificationDebt: verificationDebt));
+            var goalContext = new RemoteTaskGoalContext(task.Plan, task.Snapshot.Project, task.Artifacts)
+            {
+                PromptLayers = promptLayers,
+                AvailableSkills = _availableSkills,
+                FrontendRequirement = frontendRequirement,
+                FrontendEvidence = frontendEvidence.ToArray()
+            }.WithSkillLoader(_skillLoader);
+            var verification = await _agentic.VerifyGoalAsync(goalContext, active.Stop.Token).ConfigureAwait(false);
             if (verification.FrontendEvidence is { Count: > 0 } reportedEvidence)
                 frontendEvidence.AddRange(reportedEvidence);
 

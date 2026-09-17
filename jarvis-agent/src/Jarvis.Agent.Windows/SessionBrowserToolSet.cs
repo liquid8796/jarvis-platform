@@ -47,6 +47,7 @@ public sealed class SessionBrowserToolSet
     private sealed record Suite(IReadOnlyDictionary<string, IAgentTool> Tools)
     {
         public SemaphoreSlim Serial { get; } = new(1, 1);
+        public BrowserObservationTracker Observations { get; } = new();
     }
     private sealed class ScopedTool(SessionBrowserToolSet owner, ToolDescriptor descriptor) : IAgentTool
     {
@@ -64,7 +65,10 @@ public sealed class SessionBrowserToolSet
             {
                 context.SessionCancellation.ThrowIfCancellationRequested();
                 if (identity is not null) applicationScope = owner._bridge.EnterApplicationSession(identity.SessionId);
-                return await suite.Tools[Descriptor.Id].ExecuteAsync(arguments, context, ct);
+                suite.Observations.BeforeTool(Descriptor.Id, arguments);
+                var reply = await suite.Tools[Descriptor.Id].ExecuteAsync(arguments, context, ct);
+                suite.Observations.AfterTool(Descriptor.Id, arguments, reply.Text, !reply.IsError);
+                return reply;
             }
             finally
             {
