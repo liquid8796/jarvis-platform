@@ -78,6 +78,7 @@ public sealed class BrowserBridge : IDisposable
         public string Name { get; set; } = "";
         public required StreamWriter Writer { get; init; }
         public bool Ready { get; set; }
+        public bool ApplicationSessions { get; set; }
 
         public string Describe() => Name.Length > 0 ? $"{Id} ({Name})" : Id;
     }
@@ -89,6 +90,39 @@ public sealed class BrowserBridge : IDisposable
     private readonly List<Connection> _connections = [];
     private readonly Dictionary<string, string?> _requestOwners = new(StringComparer.Ordinal);
     private string? _activeId;
+    private readonly AsyncLocal<string?> _applicationSession = new();
+    private readonly Dictionary<string, string> _applicationSelections = new(StringComparer.Ordinal);
+    public event Action<string>? ApplicationStopRequested;
+
+    /// <summary>Scope selection and native envelopes without changing legacy desktop bridge clients.</summary>
+    public IDisposable EnterApplicationSession(string sessionId)
+    {
+        if (sessionId.Length != 35 || !sessionId.StartsWith("js_", StringComparison.Ordinal) ||
+            !Guid.TryParseExact(sessionId[3..], "N", out _)) throw new ArgumentException("Invalid application session.");
+        if (_remote is not null) throw new InvalidOperationException("Application sessions require the agent's own native browser bridge.");
+        var previous = _applicationSession.Value;
+        _applicationSession.Value = sessionId;
+        return new ApplicationScope(_applicationSession, previous);
+    }
+    private sealed class ApplicationScope(AsyncLocal<string?> slot, string? previous) : IDisposable
+    {
+        private int _disposed;
+        public void Dispose() { if (Interlocked.Exchange(ref _disposed, 1) == 0) slot.Value = previous; }
+    }
+
+    public async Task EndApplicationSessionAsync(string sessionId, bool close, CancellationToken cancellationToken)
+    {
+        using var scope = EnterApplicationSession(sessionId);
+        string[] browsers;
+        lock (_connections) browsers = _connections.Where(c => c.Ready && c.ApplicationSessions).Select(c => c.Id).ToArray();
+        try
+        {
+            await Task.WhenAll(browsers.Select(id => RequestForBrowserAsync(id, "session",
+                new JsonObject { ["active"] = false, ["close"] = close }, cancellationToken)));
+        }
+        finally { if (close) lock (_connections) _applicationSelections.Remove(sessionId); }
+    }
+
     private int _nextNumber;
     private readonly BrowserBridgeClient? _remote;
 
@@ -143,7 +177,7 @@ public sealed class BrowserBridge : IDisposable
             lock (_connections)
             {
                 return [.. _connections.Select(c =>
-                    new BrowserConnectionInfo(c.Id, c.Name, c.Ready, c.Id == _activeId))];
+                    new BrowserConnectionInfo(c.Id, c.Name, c.Ready, c.Id == Active()?.Id))];
             }
         }
     }
@@ -163,7 +197,8 @@ public sealed class BrowserBridge : IDisposable
                 .ToList();
             if (matches.Count == 1)
             {
-                _activeId = matches[0].Id;
+                if (_applicationSession.Value is { } sessionId) _applicationSelections[sessionId] = matches[0].Id;
+                else _activeId = matches[0].Id;
             }
             else if (matches.Count == 0)
             {
@@ -187,6 +222,14 @@ public sealed class BrowserBridge : IDisposable
     {
         lock (_connections)
         {
+            if (_applicationSession.Value is { } sessionId)
+            {
+                if (_applicationSelections.TryGetValue(sessionId, out var selected))
+                    return _connections.FirstOrDefault(c => c.Id == selected); // Never silently switch a selected browser.
+                var first = _connections.FirstOrDefault(c => c.Ready) ?? _connections.FirstOrDefault();
+                if (first is not null) _applicationSelections[sessionId] = first.Id;
+                return first;
+            }
             return _connections.FirstOrDefault(c => c.Id == _activeId) ?? _connections.FirstOrDefault();
         }
     }
@@ -301,6 +344,11 @@ public sealed class BrowserBridge : IDisposable
         // The page's own "Stop Jarvis" button, relayed by the extension.
         if (message["event"]?.GetValue<string>() == "stop_requested")
         {
+            if (message["sessionId"]?.GetValue<string>() is { Length: 35 } applicationSession && connection.ApplicationSessions)
+            {
+                ApplicationStopRequested?.Invoke(applicationSession);
+                return;
+            }
             string? owner;
             lock (_connections) _requestOwners.TryGetValue(connection.Id, out owner);
             if (owner is null) StopRequested?.Invoke();
@@ -311,6 +359,7 @@ public sealed class BrowserBridge : IDisposable
         if (message["event"]?.GetValue<string>() == "ready")
         {
             connection.Ready = true;
+            connection.ApplicationSessions = message["applicationSessions"]?.GetValue<bool>() == true;
             if (message["browser"]?.GetValue<string>() is { Length: > 0 } name)
             {
                 connection.Name = name;
@@ -320,7 +369,8 @@ public sealed class BrowserBridge : IDisposable
             return;
         }
 
-        if (message["id"]?.GetValue<string>() is { } id && _pending.TryRemove(id, out var entry))
+        if (message["id"]?.GetValue<string>() is { } id && _pending.TryGetValue(id, out var candidate) &&
+            ReferenceEquals(candidate.Connection, connection) && _pending.TryRemove(id, out var entry))
         {
             entry.Waiter.TrySetResult(message);
         }
@@ -392,14 +442,17 @@ public sealed class BrowserBridge : IDisposable
             throw new InvalidOperationException(
                 "Jarvis Browser is not connected. Install the extension (Customize → Connectors) and make sure the browser is running.");
         }
+        var applicationSession = _applicationSession.Value;
+        if (applicationSession is not null && !connection.ApplicationSessions)
+            throw new InvalidOperationException("Update and reload the Jarvis browser extension before using isolated application sessions.");
         // Status reads do not steal ownership of a page's Stop button from
         // the session currently driving it. Direct desktop actions use null.
-        if (cmd == "session" && args?["active"]?.GetValue<bool>() == false)
+        if (applicationSession is null && cmd == "session" && args?["active"]?.GetValue<bool>() == false)
         {
             lock (_connections)
                 if (_requestOwners.GetValueOrDefault(connection.Id) != requestingClient) return new JsonObject();
         }
-        else if (cmd is not ("tabs" or "tab_origin"))
+        else if (applicationSession is null && cmd is not ("tabs" or "tab_origin"))
             lock (_connections) _requestOwners[connection.Id] = requestingClient;
 
         var id = Guid.NewGuid().ToString("N");
@@ -407,6 +460,7 @@ public sealed class BrowserBridge : IDisposable
         _pending[id] = (connection, waiter);
 
         var request = new JsonObject { ["id"] = id, ["cmd"] = cmd };
+        if (applicationSession is not null) request["sessionId"] = applicationSession;
         if (args is not null)
         {
             request["args"] = args.DeepClone();

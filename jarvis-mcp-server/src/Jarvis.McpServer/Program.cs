@@ -83,6 +83,7 @@ builder.Services.AddSingleton<WsAgentRouter>();
 builder.Services.AddSingleton<IAgentRouter>(s => s.GetRequiredService<WsAgentRouter>());
 builder.Services.AddSingleton<IAgentTaskRouter>(s => s.GetRequiredService<WsAgentRouter>());
 builder.Services.AddScoped<AgentTaskService>();
+builder.Services.AddSingleton<McpSessionContext>();
 builder.Services.AddSingleton<IAuditWriter, AuditWriter>();
 builder.Services.AddScoped<DeviceService>(); builder.Services.AddScoped<ToolCatalogService>(); builder.Services.AddScoped<McpGateway>();
 builder.Services.AddMcpServer(o => o.ServerInfo = new Implementation { Name = "jarvis-mcp-server", Version = releaseVersion })

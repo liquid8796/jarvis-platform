@@ -1,5 +1,19 @@
 # Architecture decisions · 1.0.60
 
+## 1.0.64 application-session architecture (current)
+
+These rules supersede older shared OAuth-session, fixed 4-call and mandatory-workspace descriptions below. MCP remains stateless. `McpSessionContext` protects a random application-session ID with ASP.NET Data Protection, the authenticated account and the OAuth-bound execution device. A transport connection, access token, browser or chat client device is not used as a chat ID. Each chat must retain its own handle; deliberately reusing a handle means sharing that logical session.
+
+The local SQLite session registry keys records by owner/device/session, snapshots the workspace at admission, keeps optimistic revisions, persists bounded cursor mailboxes, and retains closed-session tombstones longer than the 30-day protected handle lifetime. Agent context validates ownership again before approval and execution. Existing server data-protection keys must remain in the persistent data directory across upgrades. Account/device mismatches, closed sessions and missing handles fail closed.
+
+`AgentExecutionSettings` is local authority: default 5 calls, 5 process jobs, 5 durable tasks, queue 100 and 60-second queue timeout. The settings store uses revision-checked atomic replacement. AgentHello negotiates settings; live changed/ack messages expose actual acknowledged revision. A reduction stops new starts until active usage drains. Each scheduling key is the full identity. Fair execution and hierarchical path/repository resource coordination are independent of the permission policy. A bounded control lane remains usable while ordinary slots are full. Composite orchestrators release their outer execution slot before guarded children. Process jobs retain resource leases through real exit/output cleanup.
+
+The native browser bridge uses an AsyncLocal application scope and per-session selected browser. The extension receives session identity in a trusted envelope, stores separate group/tab ownership, rejects foreign tabs even during origin preflight, and persists ownership through service-worker restarts. Up to 512 active sessions and bounded closed tombstones prevent unbounded growth; closing does not consume active capacity. Browser groups are not cookie/profile isolation. Computer service instances and observation IDs are per-session, with shared invalidation after desktop-affecting operations.
+
+Metadata projection and mailbox coordination are not transcript access. Existing explicitly invoked project journals remain project-scoped shared artifacts, not automatic chat history; selecting the same project grants no extra tool permissions. No push-to-idle-chat capability or unattended model service is added. Different agent machines remain separate OAuth bindings and filesystem namespaces.
+
+The filesystem adapter records bounded SHA-256 observations after stable reads. Existing-file Write/Edit/NotebookEdit require that session's current observation; changes fail with FILE_CHANGED. This protects cooperating Jarvis calls under resource locks, not arbitrary external applications atomically modifying a file between validation and write. Canonical paths also preserve the private-agent-directory exclusion through directory links.
+
 ## Transport choice
 
 ChatGPT-facing transport is **MCP Streamable HTTP over HTTPS**, implemented by `ModelContextProtocol.AspNetCore`, not hand-written JSON-RPC. Stateless MCP requests are appropriate because workflow/job state belongs to the agent and explicit job IDs; protocol lifecycle compatibility is delegated to the official SDK. Request-scoped `McpGateway` reads identity from the authenticated HTTP context. No browser cookie is accepted as an agent credential.

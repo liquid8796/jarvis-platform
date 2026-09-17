@@ -23,6 +23,7 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
     public ToolPermissionPolicy Permissions { get; } = new();
     public ProcessToolSet Processes { get; } = new();
     public string? StartedJobId;
+    public AgentExecutionContext? StartedJobContext;
     private readonly CancellationTokenSource _stop = new();
     private Task _run = Task.CompletedTask;
     public static async Task<TaskAgentPeer> ConnectAsync(ServerFixture app, HttpClient admin,
@@ -92,7 +93,8 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
     public async Task<JsonElement> JobAsync()
     {
         var reply = await Processes.Tools.Single(t => t.Descriptor.Id == "process.read").ExecuteAsync(
-            WireJson.Element(new { jobId = StartedJobId!, cursor = 0 }), new(Workspace, "probe", "probe"), CancellationToken.None);
+            WireJson.Element(new { jobId = StartedJobId!, cursor = 0 }), StartedJobContext ?? throw new InvalidOperationException("The fixture has not started an owned process."), CancellationToken.None);
+        Assert.False(reply.IsError, reply.Text);
         return JsonSerializer.Deserialize<JsonElement>(reply.Text);
     }
     public async ValueTask DisposeAsync()
@@ -108,7 +110,11 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
         public async Task<ToolReply> ExecuteAsync(JsonElement args, AgentExecutionContext context, CancellationToken ct)
         {
             var reply = await inner.ExecuteAsync(args, context, ct);
-            if (!reply.IsError) peer.StartedJobId = JsonSerializer.Deserialize<JsonElement>(reply.Text).GetProperty("jobId").GetString();
+            if (!reply.IsError)
+            {
+                peer.StartedJobContext = context;
+                peer.StartedJobId = JsonSerializer.Deserialize<JsonElement>(reply.Text).GetProperty("jobId").GetString();
+            }
             return reply;
         }
     }

@@ -14,6 +14,7 @@ public sealed record AgentHello(string DeviceId, string Version, string Platform
     IReadOnlyList<ToolDescriptor> Tools)
 {
     public int TaskProtocolVersion { get; init; }
+    public AgentExecutionSettings? ExecutionSettings { get; init; }
     public int ProtocolVersion { get; init; }
     public IReadOnlyList<string>? Capabilities { get; init; }
     public long CatalogGeneration { get; init; }
@@ -25,6 +26,9 @@ public sealed record WireMessage(string Type)
     public string? Id { get; init; }
     public string? ToolId { get; init; }
     public string? SessionId { get; init; }
+    public string? OwnerId { get; init; }
+    public AgentExecutionSettings? ExecutionSettings { get; init; }
+    public long? ExecutionSettingsRevision { get; init; }
     public string? ThreadId { get; init; }
     public string? TurnId { get; init; }
     public long? ExpectedCatalogGeneration { get; init; }

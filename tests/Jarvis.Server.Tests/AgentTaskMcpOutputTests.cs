@@ -77,9 +77,11 @@ public sealed partial class AgentTaskMcpTests
     {
         using var app = new ServerFixture(); using var admin = await app.Admin();
         await using var peer = await TaskAgentPeer.ConnectAsync(app, admin, new OutputFixtureTool(new("must not run"), sensitive: scenario == "denied"),
-            arm: scenario != "paused", approve: scenario != "denied");
+            arm: true, approve: true);
         using var client = await GrantAsync(app, admin, peer.DeviceId);
         var listed = await RpcAsync(client, "tools/list", new { });
+        if (scenario == "paused") peer.Connection.Pause();
+        if (scenario == "denied") peer.Approval.Answer = false;
         object args = scenario == "invalid-input" ? new { unexpected = true } : new { };
         var result = await CallAsync(client, "schema_fixture", args);
         var structured = AssertOutputMatches(listed, "schema_fixture", result);
@@ -136,12 +138,14 @@ public sealed partial class AgentTaskMcpTests
         await using var peer = await TaskAgentPeer.ConnectAsync(app, admin, new OutputFixtureTool(new("artifact output")));
         using var client = await GrantAsync(app, admin, peer.DeviceId);
         var listed = await RpcAsync(client, "tools/list", new { });
-        var task = await peer.CreateAsync(admin, new RemoteTaskPlan
+        var created = await CallAsync(client, "agent_task_create", new
         {
-            Goal = "Two schema fixture artifacts", Steps = [
-                new() { Id = "first", ToolId = "test.output" },
-                new() { Id = "second", ToolId = "test.output" }]
+            goal = "Two schema fixture artifacts", steps = new[] {
+                new { id = "first", toolId = "test.output" },
+                new { id = "second", toolId = "test.output" } }
         });
+        Assert.False(created.TryGetProperty("isError", out var createError) && createError.GetBoolean(), created.GetRawText());
+        var task = created.GetProperty("structuredContent").GetProperty("task").Deserialize<RemoteTaskSnapshot>(WireJson.Options)!;
         Assert.Equal("COMPLETED", (await peer.TerminalAsync(admin, task.TaskId)).Status);
         var first = await CallAsync(client, "agent_task_artifacts", new { taskId = task.TaskId, offset = 0, limit = 1 });
         var firstData = AssertOutputMatches(listed, "agent_task_artifacts", first);

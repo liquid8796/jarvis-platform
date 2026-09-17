@@ -1,6 +1,18 @@
 # Required acceptance before live use
 
-This is a checklist, **not a record of passed tests**. C# tests and Windows runtime checks have not been executed in the authoring environment.
+## 1.0.64 multi-session acceptance
+
+Automated release gates: all Core/Windows/Server maintained test projects; Node browser-session isolation suite; Python UI and native-publish checks; complete Release solution build; self-contained win-x64 Desktop/CLI and Linux ARM64 server publish; current-version consistency; isolated WPF smoke with zero binding errors; PTY smoke against each published Windows entry point; archive integrity and private-state/font exclusion. Exact executed results belong in BUILD-STATUS.md, not this checklist.
+
+Run `powershell -NoProfile -File scripts/Verify-MultiSessionRelease.ps1` for the reproducible full gate. It derives the version from VERSION and uses isolated build output under `artifacts/verification/multi-session-<version>/resumed`, without replacing the running host. `Verify-AgentOutput.ps1 -PublishedWinX64` checks `conpty.dll`, `x64/OpenConsole.exe`, `arm64/OpenConsole.exe` and the retained license; a root-level OpenConsole.exe is not a substitute. The UI harness also supports `<published-agent-directory> <report-directory> --pty-only` to exercise the actual published managed/native process implementation independently of WPF.
+
+Required contracts include account/device/handle tampering, two chats sharing one enrolled agent, missing/closed handles, bounded metadata-only mailboxes, nullable workspace/defaults, optimistic revisions and queued-request snapshots; default limit5 with sixth request queued, hot decrease/increase, fair scheduling, full/timeout/cancel, controls under load and composite limit1; creator-only process/task operations and close A leaving B active; browser groups/selection persistence and foreign-tab rejection; shared desktop invalidation; stale existing-file writes blocked until reread; final PTY output and resource release.
+
+WPF smoke uses a separate settings root and synthetic session metadata: four navigation destinations, invalid value/save disabled, local settings persistence, empty workspace, empty/populated/filtered session states, narrow 870x650 layout, long paths, per-session stop/confirmed close, no real connection or Arm. Rendering/binding checks are automated; physical high-contrast and multi-monitor interaction are not claimed by that harness.
+
+Production acceptance remains separate: deploy matching server and agent, reload extension1.2.0, refresh actual ChatGPT/Claude MCP schemas, then exercise two real chats (including a second client device) against the enrolled agent. Verify local/acknowledged revision after a Settings change, per-chat paths, sibling-preserving cancellation and browser group separation. No production deployment or end-to-end third-party chat acceptance is implied by passing local OAuth/WebSocket tests.
+
+The remaining items are a broader live-acceptance checklist, **not a record of passed tests**. Executed C# and isolated Windows runtime checks are recorded by release in BUILD-STATUS.md. Historical version-specific sections below do not override the 1.0.64 optional-workspace and session contracts.
 
 1. Restore and compile all solutions on .NET10; run Core and Server tests, publish both RIDs needed, collect TRX and compiler output. Exercise the existing baseline tool tests as well. Check transitive package vulnerabilities/licenses; create reproducible lockfiles after successful restore.
 2. Start local server with a temporary DB/bootstrap. Check login/register/CSRF/lockout, pending approval, admin CRUD, last-admin restriction, concurrent revisions, own-device-only routes and secret-free API listing/logs. Test malformed/null/oversized bodies, schema errors, external references, and request throttling.

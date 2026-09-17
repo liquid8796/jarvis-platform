@@ -36,7 +36,7 @@ public static class Program
         {
             Console.Write("HTTPS server origin: "); var server = Console.ReadLine() ?? "";
             Console.Write("Device ID: "); var device = Console.ReadLine() ?? "";
-            Console.Write("Primary working directory: "); var workspace = Console.ReadLine() ?? "";
+            Console.Write("Default workspace directory (Enter for none): "); var workspace = Console.ReadLine() ?? "";
             var additional = new List<string>();
             while (true)
             {

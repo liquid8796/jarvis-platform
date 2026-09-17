@@ -75,6 +75,19 @@ public sealed class StatefulComputerToolAdapterTests
         Assert.Equal(0, inner.Calls);
     }
 
+    [Theory]
+    [InlineData("computer.open_application")]
+    [InlineData("computer.switch_display")]
+    [InlineData("computer.teach_step")]
+    public async Task Other_desktop_changes_invalidate_all_sessions(string id)
+    {
+        var tracker = new ComputerStateTracker();
+        var state = tracker.Capture("A", new Observer().Capture());
+        var adapter = new StatefulComputerToolAdapter(new Inner(id, false), tracker, new Observer());
+        await adapter.ExecuteAsync(WireJson.Element(new { }), Context("B"), default);
+        Assert.Throws<InvalidOperationException>(() => tracker.Validate("A", state.StateId));
+    }
+
     [Fact]
     public async Task Screenshot_emits_fresh_state_metadata()
     {

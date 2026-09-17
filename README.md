@@ -1,6 +1,8 @@
-# Jarvis Control - 1.0.63
+# Jarvis Control - 1.0.64
 
-**Version 1.0.63 adds a persistent `Always approve` choice for the constrained `process.start` and `process.spawn` prompts. The approval is stored separately from ordinary Full permission, survives Agent restart/reconnect, applies only to the exact selected process tool, and can be revoked with `Require approval again` in Tool permissions. Existing scoped capability leases remain supported and Full permission alone still does not bypass the constrained-process exception.** See [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed test evidence. This package contains no production credentials.
+**Version 1.0.64 adds isolated multi-chat sessions on one OAuth-bound agent, optional per-session workspaces, live execution limits (default 5), scoped process/task/browser ownership, and WPF Execution limits / Sessions pages.** The UI follows UI UX Pro Max's WPF validation/accessibility guidance while preserving the existing theme and system fonts. See [AGENT.md](docs/AGENT.md), [API.md](docs/API.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
+
+Each new chat calls `session__open`, then carries its own `_jarvis.sessionHandle` on subsequent calls. Use `workspace__set` with the current workspace revision to change or clear that chat's folder. Handles are account/agent-bound, not permission grants. Upgrade server, agent and browser extension together and refresh cached MCP schemas; the browser extension is version **1.2.0**. Independent operations can run concurrently; arbitrary shell/process effects remain conservatively resource-locked, and one physical desktop still has one input owner.
 
 Jarvis Control là control plane cho MCP; Jarvis Agent là ứng dụng C# .NET 10 trên Windows 10/11, gồm WPF desktop và CLI. Tên web được chọn vì yêu cầu ban đầu chưa điền tên. Một repository chứa hai project sản phẩm và shared protocol; giữ nguyên các thư mục `shared` và `vendor` khi mở solution con.
 
@@ -34,7 +36,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.63/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.63/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
+Build thành công sẽ tạo `artifacts/agent/1.0.64/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.64/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
 
 ## Chạy local
 
@@ -53,11 +55,11 @@ Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.63\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.63\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.63\cli\jarvis-agent.exe doctor --json
-.\artifacts\agent\1.0.63\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.63\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.64\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.64\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.64\cli\jarvis-agent.exe doctor --json
+.\artifacts\agent\1.0.64\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.64\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -103,7 +105,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.63**, assembly/file **1.0.63.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.64**, assembly/file **1.0.64.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 

@@ -4,6 +4,9 @@ using System.Collections.ObjectModel;
 using System.Collections;
 using System.Linq;
 using System.Reflection;
+using System.Collections.Generic;
+using System.Diagnostics;
+using Expression = System.Linq.Expressions.Expression;
 using System.Runtime.Loader;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,12 +17,24 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
+internal sealed class BindingErrors : TraceListener
+{
+    public List<string> Messages { get; } = [];
+    public override void Write(string? message) { if (!string.IsNullOrWhiteSpace(message)) Messages.Add(message); }
+    public override void WriteLine(string? message) => Write(message);
+}
+
 internal static class Program
 {
     [STAThread]
     private static int Main(string[] args)
     {
-        if (args.Length != 2) { Console.Error.WriteLine("Usage: UiSmoke <published-desktop-directory> <report-directory>"); return 2; }
+        var ptyOnly = args.Length == 3 && args[2] == "--pty-only";
+        if (args.Length != 2 && !ptyOnly)
+        {
+            Console.Error.WriteLine("Usage: UiSmoke <published-agent-directory> <report-directory> [--pty-only]");
+            return 2;
+        }
         var publish = Path.GetFullPath(args[0]); var report = Path.GetFullPath(args[1]);
         Directory.CreateDirectory(report);
         AssemblyLoadContext.Default.Resolving += (_, name) =>
@@ -30,8 +45,17 @@ internal static class Program
         Window? window = null;
         try
         {
+            if (ptyOnly)
+            {
+                PublishedPtySmoke.Run(publish, report).GetAwaiter().GetResult();
+                Console.WriteLine(File.ReadAllText(Path.Combine(report, "published-pty-smoke.json")));
+                return 0;
+            }
             var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.Combine(publish, "Jarvis.Agent.Desktop.dll"));
             var appType = assembly.GetType("Jarvis.Agent.Desktop.App", throwOnError: true)!;
+            var bindingErrors = new BindingErrors();
+            PresentationTraceSources.DataBindingSource.Listeners.Add(bindingErrors);
+            PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error;
             var app = (Application)Activator.CreateInstance(appType)!;
             appType.GetMethod("InitializeComponent")!.Invoke(app, null);
             var windowType = assembly.GetType("Jarvis.Agent.Desktop.MainWindow", throwOnError: true)!;
@@ -64,7 +88,7 @@ internal static class Program
 
             var navigation = window.FindName("WorkspaceNavigation") as ListBox
                 ?? throw new InvalidOperationException("Workspace navigation list is missing.");
-            if (navigation.Items.Count != 2) throw new InvalidOperationException("Workspace navigation must expose exactly two destinations.");
+            if (navigation.Items.Count != 4) throw new InvalidOperationException("Workspace navigation must expose exactly four destinations.");
             Set("SelectedTab", 1); window.UpdateLayout();
             if (navigation.SelectedIndex != 1) throw new InvalidOperationException("Sidebar selection did not follow SelectedTab.");
             navigation.SelectedIndex = 0; window.UpdateLayout();
@@ -84,7 +108,7 @@ internal static class Program
                 throw new InvalidOperationException("Settings content host still renders a duplicate tab-header strip.");
             var versionText = window.FindName("DesktopVersionText") as TextBlock
                 ?? throw new InvalidOperationException("Desktop version label is missing.");
-            var expectedVersionLabel = $"Windows desktop · v{assembly.GetName().Version!.ToString(3)}";
+            var expectedVersionLabel = $"Windows desktop \u00b7 v{assembly.GetName().Version!.ToString(3)}";
             if (!string.Equals(versionText.Text, expectedVersionLabel, StringComparison.Ordinal))
                 throw new InvalidOperationException($"Desktop version label drifted: '{versionText.Text}' != '{expectedVersionLabel}'.");
 
@@ -97,6 +121,69 @@ internal static class Program
                 using var output = File.Create(Path.Combine(report, filename)); encoder.Save(output);
             }
             Capture("agent-connection.png");
+            Command("ClearWorkspaceCommand");
+            if ((string)Get("Workspace")! != "" || folders.Count != 0) throw new InvalidOperationException("Workspace default could not be left empty.");
+
+            static object Property(object o, string name) => o.GetType().GetProperty(name)!.GetValue(o)!;
+            static void Put(object o, string name, object value) => o.GetType().GetProperty(name)!.SetValue(o, value);
+            static void Execute(object o, string name) => ((ICommand)Property(o, name)).Execute(null);
+            var limits = Get("Execution")!; var concurrent = Property(limits, "ConcurrentCalls");
+            Set("SelectedTab", 2); window.UpdateLayout();
+            if (navigation.SelectedIndex != 2) throw new InvalidOperationException("Limits navigation failed.");
+            Put(concurrent, "Text", "0"); Capture("agent-limits-invalid.png");
+            if (((ICommand)Property(limits, "SaveCommand")).CanExecute(null)) throw new InvalidOperationException("Invalid concurrency may not be saved.");
+            Put(concurrent, "Text", "8"); Execute(limits, "SaveCommand");
+            if (!string.IsNullOrEmpty((string)Property(limits, "Error"))) throw new InvalidOperationException((string)Property(limits, "Error"));
+            Execute(limits, "ReloadCommand");
+            if ((string)Property(concurrent, "Text") != "8") throw new InvalidOperationException("Limits did not survive reload.");
+            Capture("agent-limits.png");
+            window.Width = 870; window.Height = 650; Capture("agent-limits-minimum.png");
+            Set("SelectedTab", 3); Capture("agent-sessions-empty.png");
+            if (navigation.SelectedIndex != 3) throw new InvalidOperationException("Sessions navigation failed.");
+
+            // Synthetic metadata for layout only. No runtime/agent sessions are opened.
+            var protocol = AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.Combine(publish, "Jarvis.Protocol.dll"));
+            var overviewType = protocol.GetType("Jarvis.Protocol.LocalSessionOverview", true)!;
+            var identityType = protocol.GetType("Jarvis.Protocol.AgentSessionIdentity", true)!;
+            var snapshotType = protocol.GetType("Jarvis.Protocol.AgentSessionSnapshot", true)!;
+            var activityType = protocol.GetType("Jarvis.Protocol.AgentSessionActivity", true)!;
+            var previews = Array.CreateInstance(overviewType, 3);
+            for (var i=0; i<3; i++)
+            {
+                var id = "js_" + (i + 1).ToString("x32");
+                var identity = Activator.CreateInstance(identityType, ["synthetic-owner", "synthetic-device", id])!;
+                var snap = Activator.CreateInstance(snapshotType, [id, "synthetic-device", new[] { "Build and review", "Documentation", "Browser validation" }[i],
+                    i==1 ? "" : Path.Combine(report, "Workspace-" + new string('A', 90)), Array.Empty<string>(), (long)i,
+                    DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, null, null, (long)i])!;
+                var activity = Activator.CreateInstance(activityType)!;
+                Put(activity, "RunningCalls", i==0 ? 2 : 0); Put(activity, "QueuedCalls", i==2 ? 3 : 0);
+                Put(activity, "HeldResources", i==0 ? new[] {"fs|"+a} : Array.Empty<string>());
+                previews.SetValue(Activator.CreateInstance(overviewType, [identity, snap, activity]), i);
+            }
+            var queryResult = typeof(IReadOnlyList<>).MakeGenericType(overviewType);
+            var query = Expression.Lambda(typeof(Func<>).MakeGenericType(queryResult), Expression.Convert(Expression.Constant(previews), queryResult)).Compile();
+            var idParameter = Expression.Parameter(identityType); var closeParameter = Expression.Parameter(typeof(bool));
+            var stop = Expression.Lambda(typeof(Action<,>).MakeGenericType(identityType, typeof(bool)), Expression.Empty(), idParameter, closeParameter).Compile();
+            var sessionsType = assembly.GetType("Jarvis.Agent.Desktop.ViewModels.SessionsViewModel", true)!;
+            var previewModel = Activator.CreateInstance(sessionsType, [query, (Func<bool>)(() => true), stop, null])!;
+            Execute(previewModel, "RefreshCommand");
+            var previewItems = ((IEnumerable)Property(previewModel, "Items")).Cast<object>().ToArray();
+            Put(previewModel, "Selected", previewItems[0]);
+            static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+            {
+                for (var i=0; i<VisualTreeHelper.GetChildrenCount(root); i++)
+                { var child=VisualTreeHelper.GetChild(root,i); yield return child; foreach(var descendant in Descendants(child)) yield return descendant; }
+            }
+            var sessionsView = (FrameworkElement)Descendants(window).Single(v => v.GetType().Name == "SessionsView");
+            sessionsView.DataContext = previewModel;
+            Capture("agent-sessions-minimum.png");
+            var details = Descendants(sessionsView).OfType<Expander>().Single(); details.IsExpanded = true;
+            Capture("agent-sessions-minimum-details.png");
+            window.Width=1160; window.Height=820; Capture("agent-sessions.png");
+            Put(previewModel, "Search", "no-such-synthetic-session"); Capture("agent-sessions-filter-empty.png");
+            if (((IEnumerable)Property(previewModel, "Items")).Cast<object>().Any()) throw new InvalidOperationException("Session filter did not apply.");
+            if (bindingErrors.Messages.Count != 0) throw new InvalidOperationException("WPF binding errors: " + string.Join(" | ", bindingErrors.Messages));
+
 
             var permissions = Get("Permissions")!; var permissionsType = permissions.GetType();
             object? PermissionGet(string property) => permissionsType.GetProperty(property)!.GetValue(permissions);
@@ -130,6 +217,7 @@ internal static class Program
             if ((bool)processStart.GetType().GetProperty("AlwaysApproved")!.GetValue(processStart)!) throw new InvalidOperationException("Require approval again did not clear UI state.");
             using (var revoked = JsonDocument.Parse(File.ReadAllText(permissionFile)))
                 if (revoked.RootElement.GetProperty("alwaysApprovedConstrainedTools").GetArrayLength() != 0) throw new InvalidOperationException("Require approval again did not persist revocation.");
+            ((IAsyncDisposable)reloaded).DisposeAsync().AsTask().GetAwaiter().GetResult();
             permissionsType.GetProperty("Search")!.SetValue(permissions, "PowerShell");
             PermissionCommand("SelectAllCommand");
             if (items.Count(Selected) != items.Length) throw new InvalidOperationException("Select all did not include filtered-out tools.");
@@ -151,6 +239,9 @@ internal static class Program
                 reloadPersistence = true, permissionSettingsV2 = true, alwaysApprovalReload = true, alwaysApprovalRevoke = true,
                 selectAllIncludesFilteredOut = true, draftDoesNotApplyBeforeSave = true,
                 resetRestoresSaved = true, clearAllRevokes = true, isolatedPermissionSettingsOnly = true,
+                executionLimitsRendered = true, invalidLimitsBlocked = true, executionLimitsReload = true,
+                optionalWorkspaceCleared = true, sessionMetadataRendered = true, emptyAndFilteredStates = true,
+                minimumWindowSizeRendered = true, bindingErrors = bindingErrors.Messages.Count,
                 profileSaved = false, connectionStarted = false, controlArmed = false };
             var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(Path.Combine(report, "ui-smoke.json"), json); Console.WriteLine(json);

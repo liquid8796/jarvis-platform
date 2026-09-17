@@ -4,7 +4,7 @@ using Jarvis.Protocol;
 namespace Jarvis.Agent.Core.RemoteTasks;
 
 /// <summary>Client-planned task runner. Only installed, locally authorized tools can perform actions.</summary>
-internal sealed class RemoteTaskHost : IAsyncDisposable
+internal sealed partial class RemoteTaskHost : IAsyncDisposable
 {
     private readonly object _sync = new();
     private readonly RemoteTaskStore _store;
@@ -20,8 +20,8 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
 
     public RemoteTaskHost(string root, WorkspaceDirectories folders, DynamicToolRegistry registry,
         Func<bool> armed, Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> invoke,
-        Func<string, AgentExecutionContext, Task> cancelJob, IRemoteTaskAdaptiveCoordinator? adaptive = null)
-    { _store = new(root); _folders = folders; _registry = registry; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; _adaptive = adaptive; }
+        Func<string, AgentExecutionContext, Task> cancelJob, IRemoteTaskAdaptiveCoordinator? adaptive = null, Func<RemoteTaskRequest, AgentExecutionContext?>? resolveSession = null, AgentExecutionSettings? settings = null)
+    { _store = new(root); _folders = folders; _registry = registry; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; _adaptive = adaptive; _resolveSession = resolveSession; if (settings is not null) ConfigureExecutionSettings(settings); }
 
     public Task<RemoteTaskReply> HandleAsync(string operation, RemoteTaskRequest request, CancellationToken sessionToken)
     {
@@ -30,12 +30,15 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
             if (string.IsNullOrWhiteSpace(request.OwnerId) || request.OwnerId.Length > 256)
                 throw new ArgumentException("Invalid owner identity.");
             var id = RemoteTaskRules.TaskId(request.TaskId);
+            var caller = ResolveCaller(request);
             lock (_sync)
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
                 if (_storageFaults.Contains(Key(request.OwnerId, id)))
                     return Task.FromResult(RemoteTaskReply.Failure("unavailable", "Task persistence failed. Inspect local storage before submitting new work."));
                 var stored = _store.Load(request.OwnerId, id);
+                if (stored is not null && !CanAccess(stored, request))
+                    return Task.FromResult(RemoteTaskReply.Failure("not_found", "No task owned by this session on this agent."));
                 if (operation == "create")
                 {
                     if (request.Plan is null) throw new ArgumentException("Task plan metadata is required.");
@@ -46,7 +49,7 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
                         return Task.FromResult(stored.CreateDigest == createDigest ? new RemoteTaskReply(Task: stored.Snapshot)
                             : RemoteTaskReply.Failure("conflict", "taskId already belongs to a different request."));
                     RequireArmed();
-                    var project = ResolveProject(request.Plan.Project);
+                    var project = ResolveProject(request.Plan.Project, caller);
                     RemoteTaskLineage lineage;
                     if (string.IsNullOrWhiteSpace(request.ParentTaskId))
                     {
@@ -57,21 +60,27 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
                         var parentId = RemoteTaskRules.TaskId(request.ParentTaskId);
                         if (StringComparer.Ordinal.Equals(parentId, id)) throw new ArgumentException("A task cannot be its own parent.");
                         var parent = _store.Load(request.OwnerId, parentId) ?? throw new ArgumentException("Parent task was not found for this owner on this device.");
+                        if (!CanAccess(parent, request)) throw new UnauthorizedAccessException("Parent task is not owned by this session.");
                         if (_store.CountChildren(request.OwnerId, parentId) >= RemoteTaskDelegation.MaxChildren)
                             return Task.FromResult(RemoteTaskReply.Failure("busy", $"Parent task already has the maximum {RemoteTaskDelegation.MaxChildren} children."));
                         lineage = RemoteTaskDelegation.Child(parent, request.Plan, project);
                     }
                     ValidateTools(request.Plan);
                     if (_store.AtCapacity) return Task.FromResult(RemoteTaskReply.Failure("busy", "Local task history is full (128). Archive terminal task files locally before creating more."));
-                    if (request.Plan.Steps.Count > 0 && _active.Count >= 2) return Busy();
+                    if (request.Plan.Steps.Count > 0 && _active.Count >= (long)_settings.MaxDurableTasks + _settings.MaxQueuedCalls) return Busy();
                     var now = DateTimeOffset.UtcNow;
                     var snapshot = new RemoteTaskSnapshot(id, request.Plan.Goal, project,
                         request.Plan.Steps.Count == 0 ? "NEEDS_PLAN" : "QUEUED", null, 0, request.Plan.Steps.Count, now, now,
                         ParentTaskId: lineage.ParentTaskId, RootTaskId: lineage.RootTaskId, Depth: lineage.Depth);
                     stored = new(1, request.OwnerId, createDigest, request.Plan.Steps.Count == 0 ? null : planDigest,
-                        Clone(request.Plan), snapshot, []);
+                        Clone(request.Plan), snapshot, [])
+                    {
+                        OwnerSessionId = request.SessionId, AgentDeviceId = caller?.AgentDeviceId,
+                        WorkspaceRevision = caller?.WorkspaceRevision,
+                        WorkspaceDirectories = (caller?.AdditionalDirectories ?? _folders.Additional).ToArray()
+                    };
                     _store.Save(stored); // Acknowledge only after durable storage.
-                    if (stored.Plan.Steps.Count > 0) Start(stored, sessionToken);
+                    if (stored.Plan.Steps.Count > 0) Start(stored, sessionToken, caller?.SessionCancellation ?? default);
                     return Task.FromResult(new RemoteTaskReply(Task: snapshot));
                 }
                 if (stored is null) return Task.FromResult(RemoteTaskReply.Failure("not_found", "Task not found on this device for this owner."));
@@ -112,18 +121,19 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
                     if (stored.Snapshot.Status != "NEEDS_PLAN")
                         return Task.FromResult(RemoteTaskReply.Failure("conflict", "A running or terminal task cannot be replanned or replayed. Use a new taskId."));
                     if (stored.Plan.Goal != request.Plan.Goal || stored.Plan.ExecutionMode != request.Plan.ExecutionMode ||
-                        stored.Plan.TimeoutSeconds != request.Plan.TimeoutSeconds || stored.Snapshot.Project != ResolveProject(request.Plan.Project))
+                        stored.Plan.TimeoutSeconds != request.Plan.TimeoutSeconds || stored.Snapshot.Project != ResolveProject(request.Plan.Project, stored.OwnerSessionId is null ? null : StoredContext(stored)))
                         throw new ArgumentException("A submitted plan must retain the task's goal, project, mode and timeout.");
                     RequireArmed(); ValidateTools(request.Plan);
-                    if (_active.Count >= 2) return Busy();
+                    if (_active.Count >= (long)_settings.MaxDurableTasks + _settings.MaxQueuedCalls) return Busy();
                     stored = stored with { Plan = Clone(request.Plan), PlanDigest = digest,
                         Snapshot = stored.Snapshot with { Status = "QUEUED", TotalSteps = request.Plan.Steps.Count, UpdatedAt = DateTimeOffset.UtcNow } };
-                    _store.Save(stored); Start(stored, sessionToken);
+                    _store.Save(stored); Start(stored, sessionToken, caller?.SessionCancellation ?? default);
                     return Task.FromResult(new RemoteTaskReply(Task: stored.Snapshot));
                 }
                 throw new ArgumentException("Unsupported task operation.");
             }
         }
+        catch (AgentRequestException ex) { return Task.FromResult(RemoteTaskReply.Failure(ex.Code, ex.Message)); }
         catch (UnauthorizedAccessException ex) { return Task.FromResult(RemoteTaskReply.Failure("forbidden", ex.Message)); }
         catch (ArgumentException ex) { return Task.FromResult(RemoteTaskReply.Failure("invalid", ex.Message)); }
         catch (Exception ex) when (ex is IOException or JsonException or InvalidOperationException)
@@ -133,7 +143,7 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
     private static RemoteTaskPlan Clone(RemoteTaskPlan plan) =>
         JsonSerializer.Deserialize<RemoteTaskPlan>(JsonSerializer.SerializeToUtf8Bytes(plan, WireJson.Options), WireJson.Options)!;
     private static string Key(string owner, string id) => owner + ":" + id;
-    private static Task<RemoteTaskReply> Busy() => Task.FromResult(RemoteTaskReply.Failure("busy", "Two tasks are already running. No task was started."));
+    private static Task<RemoteTaskReply> Busy() => Task.FromResult(RemoteTaskReply.Failure("busy", "TASK_QUEUE_FULL: The bounded durable task queue is full. No task was started."));
     private void RequireArmed()
     { if (!_armed()) throw new UnauthorizedAccessException("Local control is paused. Arm it locally before submitting work."); }
     private string ResolveProject(string? project)
@@ -157,9 +167,9 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
                 throw new ArgumentException("Owned process read/cancel tools are required.");
         }
     }
-    private void Start(StoredRemoteTask task, CancellationToken sessionToken)
+    private void Start(StoredRemoteTask task, CancellationToken sessionToken, CancellationToken ownerSessionToken)
     {
-        var active = new Active(CancellationTokenSource.CreateLinkedTokenSource(sessionToken), sessionToken);
+        var active = new Active(CancellationTokenSource.CreateLinkedTokenSource(sessionToken, ownerSessionToken), sessionToken, StoredContext(task, ownerSessionToken));
         active.Stop.CancelAfter(TimeSpan.FromSeconds(task.Plan.TimeoutSeconds));
         var key = Key(task.OwnerId, task.Snapshot.TaskId);
         _active.Add(key, active);
@@ -172,6 +182,7 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
         var task = initial;
         try
         {
+            using var slot = await _taskSlots.AcquireAsync(task.OwnerId + "|" + (task.OwnerSessionId ?? task.Snapshot.TaskId), active.Stop.Token);
             foreach (var originalStep in task.Plan.Steps)
             {
                 var step = originalStep;
@@ -189,10 +200,11 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
                     {
                         using var stepStop = CancellationTokenSource.CreateLinkedTokenSource(active.Stop.Token);
                         stepStop.CancelAfter(TimeSpan.FromSeconds(step.TimeoutSeconds));
-                        var context = new AgentExecutionContext(task.Snapshot.Project,
-                            task.Snapshot.TaskId + ":" + step.Id + ":r" + repairs + ":" + attempt,
-                            "task:" + task.OwnerId + ":" + task.Snapshot.TaskId)
-                        { AdditionalDirectories = _folders.Additional };
+                        var context = active.Context with
+                        {
+                            CallId = task.Snapshot.TaskId + ":" + step.Id + ":r" + repairs + ":" + attempt,
+                            SessionCancellation = active.Stop.Token
+                        };
                         RemoteStepResult result;
                         try
                         {
@@ -281,7 +293,7 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
         catch (Exception ex)
         {
             try { Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", UpdatedAt = DateTimeOffset.UtcNow,
-                Error = "Task failed: " + ex.GetType().Name } }); } catch (IOException) { /* Corrupt/unwritable state fails closed on the next query. */ }
+                Error = ex is AgentRequestException ? ex.Message : "Task failed: " + ex.GetType().Name } }); } catch (IOException) { /* Corrupt/unwritable state fails closed on the next query. */ }
         }
         finally
         {
@@ -314,12 +326,13 @@ internal sealed class RemoteTaskHost : IAsyncDisposable
         lock (_sync) { _disposed = true; CancelAll(); all = Task.WhenAll(_active.Values.Select(a => a.Work)); }
         try { await all.WaitAsync(TimeSpan.FromSeconds(10)); }
         catch (TimeoutException) { _ = all.ContinueWith(_ => _store.Dispose(), TaskScheduler.Default); return; }
-        finally { if (all.IsCompleted) _store.Dispose(); }
+        finally { _taskSlots.Dispose(); if (all.IsCompleted) _store.Dispose(); }
     }
-    private sealed class Active(CancellationTokenSource stop, CancellationToken sessionToken)
+    private sealed class Active(CancellationTokenSource stop, CancellationToken sessionToken, AgentExecutionContext context)
     {
         public CancellationTokenSource Stop { get; } = stop;
         public CancellationToken SessionToken { get; } = sessionToken;
+        public AgentExecutionContext Context { get; } = context;
         public string? Reason { get; set; }
         public Task Work { get; set; } = Task.CompletedTask;
     }

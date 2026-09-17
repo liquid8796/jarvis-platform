@@ -4,11 +4,12 @@ using System.Reflection;
 using System.Text.Json;
 using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.RemoteTasks;
+using Jarvis.Agent.Core.Execution;
 using Jarvis.Protocol;
 namespace Jarvis.Agent.Core;
 
 /// <summary>Outbound-only WebSocket, bounded concurrency, heartbeats, cancellation, no replay on reconnect.</summary>
-public sealed class AgentConnection : IAsyncDisposable
+public sealed partial class AgentConnection : IAsyncDisposable
 {
     private readonly DynamicToolRegistry _registry;
     private readonly string? _taskStorageRoot;
@@ -19,8 +20,6 @@ public sealed class AgentConnection : IAsyncDisposable
     private readonly AgentLifecycleHub _lifecycle;
     private readonly IRemoteTaskAdaptiveCoordinator? _adaptiveCoordinator;
     private readonly LocalControlGate _gate;
-    private readonly SemaphoreSlim _parallel = new(4, 4);
-    private readonly SemaphoreSlim _interactive = new(1, 1);
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _running = new();
     private readonly ConcurrentDictionary<string, Task> _tasks = new();
     private readonly ConcurrentDictionary<string, (DateTimeOffset At, ToolReply Reply)> _completed = new();
@@ -61,7 +60,7 @@ public sealed class AgentConnection : IAsyncDisposable
     private void EnsureCompositeTools()
     {
         var snapshot = _registry.Snapshot;
-        var additions = AgentCoreHostTools.Create(InvokeInstalledToolAsync)
+        var additions = AgentCoreHostTools.Create(InvokeInstalledToolAsync, SessionServices())
             .Where(tool => !snapshot.Tools.ContainsKey(tool.Descriptor.Id))
             .ToArray();
         if (additions.Length > 0) _registry.Replace(snapshot.Tools.Values.Concat(additions));
@@ -133,8 +132,10 @@ public sealed class AgentConnection : IAsyncDisposable
         var folders = new WorkspaceDirectories(options.Workspace, options.AdditionalDirectories);
         var taskRoot = Path.Combine(_taskStorageRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "JarvisAgent", "TaskRuns"), RemoteTaskStore.Hash(endpoint.AbsoluteUri + "|" + options.DeviceId));
+        InitializeSessions(options, taskRoot);
+        InitializeExecutionSettings(options.ExecutionSettings);
         _remoteTasks = new RemoteTaskHost(taskRoot, folders, _registry, () => _gate.IsArmed,
-            InvokeInstalledToolAsync, CancelOwnedJobAsync, _adaptiveCoordinator);
+            InvokeInstalledToolAsync, CancelOwnedJobAsync, _adaptiveCoordinator, ResolveTaskSession, ExecutionSettings);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
         var attempt = 0;
         while (!stop.IsCancellationRequested)
@@ -152,12 +153,16 @@ public sealed class AgentConnection : IAsyncDisposable
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown",
                         Environment.OSVersion.ToString(), Environment.MachineName, catalog.Descriptors)
                     { TaskProtocolVersion = RemoteTaskRules.ProtocolVersion, ProtocolVersion = AgentProtocolVersion.Current,
-                        Capabilities = AgentProtocolCapabilities.Agent, CatalogGeneration = catalog.Generation, CatalogDigest = catalog.Digest }
+                        Capabilities = AgentProtocolCapabilities.Agent, CatalogGeneration = catalog.Generation, CatalogDigest = catalog.Digest, ExecutionSettings = ExecutionSettings }
                 }, session.Token).ConfigureAwait(false);
                 using (var welcomeTimeout = CancellationTokenSource.CreateLinkedTokenSource(session.Token))
                 {
                     welcomeTimeout.CancelAfter(TimeSpan.FromSeconds(15));
-                    if ((await wire.ReceiveAsync(welcomeTimeout.Token).ConfigureAwait(false))?.Type != "welcome")
+                    var welcome = await wire.ReceiveAsync(welcomeTimeout.Token).ConfigureAwait(false);
+                    _sessionProtocol = welcome?.Capabilities?.Contains(AgentSessionRules.Capability, StringComparer.Ordinal) == true;
+                    _settingsProtocol = welcome?.Capabilities?.Contains(AgentExecutionSettings.Capability, StringComparer.Ordinal) == true;
+                    if (_settingsProtocol) AcknowledgeExecutionSettings(welcome?.ExecutionSettingsRevision);
+                    if (welcome?.Type != "welcome")
                         throw new InvalidDataException("Server did not accept the agent handshake.");
                 }
                 Interlocked.Exchange(ref _lastPong, Environment.TickCount64);
@@ -174,6 +179,7 @@ public sealed class AgentConnection : IAsyncDisposable
                         {
                             case "pong": Interlocked.Exchange(ref _lastPong, Environment.TickCount64); break;
                             case "catalog.ack": break;
+                            case "execution.settings.ack": AcknowledgeExecutionSettings(message.ExecutionSettingsRevision); break;
                             case "ping": await wire.SendAsync(new WireMessage("pong") { Timestamp = message.Timestamp }, session.Token); break;
                             case "cancel":
                                 if (message.Id is not null && _running.TryGetValue(message.Id, out var pending))
@@ -224,10 +230,24 @@ public sealed class AgentConnection : IAsyncDisposable
         var id = message.Id;
         if (_running.ContainsKey(id)) return;
         // The receive loop never waits for approval or a long-running command.
-        if (_running.Count >= 16) { Track(id + "-busy", ReplyAsync(wire, id, ToolReply.Error("Agent busy; call not started."), sessionToken)); return; }
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(sessionToken);
-        if (!_running.TryAdd(id, cts)) { cts.Dispose(); return; }
-        Track(id, ExecuteAsync(wire, message, workspace, cts));
+        var admission = TryAdmit(id, AgentSessionRules.IsControlTool(message.ToolId));
+        if (admission == Admission.Duplicate) return;
+        if (admission == Admission.Full) { Track(id + "-busy", ReplyAsync(wire, id, ToolReply.Error("QUEUE_FULL: Agent request queue is full; no tool was started."), sessionToken)); return; }
+        AgentExecutionContext context;
+        try { context = PrepareContext(message, workspace); }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            ReleaseAdmission(id);
+            Track(id + "-invalid-session", ReplyAsync(wire, id, ToolReply.Error(ex.Message), sessionToken));
+            return;
+        }
+        var cts = AgentSessionRules.IsControlTool(message.ToolId)
+            ? CancellationTokenSource.CreateLinkedTokenSource(sessionToken)
+            : CancellationTokenSource.CreateLinkedTokenSource(sessionToken, context.SessionCancellation);
+        if (!_running.TryAdd(id, cts)) { cts.Dispose(); ReleaseAdmission(id); return; }
+        _runningContexts[id] = context;
+        NotifySessionActivity();
+        Track(id, ExecuteAsync(wire, message, context, cts));
     }
     private void Track(string id, Task task)
     {
@@ -235,7 +255,7 @@ public sealed class AgentConnection : IAsyncDisposable
         _ = task.ContinueWith(completed => { _tasks.TryRemove(id, out _); _ = completed.Exception; },
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
-    private async Task ExecuteAsync(WireSocket wire, WireMessage call, WorkspaceDirectories workspace, CancellationTokenSource cts)
+    private async Task ExecuteAsync(WireSocket wire, WireMessage call, AgentExecutionContext context, CancellationTokenSource cts)
     {
         var id = call.Id!;
         try
@@ -244,13 +264,11 @@ public sealed class AgentConnection : IAsyncDisposable
             if (remaining <= TimeSpan.Zero || remaining > TimeSpan.FromMinutes(5))
                 throw new InvalidOperationException("Missing, expired or excessive deadline.");
             cts.CancelAfter(remaining);
-            if (!_gate.IsArmed) throw new UnauthorizedAccessException("Remote control is paused. Arm it locally in Jarvis Agent.");
+            if (!_gate.IsArmed && !AgentSessionRules.AllowedWhilePaused(call.ToolId!)) throw new UnauthorizedAccessException("Remote control is paused. Arm it locally in Jarvis Agent.");
             if (_completed.TryGetValue(id, out var cached))
             { await ReplyAsync(wire, id, cached.Reply, cts.Token); return; }
             var result = await InvokeInstalledToolAsync(call.ToolId!, call.Arguments!.Value,
-                new AgentExecutionContext(workspace.Primary, id, call.SessionId ?? "remote")
-                { AdditionalDirectories = workspace.Additional, ThreadId = call.ThreadId, TurnId = call.TurnId }, cts.Token,
-                call.ExpectedCatalogGeneration, call.ExpectedCatalogDigest);
+                context, cts.Token, call.ExpectedCatalogGeneration, call.ExpectedCatalogDigest);
             _completed[id] = (DateTimeOffset.UtcNow, result);
             await ReplyAsync(wire, id, result, cts.Token);
         }
@@ -266,7 +284,9 @@ public sealed class AgentConnection : IAsyncDisposable
         }
         finally
         {
-            _running.TryRemove(id, out _); cts.Dispose();
+            _runningContexts.TryRemove(id, out _);
+            _running.TryRemove(id, out _); cts.Dispose(); ReleaseAdmission(id);
+            NotifySessionActivity();
             foreach (var old in _completed.OrderBy(x => x.Value.At).Take(Math.Max(0, _completed.Count - 128))) _completed.TryRemove(old.Key, out _);
         }
     }
@@ -279,11 +299,13 @@ public sealed class AgentConnection : IAsyncDisposable
     private async Task<ToolReply> InvokeInstalledToolAsync(string toolId, JsonElement arguments,
         AgentExecutionContext context, CancellationToken ct, long? expectedCatalogGeneration, string? expectedCatalogDigest)
     {
-        var acquired = false; var interactiveAcquired = false;
+        IDisposable? slot = null;
+        IDisposable? resources = null;
         try
         {
             ct.ThrowIfCancellationRequested();
-            if (!_gate.IsArmed) throw new UnauthorizedAccessException("Local control is paused.");
+            ValidateSessionBeforeExecution(toolId, context);
+            if (!_gate.IsArmed && !AgentSessionRules.AllowedWhilePaused(toolId)) throw new UnauthorizedAccessException("Local control is paused.");
             var snapshot = _registry.Snapshot;
             if (expectedCatalogGeneration is { } generation && generation != snapshot.Generation)
                 throw new InvalidOperationException("Tool catalog changed; refresh descriptors before invoking this call.");
@@ -292,29 +314,51 @@ public sealed class AgentConnection : IAsyncDisposable
             if (!snapshot.Tools.TryGetValue(toolId, out var tool)) throw new InvalidOperationException("Tool is not installed on this agent.");
             if (!SchemaGuard.Matches(snapshot.Schemas[toolId], arguments)) throw new ArgumentException("Arguments do not match the local tool schema.");
             var composite = tool is ICompositeAgentTool;
-            await _parallel.WaitAsync(ct); acquired = true;
-            if (!tool.Descriptor.ReadOnly || tool.Descriptor.Sensitive)
-            { await _interactive.WaitAsync(ct); interactiveAcquired = true; }
-            if (!_gate.IsArmed) throw new UnauthorizedAccessException("Local control was paused.");
+            var control = AgentSessionRules.IsControlTool(toolId);
+            using (var waiting = CancellationTokenSource.CreateLinkedTokenSource(ct))
+            {
+                waiting.CancelAfter(TimeSpan.FromSeconds(control ? 15 : ExecutionSettings.QueueTimeoutSeconds));
+                try
+                {
+                    if (!composite && !control)
+                    {
+                        var claims = ToolExecutionResources.For(tool.Descriptor, arguments, context);
+                        resources = await _resources.AcquireAsync(SchedulingKey(context), claims.Resources, claims.Exclusive, waiting.Token);
+                    }
+                    slot = await (control ? _controlExecution : _execution).AcquireAsync(SchedulingKey(context), waiting.Token);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested && waiting.IsCancellationRequested)
+                {
+                    throw new AgentRequestException("QUEUE_TIMEOUT", "Request expired while waiting for resources or an execution slot. No tool was started.");
+                }
+            }
+            ValidateSessionBeforeExecution(toolId, context);
+            if (!_gate.IsArmed && !AgentSessionRules.AllowedWhilePaused(toolId)) throw new UnauthorizedAccessException("Local control was paused.");
             if (_permissions.RequiresApproval(tool.Descriptor, arguments, context) && !await _approval.ApproveAsync(tool.Descriptor, arguments, ct))
                 throw new UnauthorizedAccessException("The local user denied this action.");
             ct.ThrowIfCancellationRequested();
-            if (!_gate.IsArmed) throw new UnauthorizedAccessException("Local control was paused.");
+            ValidateSessionBeforeExecution(toolId, context);
+            if (!_gate.IsArmed && !AgentSessionRules.AllowedWhilePaused(toolId)) throw new UnauthorizedAccessException("Local control was paused.");
             if (composite)
             {
-                if (interactiveAcquired) { _interactive.Release(); interactiveAcquired = false; }
-                if (acquired) { _parallel.Release(); acquired = false; }
+                resources?.Dispose(); resources = null;
+                slot.Dispose(); slot = null;
             }
             Emit("tool", "Started " + tool.Descriptor.Name);
-            var result = await tool.ExecuteAsync(arguments,
-                context with { FullPermission = _permissions.HasFullPermission(toolId, arguments, context) }, ct);
+            var resourceLease = resources as IExecutionResourceLease;
+            var result = await tool.ExecuteAsync(arguments, context with
+            {
+                FullPermission = _permissions.HasFullPermission(toolId, arguments, context),
+                RetainResources = resourceLease is null ? null : resourceLease.Retain
+            }, ct);
             Emit("tool", (result.IsError ? "Failed " : "Completed ") + tool.Descriptor.Name);
             return result;
         }
         finally
         {
-            if (interactiveAcquired) _interactive.Release();
-            if (acquired) _parallel.Release();
+            slot?.Dispose();
+            resources?.Dispose();
+            NotifySessionActivity();
         }
     }
     private async Task CancelOwnedJobAsync(string jobId, AgentExecutionContext context)
@@ -330,14 +374,16 @@ public sealed class AgentConnection : IAsyncDisposable
             message.TaskOperation is null || !RemoteTaskRules.Operations.Contains(message.TaskOperation))
             throw new InvalidDataException("Invalid task envelope.");
         if (_running.ContainsKey(message.Id)) return;
-        if (_running.Count >= 16)
+        var admission = TryAdmit(message.Id, control: true);
+        if (admission == Admission.Duplicate) return;
+        if (admission == Admission.Full)
         {
             Track(message.Id + "-busy", wire.SendAsync(new("task.result") { Id = message.Id,
                 TaskReply = RemoteTaskReply.Failure("busy", "Agent control queue is full.") }, sessionToken));
             return;
         }
         var stop = CancellationTokenSource.CreateLinkedTokenSource(sessionToken);
-        if (!_running.TryAdd(message.Id, stop)) { stop.Dispose(); return; }
+        if (!_running.TryAdd(message.Id, stop)) { stop.Dispose(); ReleaseAdmission(message.Id); return; }
         Track(message.Id, HandleTaskAsync(wire, message, stop, sessionToken));
     }
     private async Task HandleTaskAsync(WireSocket wire, WireMessage message, CancellationTokenSource stop, CancellationToken sessionToken)
@@ -358,7 +404,7 @@ public sealed class AgentConnection : IAsyncDisposable
                 TaskReply = RemoteTaskReply.Failure("unavailable", "Task request failed: " + ex.GetType().Name) }, timeout.Token); }
             catch (Exception sendError) when (sendError is WebSocketException or IOException or OperationCanceledException) { }
         }
-        finally { _running.TryRemove(message.Id!, out _); stop.Dispose(); }
+        finally { _running.TryRemove(message.Id!, out _); stop.Dispose(); ReleaseAdmission(message.Id!); }
     }
     private static async Task<WebSocket> ConnectSocketAsync(Uri endpoint, string token, CancellationToken ct)
     {
@@ -380,6 +426,8 @@ public sealed class AgentConnection : IAsyncDisposable
         Disconnect();
         try { await Task.WhenAll(_tasks.Values).WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
         if (_remoteTasks is not null) await _remoteTasks.DisposeAsync();
+        _execution.Dispose(); _controlExecution.Dispose(); _resources.Dispose();
+        DisposeSessions();
         _lifetime.Dispose();
     }
 }

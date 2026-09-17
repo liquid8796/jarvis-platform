@@ -41,6 +41,17 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
     }
 
     [Fact]
+    public async Task Runtime_loads_execution_settings_before_connecting_without_touching_permissions()
+    {
+        var store = new Jarvis.Agent.Core.Execution.ExecutionSettingsStore(Path.Combine(_root, "execution-settings.json"));
+        var saved = store.Save(new AgentExecutionSettings { MaxConcurrentCalls = 9, MaxProcessJobs = 7 }, 1);
+        await using var runtime = new AgentRuntime(new Approval(), new Questions(), new Artifacts(), settingsRoot: _root);
+        Assert.Equal(saved, runtime.Connection.ExecutionSettings);
+        Assert.False(runtime.Gate.IsArmed);
+        Assert.False(File.Exists(Path.Combine(_root, "agent.local.json")));
+    }
+
+    [Fact]
     public async Task Runtime_loads_persistent_constrained_process_approvals_from_disk()
     {
         Directory.CreateDirectory(_root);

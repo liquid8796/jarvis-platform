@@ -104,6 +104,46 @@ public sealed class ProcessTests
         Assert.False((await cancel.ExecuteAsync(WireJson.Element(new { jobId = id }), context, CancellationToken.None)).IsError);
     }
 
+    [Theory]
+    [InlineData("cmd.exe", "/d", "/c", "echo diagnostic-pty & ping -n 2 127.0.0.1 >nul")]
+    [InlineData("cmd.exe", "/d", "/c", "echo diagnostic-pty > CONOUT$")]
+    [InlineData("powershell.exe", "-NoProfile", "-Command", "Write-Output 'diagnostic-pty'; Start-Sleep -Milliseconds 500")]
+    public async Task Pty_captures_output_while_its_client_is_alive(string exe, string a, string b, string command)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var tools = new ProcessToolSet();
+        var context = new AgentExecutionContext(Path.GetTempPath(), "capture-pty", "capture-owner");
+        var reply = await tools.Tools.Single(t => t.Descriptor.Id == "process.spawn").ExecuteAsync(
+            WireJson.Element(new { argv = new[] { exe, a, b, command }, pty = true, timeoutSeconds = 10 }), context, default);
+        using var initial = JsonDocument.Parse(reply.Text);
+        using var done = await ReadUntilDone(tools, context, initial.RootElement.GetProperty("jobId").GetString()!);
+        Assert.Contains("diagnostic-pty", done.RootElement.GetProperty("output").GetString()!);
+    }
+
+    [Fact] public async Task Completed_pty_publishes_exit_status_and_releases_resource_budget()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var resources = new Jarvis.Agent.Core.Execution.ExecutionResourceCoordinator(4);
+        using var tools = new ProcessToolSet();
+        using var lease = (Jarvis.Agent.Core.Execution.IExecutionResourceLease)await resources.AcquireAsync(
+            "pty-owner", new[] { "*" }, true, CancellationToken.None);
+        var context = new AgentExecutionContext(Path.GetTempPath(), "pty-completion", "pty-owner")
+        { RetainResources = lease.Retain };
+        var reply = await tools.Tools.Single(t => t.Descriptor.Id == "process.spawn").ExecuteAsync(
+            WireJson.Element(new { argv = new[] { "cmd.exe", "/d", "/c", "echo pty-completed" }, pty = true, timeoutSeconds = 10 }),
+            context, CancellationToken.None);
+        Assert.False(reply.IsError, reply.Text);
+        using var initial = JsonDocument.Parse(reply.Text);
+        lease.Dispose();
+        using var completed = await ReadUntilDone(tools, context, initial.RootElement.GetProperty("jobId").GetString()!);
+        Assert.Equal(0, completed.RootElement.GetProperty("exitCode").GetInt32());
+        var output = completed.RootElement.GetProperty("output").GetString()!;
+        Assert.True(output.Contains("pty-completed", StringComparison.Ordinal), JsonSerializer.Serialize(output));
+        Assert.Equal(0, tools.RunningCount);
+        using var next = await resources.AcquireAsync("next-owner", new[] { "fs|another-file" }, false, CancellationToken.None)
+            .WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
     private static async Task<JsonDocument> ReadUntilDone(ProcessToolSet tools, AgentExecutionContext context, string jobId)
     {
         var read = tools.Tools.Single(t => t.Descriptor.Id == "process.read");

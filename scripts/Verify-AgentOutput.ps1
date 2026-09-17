@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Desktop','Cli','Windows')][string]$Component = 'Desktop',
-    [switch]$RequireSymbols
+    [switch]$RequireSymbols,
+    [switch]$PublishedWinX64
 )
 $ErrorActionPreference = 'Stop'
 $directory = (Resolve-Path -LiteralPath $OutputDirectory).Path
@@ -18,6 +19,12 @@ if ($Component -ne 'Windows') {
     $required += @("$entryPoint.exe", "$entryPoint.dll", "$entryPoint.deps.json", "$entryPoint.runtimeconfig.json")
 }
 if ($RequireSymbols) { $required += 'JarvisCode.App.pdb' }
+# The official ConPTY host is architecture-specific, not OpenConsole.exe at the root.
+# Windows x64 also supports execution on ARM64 Windows via the native ARM64 console host.
+if ($PublishedWinX64) {
+    $required += @('conpty.dll', 'x64/OpenConsole.exe', 'arm64/OpenConsole.exe',
+                   'licenses/Microsoft.Windows.Console.ConPTY-LICENSE.txt')
+}
 $unexpected = @($forbidden | Where-Object { Test-Path -LiteralPath (Join-Path $directory $_) })
 $missing = @($required | Where-Object { -not (Test-Path -LiteralPath (Join-Path $directory $_) -PathType Leaf) })
 if ($unexpected.Count -gt 0 -or $missing.Count -gt 0) {

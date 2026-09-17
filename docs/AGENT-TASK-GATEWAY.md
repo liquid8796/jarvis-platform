@@ -1,5 +1,11 @@
 # Agent Task Gateway (Approach A)
 
+## 1.0.64 session-aware task ownership
+
+The `agent_task_*` MCP surface now carries the same validated `_jarvis.sessionHandle` as ordinary tools. Requests are scoped to authenticated owner, enrolled agent and creating application session. Task/project/workspace context is snapshotted at creation; child tasks retain parent ownership and may only narrow execution mode. Read, artifact and cancel operations from another chat are denied even when the account matches. Local operator dashboard compatibility is separate from scoped MCP.
+
+Durable task concurrency defaults to 5 and follows live local execution settings; task steps still pass the normal tool permission/resource/call-slot path. Composite calls do not hold a slot while waiting for child calls. Stopping or closing a chat cooperatively cancels its own tasks and process jobs, not siblings. COMPLETED still means submitted steps passed; it is not an independent model verification or an automatic chat notification.
+
 The server owns authentication, exact device routing and audit events. It stores no authoritative task execution state. All task snapshots, plans and bounded result artifacts live in the local agent application-data directory, partitioned by server origin, device and owner. GET/cancel/plan therefore require the device ID in the cookie API; MCP derives it from the OAuth grant.
 
 Transport reuses the authenticated outbound WebSocket with additive task-v1 negotiation. Old peers continue ordinary tool calls; task calls to them fail explicitly. A new task is acknowledged only after durable storage. Queries return persisted status; disconnect cancels active work and does not replay it. Restart marks unfinished work INTERRUPTED. Identical request IDs are idempotent; changed payloads with the same ID conflict.

@@ -10,7 +10,7 @@ public sealed class WorkspaceBoundary
     public WorkspaceBoundary(string root, IEnumerable<string>? additionalDirectories = null)
     {
         var directories = new WorkspaceDirectories(root, additionalDirectories);
-        Root = directories.Primary;
+        Root = directories.RequirePrimary();
         _roots = directories.Directories;
         foreach (var directory in _roots) RejectLinks(directory);
     }

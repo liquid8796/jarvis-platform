@@ -1,0 +1,3 @@
+# Execution limits page override
+
+Use the WPF master tokens, not the generic web/IoT preset. Primary hierarchy: concurrency value and default5; explanations distinguish calls from chats; advanced process/task/queue/timeout budgets; saved/applied/server-acknowledged state; Save and Reload. Keep every field labeled and keyboard reachable. Ctrl+S is equivalent to enabled Save, never bypassing validation. Values are drafts until explicit save; conflict/corruption errors must preserve the previous persisted settings. Normal text/accent action contrast is verified in test_session_ui_assets.py. At narrow sizes use vertical scrolling rather than collapsing errors or abbreviating instructions. No change to Arm or tool permissions.

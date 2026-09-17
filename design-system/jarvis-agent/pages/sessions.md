@@ -1,0 +1,3 @@
+# Sessions page override
+
+Use a developer-operations list, not a consumer device grid. Show textual lifecycle, name, workspace, active/queued counts and unread events. Filtering must preserve selected row identity through refresh; bounded virtualized list avoids unbounded rendering. Metadata details show full paths and held/waiting resources, never handles or transcripts. Stop work affects only the selected identity; Close is destructive and confirmed with No as default. F5 refreshes. The page scrolls vertically at the minimum 870x650 window so expanded details cannot trap actions offscreen. Model refresh runs only while the relevant page is visible and does not steal focus. Empty, disconnected, filtered-empty and error states need distinct copy.

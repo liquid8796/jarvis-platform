@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Execution;
 using Jarvis.Protocol;
 using JarvisCode.Core.Tools;
 using JarvisCode.Core.Tools.BuiltIn;
@@ -19,10 +20,11 @@ public sealed class LegacyToolAdapter : IAgentTool
     private readonly IArtifactSink _artifacts;
     private readonly JsonSchema _schema;
     private readonly string _privateRoot;
+    private readonly SessionFileObservations? _fileObservations;
     public ToolDescriptor Descriptor { get; }
-    public LegacyToolAdapter(ITool tool, string category, IUserQuestions questions, IArtifactSink artifacts, string? privateRoot = null)
+    public LegacyToolAdapter(ITool tool, string category, IUserQuestions questions, IArtifactSink artifacts, string? privateRoot = null, SessionFileObservations? fileObservations = null)
     {
-        _tool = tool; _questions = questions; _artifacts = artifacts;
+        _tool = tool; _questions = questions; _artifacts = artifacts; _fileObservations = fileObservations;
         _privateRoot = privateRoot ?? AgentProfile.Root;
         var inputSchema = tool.InputSchema.DeepClone().AsObject();
         if (category is "filesystem" or "git" or "shell" or "browser")
@@ -52,6 +54,8 @@ public sealed class LegacyToolAdapter : IAgentTool
         if (category == "computer")
             description += " Jarvis Agent: when THIS tool has local Full permission, app/tier/clipboard " +
                 "grant prompts are not needed. Other tools retain their own settings. Windows permissions and denied apps still apply.";
+        if (category == "filesystem" && tool.Name is "Write" or "Edit" or "NotebookEdit")
+            description += " Read existing files in this chat before changing them. FILE_CHANGED requires a fresh read and reconciliation; other sessions' reads do not count.";
         return description;
     }
     public async Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext execution, CancellationToken cancellationToken)
@@ -63,8 +67,12 @@ public sealed class LegacyToolAdapter : IAgentTool
         var workingDirectory = execution.Workspace;
         if (Descriptor.Category is "filesystem" or "git" or "shell" or "browser" &&
             args.Remove("workingDirectory", out var directory) && directory is not null)
-            workingDirectory = WorkspaceDirectories.Normalize(Path.GetFullPath(directory.GetValue<string>(), execution.Workspace));
+            workingDirectory = WorkspaceDirectories.Normalize(WorkspaceDirectories.ResolvePath(directory.GetValue<string>(), execution.Workspace));
         if (Descriptor.Category is "filesystem" or "git" or "browser") NormalizePaths(args, workingDirectory);
+        if (Descriptor.Category is "shell" or "git" ||
+            (Descriptor.Category == "filesystem" && string.IsNullOrWhiteSpace(workingDirectory) &&
+             !args.Any(pair => SinglePaths.Contains(pair.Key) || ManyPaths.Contains(pair.Key))))
+            workingDirectory = WorkspaceDirectories.ResolvePath(null, workingDirectory);
         foreach (var field in new[] { "target", "revision", "ref" })
             if (Descriptor.Category == "git" && args[field]?.GetValue<string>() is { } revision && revision.StartsWith('-'))
                 throw new ArgumentException("Git revisions must not be command-line options.");
@@ -83,7 +91,36 @@ public sealed class LegacyToolAdapter : IAgentTool
             EnforceWorkspaceFileScope = false,
             SessionId = execution.SessionId, ShellTimeout = TimeSpan.FromSeconds(110), MaxOutputChars = 60000,
             AskUserAsync = _questions.AskAsync, SessionLifetime = cancellationToken };
-        var result = await _tool.ExecuteAsync(args, context, cancellationToken);
+        var filePath = Descriptor.Category == "filesystem" ? (args["file_path"] ?? args["notebook_path"])?.GetValue<string>() : null;
+        var trackFile = _fileObservations is not null && filePath is not null;
+        var identity = trackFile ? execution.RequireSessionIdentity() : null;
+        SessionFileObservations.FileObservation? before = null;
+        if (trackFile)
+        {
+            if (!_tool.IsReadOnly) await _fileObservations!.ValidateWriteAsync(identity!, filePath!, cancellationToken);
+            before = await SessionFileObservations.CaptureAsync(filePath!, cancellationToken);
+        }
+        ToolResult result;
+        try { result = await _tool.ExecuteAsync(args, context, cancellationToken); }
+        catch
+        {
+            if (trackFile && !_tool.IsReadOnly) _fileObservations!.Forget(identity!, filePath!);
+            throw;
+        }
+        if (trackFile)
+        {
+            if (!result.IsError)
+            {
+                var after = await SessionFileObservations.CaptureAsync(filePath!, cancellationToken);
+                if (_tool.IsReadOnly && before != after)
+                {
+                    _fileObservations!.Forget(identity!, filePath!);
+                    throw new AgentRequestException("FILE_CHANGED", "File changed while being read. Read it again before editing.");
+                }
+                _fileObservations!.Remember(identity!, filePath!, after);
+            }
+            else if (!_tool.IsReadOnly) _fileObservations!.Forget(identity!, filePath!);
+        }
         return new ToolReply(result.Content + (result.FollowUpText is null ? "" : "\n" + result.FollowUpText), result.IsError,
             result.Images?.Select(i => new WireImage(i.MediaType, i.Base64Data)).ToArray());
     }
@@ -94,11 +131,11 @@ public sealed class LegacyToolAdapter : IAgentTool
         foreach (var pair in args.ToArray())
         {
             if (SinglePaths.Contains(pair.Key) && pair.Value is JsonValue value && value.TryGetValue<string>(out var text))
-            { var full = Path.GetFullPath(text, workingDirectory); RejectProfile(full); args[pair.Key] = full; }
+            { var full = WorkspaceDirectories.ResolvePath(text, workingDirectory); RejectProfile(full); args[pair.Key] = full; }
             else if (ManyPaths.Contains(pair.Key) && pair.Value is JsonArray paths)
             {
                 for (var i = 0; i < paths.Count; i++)
-                    if (paths[i]?.GetValue<string>() is { } path) { var full = Path.GetFullPath(path, workingDirectory); RejectProfile(full); paths[i] = full; }
+                    if (paths[i]?.GetValue<string>() is { } path) { var full = WorkspaceDirectories.ResolvePath(path, workingDirectory); RejectProfile(full); paths[i] = full; }
             }
             else if (pair.Value is JsonObject nested) NormalizePaths(nested, workingDirectory);
             else if (pair.Value is JsonArray array) foreach (var nestedObject in array.OfType<JsonObject>()) NormalizePaths(nestedObject, workingDirectory);
@@ -106,8 +143,9 @@ public sealed class LegacyToolAdapter : IAgentTool
     }
     private void RejectProfile(string path)
     {
-        var root = Path.GetFullPath(_privateRoot);
-        if (path.Equals(root, StringComparison.OrdinalIgnoreCase) || path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        var root = ToolExecutionResources.CanonicalPath(_privateRoot);
+        var target = ToolExecutionResources.CanonicalPath(path);
+        if (target.Equals(root, StringComparison.OrdinalIgnoreCase) || target.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             throw new UnauthorizedAccessException("The agent's private profile cannot be accessed by file tools.");
     }
 }

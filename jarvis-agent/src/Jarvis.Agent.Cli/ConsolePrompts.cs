@@ -41,7 +41,9 @@ public sealed class FileArtifactSink(string workspace) : IArtifactSink
 {
     public async Task ShowAsync(WidgetArtifact artifact, CancellationToken ct)
     {
-        var boundary = new WorkspaceDirectories(workspace);
+        var root = string.IsNullOrWhiteSpace(workspace) ? Path.Combine(AgentProfile.Root, "visual-artifacts") : workspace;
+        Directory.CreateDirectory(root);
+        var boundary = new WorkspaceDirectories(root);
         var directory = boundary.Resolve(Path.Combine(".jarvis", "artifacts")); Directory.CreateDirectory(directory);
         var file = boundary.Resolve(Path.Combine(directory, Guid.NewGuid().ToString("N") + ".html"));
         await File.WriteAllTextAsync(file, SandboxHtml.Wrap(artifact), ct);

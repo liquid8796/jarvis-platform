@@ -1,6 +1,7 @@
 using Jarvis.Agent.Core.DeveloperTools;
 using Jarvis.Agent.Core.ToolPrograms;
 using Jarvis.Protocol;
+using Jarvis.Agent.Core.Sessions;
 
 namespace Jarvis.Agent.Core;
 
@@ -10,7 +11,7 @@ namespace Jarvis.Agent.Core;
 /// </summary>
 public static class AgentCoreHostTools
 {
-    public static IReadOnlyList<IAgentTool> Create(GuardedToolInvoker guardedInvoker)
+    public static IReadOnlyList<IAgentTool> Create(GuardedToolInvoker guardedInvoker, SessionToolServices? sessionServices = null)
     {
         ArgumentNullException.ThrowIfNull(guardedInvoker);
         return
@@ -18,7 +19,8 @@ public static class AgentCoreHostTools
             new ToolProgramTool(new ToolProgramEngine(guardedInvoker)),
             new SafeScriptTool(new SafeScriptEngine(guardedInvoker)),
             new DeveloperSymbolSearchTool(),
-            new DeveloperTestTool()
+            new DeveloperTestTool(),
+            .. SessionToolSet.Create(sessionServices)
         ];
     }
 

@@ -6,6 +6,23 @@
     <PackageReference Include="Jint" Version="4.16.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Windows.Console.ConPTY" Version="1.24.260710001" GeneratePathProperty="true" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+  </ItemGroup>
+  <!-- AnyCPU builds do not select a ConPTY platform. Keep hosts beside each native asset
+       for development output and in architecture subdirectories for RID-specific publishes. -->
+  <ItemGroup>
+    <None Include="$(PkgMicrosoft_Windows_Console_ConPTY)/build/native/runtimes/**/OpenConsole.exe"
+          Link="%(RecursiveDir)OpenConsole.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(PkgMicrosoft_Windows_Console_ConPTY)/build/native/runtimes/x64/OpenConsole.exe"
+          Link="runtimes/win-x64/native/OpenConsole.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="$(PkgMicrosoft_Windows_Console_ConPTY)/build/native/runtimes/x86/OpenConsole.exe"
+          Link="runtimes/win-x86/native/OpenConsole.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Include="$(PkgMicrosoft_Windows_Console_ConPTY)/build/native/runtimes/arm64/OpenConsole.exe"
+          Link="runtimes/win-arm64/native/OpenConsole.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../../docs/licenses/Microsoft.Windows.Console.ConPTY-LICENSE.txt" Link="licenses/Microsoft.Windows.Console.ConPTY-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

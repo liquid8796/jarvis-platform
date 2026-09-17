@@ -21,10 +21,10 @@ function connect() {
   port.onDisconnect.addListener(() => {
     port = null;
     // Nothing is driving these pages any more; leaving a glow up would lie.
-    clearIndicators("off");
+    clearIndicators("off").catch(() => {});
     schedule();
   });
-  post({ event: "ready", version: chrome.runtime.getManifest().version, browser: browserName() });
+  post({ event: "ready", version: chrome.runtime.getManifest().version, browser: browserName(), applicationSessions: true });
 }
 
 // Which Chromium this is, so the app can tell several connected browsers apart.
@@ -50,93 +50,111 @@ function post(message) {
   }
 }
 
+// Application identity comes from the authenticated native host envelope, never page/tool arguments.
+const sessionStates = new Map();
+const tabOwners = new Map();
+const sessionQueues = new Map();
+const SESSION_STORAGE = "jarvis.applicationSessions.v1";
+const SESSION_ID = /^js_[a-f0-9]{32}$/;
+const CLOSED_SESSION_RETENTION_MS = 35 * 24 * 60 * 60 * 1000;
+let persistenceTail = Promise.resolve();
+let pendingRequests = 0;
+const sessionReady = (async () => {
+  const saved = (await chrome.storage.session.get(SESSION_STORAGE))[SESSION_STORAGE];
+  if (!saved) return;
+  if (!Array.isArray(saved) || saved.length > 8192) throw new Error("Invalid browser session state.");
+  for (const value of saved) {
+    if (!SESSION_ID.test(value.id) || !Array.isArray(value.tabs) || value.tabs.length > 512)
+      throw new Error("Invalid browser session ownership.");
+    const state = { id: value.id, groupId: Number.isInteger(value.groupId) ? value.groupId : null,
+      closed: value.closed === true, closedAt: Number.isFinite(value.closedAt) ? value.closedAt : (value.closed ? Date.now() : null) };
+    sessionStates.set(state.id, state);
+    for (const id of value.tabs) {
+      if (!Number.isInteger(id) || id < 0 || tabOwners.has(id)) throw new Error("Invalid browser tab ownership.");
+      tabOwners.set(id, state.id);
+    }
+  }
+})();
+function persistSessions() {
+  persistenceTail = persistenceTail.catch(() => {}).then(() => chrome.storage.session.set({
+    [SESSION_STORAGE]: [...sessionStates.values()].map(s => ({ id: s.id, groupId: s.groupId, closed: s.closed, closedAt: s.closedAt,
+      tabs: [...tabOwners].filter(([, owner]) => owner === s.id).map(([id]) => id) }))
+  }));
+  return persistenceTail;
+}
 async function onRequest(message) {
   if (!message || !message.id) return;
+  let admitted = false;
   try {
-    const data = await handle(message.cmd, message.args || {});
-    post({ id: message.id, ok: true, data });
+    if (!SESSION_ID.test(message.sessionId || "")) throw new Error("SESSION_REQUIRED: update the agent and open an application session.");
+    if (pendingRequests >= 128) throw new Error("Browser request queue is full.");
+    pendingRequests++; admitted = true;
+    await sessionReady;
+    let session = sessionStates.get(message.sessionId);
+    if (!session) {
+      for (const [id, state] of sessionStates)
+        if (state.closed && state.closedAt < Date.now() - CLOSED_SESSION_RETENTION_MS &&
+            !sessionQueues.has(id) && ![...tabOwners.values()].includes(id)) sessionStates.delete(id);
+      if (sessionStates.size >= 8192) throw new Error("Browser session history capacity reached; wait for retained closed sessions to expire.");
+      if ([...sessionStates.values()].filter(s => !s.closed).length >= 512)
+        throw new Error("Browser active-session capacity reached; close unused sessions.");
+      session = { id: message.sessionId, groupId: null, closed: false, closedAt: null };
+      sessionStates.set(session.id, session);
+    }
+    // Serialize only this session. Never use a mutable global current-session around await.
+    const previous = sessionQueues.get(session.id) || Promise.resolve();
+    const work = previous.catch(() => {}).then(async () => {
+      if (session.closed && !(message.cmd === "session" && message.args?.close === true))
+        throw new Error("Browser session is closed.");
+      return handle(message.cmd, message.args || {}, session);
+    });
+    sessionQueues.set(session.id, work);
+    try { post({ id: message.id, ok: true, data: await work }); }
+    finally { if (sessionQueues.get(session.id) === work) sessionQueues.delete(session.id); }
   } catch (e) {
     post({ id: message.id, ok: false, error: String(e && e.message ? e.message : e) });
-  }
+  } finally { if (admitted) pendingRequests--; }
 }
-
-// ---- the Jarvis tab group ---------------------------------------------------
-//
-// Every tab the agent drives lives in one Chrome tab group, so the user can see
-// at a glance which tabs are being controlled and the agent cannot wander into
-// the rest of the window. Tabs join the group by being created here or by an
-// explicit browser_tab_select; nothing else is drivable.
 
 const GROUP_TITLE = "Jarvis";
-let groupId = null;
-
-/** The group's id, creating it around a tab when there isn't one yet. */
-async function ensureGroup(tabId) {
-  // An extension loaded before tab groups were asked for has no API to group
-  // with, and silently driving ungrouped tabs is exactly what this prevents.
-  if (!chrome.tabGroups) {
-    throw new Error(
-      "This browser's Jarvis Browser extension predates the tab group and cannot be driven safely. " +
-      "Reload it at chrome://extensions (its manifest now needs the tabGroups permission).");
+async function ensureGroup(tabId, session) {
+  if (!chrome.tabGroups) throw new Error("Reload the Jarvis extension with tabGroups permission.");
+  const owner = tabOwners.get(tabId);
+  if (owner && owner !== session.id) throw new Error("Tab belongs to another session.");
+  if (!owner && [...tabOwners.values()].filter(id => id === session.id).length >= 512)
+    throw new Error("Session tab capacity reached; close unused tabs.");
+  if (session.groupId !== null) {
+    try { await chrome.tabGroups.get(session.groupId); }
+    catch { session.groupId = null; }
   }
-
-  if (groupId !== null) {
-    try {
-      await chrome.tabGroups.get(groupId);
-    } catch (e) {
-      groupId = null;
-    }
+  if (session.groupId === null) {
+    session.groupId = await chrome.tabs.group({ tabIds: [tabId] });
+    await chrome.tabGroups.update(session.groupId, { title: GROUP_TITLE + " " + session.id.slice(3, 9), color: "orange" });
+  } else {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.groupId !== session.groupId) await chrome.tabs.group({ tabIds: [tabId], groupId: session.groupId });
   }
-
-  if (groupId === null) {
-    groupId = await chrome.tabs.group({ tabIds: [tabId] });
-    await chrome.tabGroups.update(groupId, { title: GROUP_TITLE, color: "orange" });
-    return groupId;
-  }
-
-  const tab = await chrome.tabs.get(tabId);
-  if (tab.groupId !== groupId) {
-    await chrome.tabs.group({ tabIds: [tabId], groupId });
-  }
-  return groupId;
+  tabOwners.set(tabId, session.id);
+  await persistSessions();
+  return session.groupId;
 }
-
-async function inGroup(tab) {
-  if (!chrome.tabGroups || groupId === null || tab.groupId !== groupId) return false;
-  try {
-    await chrome.tabGroups.get(groupId);
-    return true;
-  } catch (e) {
-    groupId = null;
-    return false;
-  }
+async function inGroup(tab, session) {
+  if (tabOwners.get(tab.id) !== session.id || session.groupId === null || tab.groupId !== session.groupId) return false;
+  try { await chrome.tabGroups.get(session.groupId); return true; }
+  catch { session.groupId = null; await persistSessions(); return false; }
 }
-
-/**
- * The tab a page-facing command acts on. Only tabs in the Jarvis group qualify:
- * the model has to open one (browser_tab_new / browser_navigate) or the user's
- * own tab has to be adopted deliberately with browser_tab_select.
- */
-async function targetTab(args) {
+async function targetTab(args, session) {
   if (args.tabId) {
     const tab = await chrome.tabs.get(args.tabId);
-    if (!await inGroup(tab)) {
-      throw new Error(
-        `Tab ${args.tabId} is not in the ${GROUP_TITLE} tab group. Open a tab with browser_tab_new, ` +
-        `or adopt this one with browser_tab_select — only grouped tabs can be driven.`);
-    }
+    if (!await inGroup(tab, session)) throw new Error("Tab is not owned by this session in its group.");
     return tab;
   }
-
-  if (groupId !== null) {
-    const grouped = await chrome.tabs.query({ groupId });
-    const active = grouped.find(t => t.active) || grouped[0];
-    if (active) return active;
+  if (session.groupId !== null) {
+    const tabs = (await chrome.tabs.query({ groupId: session.groupId })).filter(t => tabOwners.get(t.id) === session.id);
+    const tab = tabs.find(t => t.active) || tabs[0];
+    if (tab) return tab;
   }
-
-  throw new Error(
-    `No tab is in the ${GROUP_TITLE} tab group yet. Call browser_tab_new to open one, or ` +
-    "browser_tab_select with a tab id from browser_tabs to adopt an existing tab.");
+  throw new Error("No owned tab in this session. Open one with tabs_create_mcp.");
 }
 
 // ---- CDP session management ------------------------------------------------
@@ -300,7 +318,11 @@ chrome.debugger.onDetach.addListener((source) => {
   if (source.tabId != null) attached.delete(source.tabId);
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => attached.delete(tabId));
+chrome.tabs.onRemoved.addListener((tabId) => {
+  attached.delete(tabId); tabOwners.delete(tabId);
+  clearTimeout(indicated.get(tabId)); indicated.delete(tabId);
+  sessionReady.then(persistSessions).catch(() => {});
+});
 
 // ---- in-page helpers (serialized into the tab; no closures) ----------------
 
@@ -748,21 +770,19 @@ function showIndicator(tabId, point) {
 }
 
 /** Takes every trace of the agent off the pages it was driving. */
-async function clearIndicators(mode) {
-  for (const timer of indicated.values()) clearTimeout(timer);
-  indicated.clear();
-  if (groupId === null) return;
-  let tabs = [];
-  try { tabs = await chrome.tabs.query({ groupId }); } catch (e) { return; }
+async function clearIndicators(mode, session) {
+  await sessionReady;
+  const tabs = (await chrome.tabs.query({})).filter(t => tabOwners.has(t.id) && (!session || tabOwners.get(t.id) === session.id));
   for (const tab of tabs) {
-    runInPage(tab.id, pageIndicator, [{ mode }]).catch(() => {});
+    clearTimeout(indicated.get(tab.id)); indicated.delete(tab.id);
+    await runInPage(tab.id, pageIndicator, [{ mode }]).catch(() => {});
   }
 }
-
-// The page's own Stop button: the only thing it can do is ask the app to stop.
+// A page cannot name a different session: ownership is resolved from its sender tab.
 chrome.runtime.onMessage.addListener((message, sender) => {
-  if (message && message.type === "JARVIS_STOP") {
-    post({ event: "stop_requested", tabId: sender.tab ? sender.tab.id : null });
+  if (message && message.type === "JARVIS_STOP" && sender.tab) {
+    const sessionId = tabOwners.get(sender.tab.id);
+    if (sessionId) post({ event: "stop_requested", tabId: sender.tab.id, sessionId });
   }
 });
 
@@ -897,8 +917,8 @@ async function screenshot(tabId, region, scale) {
   };
 }
 
-async function computer(args) {
-  const tab = await targetTab(args);
+async function computer(args, session) {
+  const tab = await targetTab(args, session);
   await ensureAttached(tab.id);
   const action = args.action;
   const modifiers = comboModifiers(args);
@@ -1005,8 +1025,8 @@ async function computer(args) {
 const MOBILE_UA = "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36";
 
-async function resize(args) {
-  const tab = await targetTab(args);
+async function resize(args, session) {
+  const tab = await targetTab(args, session);
   await ensureAttached(tab.id);
   const applied = [];
 
@@ -1038,7 +1058,7 @@ async function resize(args) {
 
 // ---- command dispatch ------------------------------------------------------
 
-async function handle(cmd, args) {
+async function handle(cmd, args, session) {
   switch (cmd) {
     case "ping":
       return { pong: true };
@@ -1046,23 +1066,35 @@ async function handle(cmd, args) {
     // The app ends a session when its turn finishes: the glow and the Stop
     // button come down, and the pages go back to the quiet pill (or clean).
     case "session": {
-      await clearIndicators(args.active === false ? "off" : "idle");
+      await clearIndicators(args.active === false ? "off" : "idle", session);
+      if (args.close === true) {
+        session.closed = true;
+        session.closedAt ??= Date.now();
+        const owned = [...tabOwners].filter(([, owner]) => owner === session.id).map(([id]) => id);
+        for (const id of owned) {
+          await chrome.debugger.detach({ tabId: id }).catch(() => {});
+          await chrome.tabs.remove(id).catch(() => {});
+          attached.delete(id); tabOwners.delete(id);
+        }
+        session.groupId = null;
+        await persistSessions();
+      }
       return { session: args.active === false ? "ended" : "idle" };
     }
 
     case "tabs": {
-      const tabs = await chrome.tabs.query({});
+      const tabs = (await chrome.tabs.query({})).filter(t => tabOwners.get(t.id) === session.id);
       return tabs.map(t => ({
         id: t.id, title: t.title, url: t.url, active: t.active,
         attached: attached.has(t.id),
-        grouped: groupId !== null && t.groupId === groupId,
+        grouped: session.groupId !== null && t.groupId === session.groupId,
       }));
     }
 
     // The origin gate on the app side asks for this before the first action on a
     // tab, so a page change is noticed before anything is clicked on it.
     case "tab_origin": {
-      const tab = args.tabId ? await chrome.tabs.get(args.tabId) : await targetTab(args);
+      const tab = await targetTab(args, session);
       let origin = "";
       try {
         origin = new URL(tab.url || "").origin;
@@ -1075,17 +1107,17 @@ async function handle(cmd, args) {
     case "navigate": {
       if (!args.url) throw new Error("url is required");
       if (args.url === "back" || args.url === "forward") {
-        const tab = await targetTab(args);
+        const tab = await targetTab(args, session);
         await (args.url === "back" ? chrome.tabs.goBack(tab.id) : chrome.tabs.goForward(tab.id));
         return { tabId: tab.id, went: args.url };
       }
       if (args.newTab || !args.tabId) {
         const tab = await chrome.tabs.create({ url: args.url, active: true });
-        await ensureGroup(tab.id);
+        await ensureGroup(tab.id, session);
         await tryAttach(tab.id);
         return { tabId: tab.id, grouped: true };
       }
-      const target = await targetTab(args);
+      const target = await targetTab(args, session);
       await tryAttach(target.id);
       await chrome.tabs.update(target.id, { url: args.url, active: true });
       return { tabId: target.id };
@@ -1093,32 +1125,35 @@ async function handle(cmd, args) {
 
     case "create_tab": {
       const tab = await chrome.tabs.create({ url: args.url || "about:blank", active: args.active !== false });
-      await ensureGroup(tab.id);
+      await ensureGroup(tab.id, session);
       return { tabId: tab.id, grouped: true };
     }
 
     case "select_tab": {
       if (!args.tabId) throw new Error("tabId is required");
+      await targetTab(args, session);
       const tab = await chrome.tabs.update(args.tabId, { active: true });
       await chrome.windows.update(tab.windowId, { focused: true });
       // Selecting is how a tab the user already had open joins the group.
-      await ensureGroup(args.tabId);
+      await ensureGroup(args.tabId, session);
       return { selected: args.tabId, grouped: true };
     }
 
     case "close_tab": {
       if (!args.tabId) throw new Error("tabId is required");
+      await targetTab(args, session);
       await chrome.tabs.remove(args.tabId);
+      tabOwners.delete(args.tabId); await persistSessions();
       return { closed: args.tabId };
     }
 
     case "read_page": {
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       return await runInPage(tab.id, pageText, [args.maxChars || 60000]);
     }
 
     case "a11y": {
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       const a11yArgs = [args.filter === "all" ? "all" : "interactive", args.rootRef || null, args.maxNodes || 1500];
       if (args.rootRef) {
         // A subtree focus targets the one frame its ref lives in.
@@ -1143,7 +1178,7 @@ async function handle(cmd, args) {
 
     case "form_input": {
       if (!args.ref) throw new Error("ref is required");
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       showIndicator(tab.id, null);
       return await runInPage(tab.id, pageFormInput, [args.ref, args.value], args.frameId);
     }
@@ -1151,7 +1186,7 @@ async function handle(cmd, args) {
     case "file_upload": {
       if (!args.ref) throw new Error("ref is required");
       if (!Array.isArray(args.paths) || !args.paths.length) throw new Error("paths is required");
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       await ensureAttached(tab.id);
       const token = "jf" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
       await runInPage(tab.id, pageMarkForUpload, [args.ref, token], args.frameId);
@@ -1180,14 +1215,14 @@ async function handle(cmd, args) {
 
     case "drop_image": {
       if (typeof args.x !== "number" || typeof args.y !== "number") throw new Error("x and y are required");
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       showIndicator(tab.id, null);
       return await runInPage(tab.id, pageDropFile,
         [args.x, args.y, args.name || "image.png", args.mime || "image/png", args.data]);
     }
 
     case "gif": {
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       const state = await ensureAttached(tab.id);
       switch (args.op) {
         case "start": {
@@ -1225,7 +1260,7 @@ async function handle(cmd, args) {
 
     case "js_exec": {
       if (typeof args.code !== "string") throw new Error("code is required");
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       await ensureAttached(tab.id);
       const result = await debuggerSend(tab.id, "Runtime.evaluate", {
         expression: args.code,
@@ -1247,7 +1282,7 @@ async function handle(cmd, args) {
     }
 
     case "console_read": {
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       const state = attached.get(tab.id);
       if (!state) {
         await ensureAttached(tab.id);
@@ -1261,7 +1296,7 @@ async function handle(cmd, args) {
     }
 
     case "network_read": {
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       const state = attached.get(tab.id);
       if (!state) {
         await ensureAttached(tab.id);
@@ -1282,14 +1317,14 @@ async function handle(cmd, args) {
     }
 
     case "resize":
-      return await resize(args);
+      return await resize(args, session);
 
     case "computer":
-      return await computer(args);
+      return await computer(args, session);
 
     case "click": {
       if (!args.selector) throw new Error("selector is required");
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       showIndicator(tab.id, null);
       const [result] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -1307,7 +1342,7 @@ async function handle(cmd, args) {
 
     case "type": {
       if (!args.selector) throw new Error("selector is required");
-      const tab = await targetTab(args);
+      const tab = await targetTab(args, session);
       showIndicator(tab.id, null);
       const [result] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },

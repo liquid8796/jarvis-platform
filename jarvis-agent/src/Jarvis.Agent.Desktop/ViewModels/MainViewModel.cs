@@ -10,7 +10,7 @@ using Jarvis.Agent.Desktop.Infrastructure;
 using Jarvis.Agent.Desktop.Services;
 using Jarvis.Agent.Windows;
 namespace Jarvis.Agent.Desktop.ViewModels;
-public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
+public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
     private AgentRuntime? _runtime;
     private readonly Window _owner;
@@ -18,7 +18,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly ToolPermissionPolicy _permissions = new();
     private readonly ToolPermissionStore _permissionStore;
     private int _selectedTab;
-    public int SelectedTab { get => _selectedTab; set => Set(ref _selectedTab, value); }
+    public int SelectedTab { get => _selectedTab; set { Set(ref _selectedTab, value); if (_sessionUiReady) RefreshSessionUi(); } }
     public ToolPermissionsViewModel Permissions { get; }
     private string _server = "https://jarvis.example.com", _device = "", _workspace = "", _status = "Not connected", _control = "Control paused", _error = "";
     private bool _loopback;
@@ -51,6 +51,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         _owner = owner;
         _settingsRoot = settingsRoot ?? AgentProfile.Root;
+        InitializeSessionUi();
         _permissionStore = new ToolPermissionStore(System.IO.Path.Combine(_settingsRoot, "tool-permissions.json"));
         try
         {
@@ -121,18 +122,20 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private async Task ToggleConnection()
     {
         Error = "";
-        if (_runtime is not null) { await _runtime.DisposeAsync(); _runtime = null; Status = "Not connected"; Control = "Control paused"; Changed(); return; }
+        if (_runtime is not null) { await _runtime.DisposeAsync(); _runtime = null; _connectedOptions = null; _connectedToken = null; Status = "Not connected"; Control = "Control paused"; Changed(); RefreshSessionUi(); return; }
         var folders = new WorkspaceDirectories(Workspace, AdditionalDirectories);
         var options = new AgentOptions(ServerUrl, DeviceId, folders.Primary, AllowLoopbackHttp, folders.Additional);
         AgentProfile.Save(options, Token);
         var prompts = new LocalPrompts(_owner, _permissions, _permissionStore);
         _runtime = new AgentRuntime(prompts, prompts, new DesktopArtifactSink(_owner), () => _owner, _permissions, _settingsRoot);
+        _runtime.SessionCleanupWarning += warning => _owner.Dispatcher.InvokeAsync(() => Sessions.ReportWarning(warning));
         _runtime.Gate.Changed += armed => _owner.Dispatcher.InvokeAsync(() =>
             Control = armed ? "Armed · until you pause" : "Control paused");
         _runtime.Connection.Activity += e => _owner.Dispatcher.InvokeAsync(() => { Events.Insert(0, e); while (Events.Count > 150) Events.RemoveAt(Events.Count - 1); });
         _runtime.Connection.ConnectionChanged += connected => _owner.Dispatcher.InvokeAsync(() => Status = connected ? "Connected securely" : "Disconnected · retrying");
         Tools.Clear(); foreach (var descriptor in _runtime.Connection.Descriptors) Tools.Add(descriptor.Name);
         Status = "Connecting…"; Changed();
+        _connectedOptions = options; _connectedToken = Token;
         _ = ObserveAsync(_runtime.StartAsync(options, Token));
     }
     private async Task ObserveAsync(Task connection)
@@ -149,5 +152,5 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private void Changed() { PropertyChanged?.Invoke(this, new(nameof(ConnectLabel))); PropertyChanged?.Invoke(this, new(nameof(ToolCount))); }
     private void Set<T>(ref T field, T value, [CallerMemberName] string name = "")
     { if (EqualityComparer<T>.Default.Equals(field, value)) return; field = value; PropertyChanged?.Invoke(this, new(name)); }
-    public async ValueTask DisposeAsync() { if (_runtime is not null) await _runtime.DisposeAsync(); }
+    public async ValueTask DisposeAsync() { _sessionRefreshTimer?.Stop(); if (_runtime is not null) await _runtime.DisposeAsync(); }
 }

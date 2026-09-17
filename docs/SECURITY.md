@@ -1,5 +1,17 @@
 # Security boundaries and threat model
 
+## 1.0.64 multi-session boundaries
+
+Application handles are protected with the server's existing persisted Data Protection key ring, bound to authenticated owner and enrolled execution device, expire after 30 days, and are never returned by list/metadata operations. They are not a replacement for OAuth, per-tool approval, persistent constrained-process grants, or Arm/Pause. Retain and protect the server data directory during upgrades. Never log or copy handles into inter-session messages.
+
+The local session store validates owner/device/session and closed state again at dispatch. Queued calls keep immutable workspace snapshots. Per-session process/task ownership prevents a sibling from reading stdin/output or cancelling another chat's job by guessing an ID. The native bridge stamps session identity outside browser arguments; extension ownership checks include read/origin/close paths. Separate per-session browser origin gates and computer-service state do not weaken denied-app or OS/UIPI boundaries.
+
+Global desktop exclusion and shared observation invalidation prevent stale-coordinate actions after another session changes the desktop. File and repository claims use canonical paths; protected agent directories stay excluded even through filesystem links. Existing-file writes require a current session-local SHA-256 observation. These are coordination safeguards for managed calls, not an OS sandbox, a browser-profile boundary or an atomic transaction against unrelated external file writers.
+
+Registry/mailbox responses contain only explicitly stored metadata and coordination events. Messages from another agent are untrusted data, not user consent or higher-priority instructions. No chat transcript harvesting, automatic transcript sharing, cross-account routing or idle-chat wakeup is implemented. Explicitly invoked durable project journals retain their existing project-scoped sharing semantics.
+
+Queue, mailbox, session and browser-history capacities are bounded. Legacy clients talking to a modern agent must open a session; old agents are supported only through explicitly negotiated compatibility. Update the browser extension rather than bypassing capability checks. Emergency Pause remains global; Stop/Close on the Sessions page is scoped. All runtime/permission UI validation in this release uses isolated test fixtures, not live protected Agent controls.
+
 ## Protected access
 
 An active user, an enabled owned device, a valid device-bound OAuth grant, a published matching capability, and a locally armed agent are all required. Opaque enrollment tokens are SHA-256 hashed at the server, shown once, expire after 30 days, and stored with Windows DPAPI CurrentUser locally. OAuth uses OpenIddict, code+S256, exact allowed callbacks, short-lived reference access tokens and refresh grants. Revoked token entries are checked; device/account validity is checked per call and periodically on connections. Local arming cannot be set via a remote envelope.

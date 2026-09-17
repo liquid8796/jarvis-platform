@@ -1,10 +1,11 @@
 using System.Windows.Input;
 namespace Jarvis.Agent.Desktop.Infrastructure;
-public sealed class RelayCommand(Action action) : ICommand
+public sealed class RelayCommand(Action action, Func<bool>? canExecute = null) : ICommand
 {
-    public event EventHandler? CanExecuteChanged { add { } remove { } }
-    public bool CanExecute(object? parameter) => true;
-    public void Execute(object? parameter) => action();
+    public event EventHandler? CanExecuteChanged;
+    public bool CanExecute(object? parameter) => canExecute?.Invoke() ?? true;
+    public void Execute(object? parameter) { if (CanExecute(parameter)) action(); }
+    public void Refresh() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
 public sealed class AsyncCommand(Func<Task> action, Action<Exception> onError) : ICommand
 {

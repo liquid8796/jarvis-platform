@@ -69,8 +69,15 @@ public sealed partial class AgentTaskMcpTests
         AssertLegacyTaskJson(child, child.GetProperty("structuredContent"));
         AssertLegacyTaskJson(otherRead, otherRead.GetProperty("structuredContent"));
     }
-    private static async Task<JsonElement> CallAsync(HttpClient client, string name, object arguments) =>
-        (await RpcAsync(client, "tools/call", new { name, arguments })).GetProperty("result").Clone();
+    private sealed record SessionHandle(string Value);
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<HttpClient, SessionHandle> SessionHandles = new();
+    private static async Task<JsonElement> CallAsync(HttpClient client, string name, object arguments)
+    {
+        var payload = JsonSerializer.SerializeToNode(arguments, WireJson.Options)!.AsObject();
+        if (SessionHandles.TryGetValue(client, out var handle) && payload["_jarvis"] is null)
+            payload["_jarvis"] = new System.Text.Json.Nodes.JsonObject { ["sessionHandle"] = handle.Value };
+        return (await RpcAsync(client, "tools/call", new { name, arguments = payload })).GetProperty("result").Clone();
+    }
     private static async Task<JsonElement> RpcAsync(HttpClient client, string method, object parameters)
     {
         var response = await client.PostAsJsonAsync("/mcp", new { jsonrpc = "2.0", id = Guid.NewGuid().ToString("N"), method, @params = parameters });
@@ -112,6 +119,10 @@ public sealed partial class AgentTaskMcpTests
         client.DefaultRequestHeaders.Accept.ParseAdd("application/json, text/event-stream");
         await RpcAsync(client, "initialize", new { protocolVersion = "2025-11-25", capabilities = new { }, clientInfo = new { name = "task-test", version = "1" } });
         client.DefaultRequestHeaders.Add("MCP-Protocol-Version", "2025-11-25");
+        var opened = (await RpcAsync(client, "tools/call", new { name = "session__open", arguments = new { label = "MCP output fixture" } })).GetProperty("result");
+        Assert.False(opened.TryGetProperty("isError", out var openError) && openError.GetBoolean(), opened.GetRawText());
+        using var metadata = JsonDocument.Parse(opened.GetProperty("content")[0].GetProperty("text").GetString()!);
+        SessionHandles.Add(client, new(metadata.RootElement.GetProperty("sessionHandle").GetString()!));
         await ServerFixture.Csrf(admin);
         return client;
     }

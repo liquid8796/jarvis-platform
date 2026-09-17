@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.64 - 2026-09-17
+
+- Add protected application-session handles bound to authenticated owner and agent, schema envelope validation/stripping, persistent metadata/workspace revisions and bounded coordination mailboxes. Missing/foreign/closed sessions fail explicitly; handles are not permissions and metadata never exposes another session's handle.
+- Allow an empty agent default workspace. Add session/workspace tools and preserve the accepted request's workspace snapshot when a chat changes its folder. Default edits affect new sessions only.
+- Add live revisioned execution settings with default 5 calls/process jobs/durable tasks, fair per-session queues, queue expiry, independent cancellation/status capacity, and server acknowledgement. Reducing limits drains existing work without canceling it; composites do not deadlock at limit 1.
+- Enforce owned process/task operations and scoped stop/close, resource coordination for files/repositories/browser/desktop, per-session browser selection/tab groups and per-session desktop service state. Unknown shell effects retain conservative exclusion. Existing-file writes require this session's successful read and a matching content fingerprint; stale writes fail before mutation.
+- Add WPF Execution limits and Sessions pages using UI UX Pro Max WPF guidance: inline validation, persisted drafts, acknowledgement visibility, metadata-only session rows, filter/empty/error states, scoped stop/confirmed close, keyboard actions, dynamic high-contrast tokens, and scroll-safe narrow layouts.
+- Pin official Microsoft.Windows.Console.ConPTY 1.24.260710001 and ship its native host alongside the matching assets. Fix redirected-parent stdio inheritance, answer the one-time startup handshake, drain final output and retain resources through process cleanup.
+- Validate architecture-specific native hosts in Windows publish outputs before packaging; expose an isolated `--pty-only` smoke that loads the actual published ConPTY library and checks final output/exit status without connecting to the live agent.
+- Bump package/assembly/file versions to 1.0.64 / 1.0.64.0; vendored bridge assemblies to 1.0.25 / 1.0.25.0; browser extension to 1.2.0. Live deployment is a separate acceptance step.
+
 ## 1.0.63 - 2026-09-17
 
 - Add a persistent `Always approve` choice to the local approval dialog only for the constrained `process.start` and `process.spawn` tools; persistence is exact-tool scoped and is written atomically before the active request is approved.

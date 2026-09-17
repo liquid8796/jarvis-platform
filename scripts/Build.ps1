@@ -44,6 +44,8 @@ try {
     $agentOutput=Join-Path $root "artifacts/agent/$version"
     foreach($target in @(@('Jarvis.Agent.Desktop','desktop'),@('Jarvis.Agent.Cli','cli'))){
       Run-Dotnet (@('publish',"jarvis-agent/src/$($target[0])",'-c','Release','-r','win-x64','--self-contained','true','-p:PublishSingleFile=false','-o',"$agentOutput/$($target[1])")+$restorePublish)
+      $componentName = if ($target[1] -eq 'desktop') { 'Desktop' } else { 'Cli' }
+      & (Join-Path $PSScriptRoot 'Verify-AgentOutput.ps1') -OutputDirectory "$agentOutput/$($target[1])" -Component $componentName -PublishedWinX64
     }
         # Ship both real entry points, not standalone baseline host artifacts or secrets.
     # Required framework assemblies are not private configuration files.

@@ -58,11 +58,17 @@ public sealed class StatefulComputerToolAdapter : IAgentTool
             {
                 // Once dispatch begins the observed screen may have changed even when
                 // the inner tool later reports an error. Force re-observation.
-                _states.Invalidate(context.SessionId);
+                _states.InvalidateAll();
             }
         }
 
-        var result = await _inner.ExecuteAsync(arguments, context, cancellationToken).ConfigureAwait(false);
+        ToolReply result;
+        try { result = await _inner.ExecuteAsync(arguments, context, cancellationToken).ConfigureAwait(false); }
+        finally
+        {
+            if (Descriptor.Id is not ("computer.screenshot" or "computer.list_granted_applications" or "computer.read_clipboard"))
+                _states.InvalidateAll();
+        }
         if (!_capturesState || result.IsError) return result;
 
         var state = _states.Capture(context.SessionId, _observer.Capture());

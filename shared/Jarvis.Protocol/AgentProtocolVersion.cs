@@ -18,8 +18,8 @@ public static class AgentProtocolCapabilities
     public const string CatalogSync = "catalog-sync-v1";
     public const string CapabilityLeases = "capability-leases-v1";
 
-    public static IReadOnlyList<string> Agent { get; } = [TaskV1, CatalogSync, CapabilityLeases];
-    public static IReadOnlyList<string> Server { get; } = [TaskV1, CatalogSync, CapabilityLeases];
+    public static IReadOnlyList<string> Agent { get; } = [TaskV1, CatalogSync, CapabilityLeases, AgentSessionRules.Capability, AgentExecutionSettings.Capability];
+    public static IReadOnlyList<string> Server { get; } = [TaskV1, CatalogSync, CapabilityLeases, AgentSessionRules.Capability, AgentExecutionSettings.Capability];
 
     public static IReadOnlyList<string> Negotiate(IReadOnlyList<string>? requested)
     {

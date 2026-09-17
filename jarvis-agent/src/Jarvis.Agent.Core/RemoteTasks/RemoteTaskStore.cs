@@ -6,7 +6,13 @@ using Jarvis.Protocol;
 namespace Jarvis.Agent.Core.RemoteTasks;
 
 internal sealed record StoredRemoteTask(int Version, string OwnerId, string CreateDigest,
-    string? PlanDigest, RemoteTaskPlan Plan, RemoteTaskSnapshot Snapshot, IReadOnlyList<RemoteTaskArtifact> Artifacts);
+    string? PlanDigest, RemoteTaskPlan Plan, RemoteTaskSnapshot Snapshot, IReadOnlyList<RemoteTaskArtifact> Artifacts)
+{
+    public string? OwnerSessionId { get; init; }
+    public string? AgentDeviceId { get; init; }
+    public long? WorkspaceRevision { get; init; }
+    public IReadOnlyList<string>? WorkspaceDirectories { get; init; }
+}
 
 /// <summary>Atomic, bounded local snapshots. No task data is stored in the server database.</summary>
 internal sealed class RemoteTaskStore : IDisposable
@@ -48,6 +54,13 @@ internal sealed class RemoteTaskStore : IDisposable
         return task;
     }
     public bool AtCapacity => Directory.EnumerateFiles(_root, "*.json", SearchOption.AllDirectories).Take(128).Count() >= 128;
+    public IReadOnlyList<StoredRemoteTask> ForSession(string owner, string sessionId)
+    {
+        var directory = Path.Combine(_root, Hash(owner));
+        if (!Directory.Exists(directory)) return [];
+        return Directory.EnumerateFiles(directory, "*.json", SearchOption.TopDirectoryOnly).Select(Read)
+            .Where(task => task.OwnerId == owner && task.OwnerSessionId == sessionId).ToArray();
+    }
     public int CountChildren(string owner, string parentTaskId)
     {
         var canonical = RemoteTaskRules.TaskId(parentTaskId);

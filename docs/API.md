@@ -1,5 +1,31 @@
 # API overview
 
+## Application-session MCP contract ? 1.0.64
+
+For negotiated application-session agents, every ordinary tool and `agent_task_*` operation accepts a reserved `_jarvis` object with exactly `sessionHandle`. The gateway authenticates OAuth, checks owner/device/expiry, strips this envelope, then validates the installed tool schema. An arbitrary deviceId or a sessionId from the session list cannot impersonate a session. The MCP transport stays stateless; clients must not treat an access token or Mcp-Session-Id as a per-chat ID.
+
+Open a fresh logical chat session:
+```json
+{"label":"Code review"}
+```
+Call `session__open` with that payload; retain the handle returned in its JSON result. Passing its existing valid handle resumes through `session.get`, not by recreating a closed row. Subsequent file, shell, browser, computer and task calls carry:
+```json
+{"_jarvis":{"sessionHandle":"<this chat's opaque handle>"},"file_path":"D:\\Work\\App\\README.md"}
+```
+Choose or clear this session's workspace through `workspace__set`:
+```json
+{"_jarvis":{"sessionHandle":"<handle>"},"path":"D:\\Work\\App","additionalDirectories":[],"expectedRevision":0}
+```
+Use the revision actually returned by `workspace__get`; `path: null` clears the folder. This does not alter the agent default or another session. Accepted requests retain their prior workspace even while queued.
+
+Published tools: `session__open`, `session__get`, `session__list`, `session__send_message`, `session__read_events`, `session__close`, `workspace__get`, `workspace__set`. Session metadata includes workspace revision, lifecycle, bounded activity/resource counts and unread events, not handles or automatically captured transcript content. Lists/messages are limited to the authenticated owner and selected execution agent. Messages carry an explicit agent-coordination-data source and cannot grant permissions. Event reads have a cursor, bounded page size, truncation and hasMore indicators.
+
+Process read/stdin/resize/cancel and durable task/artifact operations check creator session ownership as well as account/device. Session close is idempotent, cancels owned work and does not pause siblings. Status/cancel/close use independent bounded capacity; mutating session operations still obey the existing Arm and approval gates. Queue expiry fails before tool execution; disconnected or timed-out mutations with unknown completion must not be replayed automatically.
+
+Key actionable errors: SESSION_REQUIRED, SESSION_CLOSED, WORKSPACE_REQUIRED, WORKSPACE_REVISION_CONFLICT, QUEUE_FULL, QUEUE_TIMEOUT, FILE_READ_REQUIRED and FILE_CHANGED. HTTP 429 is the separate server rate limiter. Existing-file writes require this session's successful current Read, not a revision supplied by another session. Tool-local parameter names and exact schemas remain the discovery source of truth.
+
+Execution settings travel over authenticated agent WSS, not an MCP permission-changing tool: AgentHello advertises capability/settings, execution.settings.changed carries a revision and execution.settings.ack confirms it. Settings control execution capacity, never authorization.
+
 Read the actual controller contracts for exact JSON fields. `/api` uses cookie authentication plus `X-CSRF-TOKEN` for every unsafe operation, including login/register. Fetch `/api/auth/csrf`, retain cookies and refresh CSRF after login/logout. Record DTO validation rejects malformed input. Secret-bearing responses use Cache-Control no-store. Errors are real HTTP errors, not always-200 envelopes.
 
 | Path | Methods / purpose |

@@ -552,7 +552,7 @@ public sealed class ThreadRuntimeToolSet : IDisposable
         private static string Project(JsonElement args, AgentExecutionContext context)
         {
             var requested = Optional(args, "project", 1024);
-            var full = WorkspaceDirectories.Normalize(string.IsNullOrWhiteSpace(requested) ? context.Workspace : Path.GetFullPath(requested, context.Workspace));
+            var full = WorkspaceDirectories.Normalize(WorkspaceDirectories.ResolvePath(requested, context.Workspace));
             RequireProject(full, context); return full;
         }
 
@@ -560,7 +560,9 @@ public sealed class ThreadRuntimeToolSet : IDisposable
         {
             var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(project));
-            foreach (var root in new[] { context.Workspace }.Concat(context.AdditionalDirectories ?? []))
+            var roots = new[] { context.Workspace }.Concat(context.AdditionalDirectories ?? []).Where(path => !string.IsNullOrWhiteSpace(path)).ToArray();
+            if (roots.Length == 0) throw new AgentRequestException("WORKSPACE_REQUIRED", "Select a session workspace before using project-scoped durable journals.");
+            foreach (var root in roots)
             {
                 var selected = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
                 if (full.Equals(selected, comparison) || full.StartsWith(selected + Path.DirectorySeparatorChar, comparison) || full.StartsWith(selected + Path.AltDirectorySeparatorChar, comparison)) return;

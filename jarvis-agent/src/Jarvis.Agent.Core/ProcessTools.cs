@@ -15,6 +15,15 @@ public sealed class ProcessToolSet : IDisposable
 {
     private readonly ConcurrentDictionary<string, ManagedJob> _jobs = new();
     private readonly object _startLock = new();
+    private readonly Func<AgentExecutionSettings> _settings;
+    private bool _disposed;
+    public ProcessToolSet(Func<AgentExecutionSettings>? settings = null) => _settings = settings ?? (() => new AgentExecutionSettings());
+    public int RunningCount => _jobs.Values.Count(job => !job.Done);
+    public int RunningForSession(AgentSessionIdentity identity) => _jobs.Values.Count(job => !job.Done && job.BelongsTo(identity));
+    public void StopSession(AgentSessionIdentity identity)
+    {
+        lock (_startLock) foreach (var job in _jobs.Values.Where(job => job.BelongsTo(identity))) job.Cancel();
+    }
 
     public IEnumerable<IAgentTool> Tools =>
     [
@@ -28,13 +37,16 @@ public sealed class ProcessToolSet : IDisposable
 
     public void StopAll()
     {
-        foreach (var job in _jobs.Values) job.Cancel();
+        lock (_startLock) foreach (var job in _jobs.Values) job.Cancel();
     }
 
     public void Dispose()
     {
-        StopAll();
-        foreach (var job in _jobs.Values) job.Dispose();
+        lock (_startLock)
+        {
+            if (_disposed) return; _disposed = true;
+            foreach (var job in _jobs.Values) job.Dispose();
+        }
     }
 
     private sealed class ProcessTool(ProcessToolSet owner, string operation) : IAgentTool
@@ -126,7 +138,7 @@ public sealed class ProcessToolSet : IDisposable
                 if (operation is "start" or "spawn") return Start(args, context);
 
                 var id = args.GetProperty("jobId").GetString() ?? "";
-                if (!owner._jobs.TryGetValue(id, out var found)) return ToolReply.Error("No owned job with this ID.");
+                if (!owner._jobs.TryGetValue(id, out var found) || !found.BelongsTo(context)) return ToolReply.Error("No owned job with this ID in this session.");
 
                 if (operation == "cancel")
                 {
@@ -162,12 +174,15 @@ public sealed class ProcessToolSet : IDisposable
         {
             lock (owner._startLock)
             {
-                if (owner._jobs.Values.Count(j => !j.Done) >= 4) return ToolReply.Error("Four jobs are already running.");
+                ObjectDisposedException.ThrowIf(owner._disposed, owner);
+                context.SessionCancellation.ThrowIfCancellationRequested();
+                var maximum = owner._settings().MaxProcessJobs;
+                if (owner._jobs.Values.Count(j => !j.Done) >= maximum) return ToolReply.Error($"PROCESS_LIMIT: {maximum} owned process jobs are already running.");
 
                 var timeout = args.TryGetProperty("timeoutSeconds", out var n) ? n.GetInt32() : 600;
                 if (timeout is < 1 or > 1800) throw new ArgumentException("timeoutSeconds must be 1..1800.");
                 var cwd = WorkspaceDirectories.Normalize(args.TryGetProperty("workingDirectory", out var requested)
-                    ? Path.GetFullPath(requested.GetString() ?? "", context.Workspace) : context.Workspace);
+                    ? WorkspaceDirectories.ResolvePath(requested.GetString(), context.Workspace) : WorkspaceDirectories.ResolvePath(null, context.Workspace));
 
                 ManagedJob job;
                 if (operation == "start")
@@ -192,6 +207,7 @@ public sealed class ProcessToolSet : IDisposable
                     else job = new PipedJob(argv, cwd, timeout, environment);
                 }
 
+                job.BindOwner(context);
                 if (!owner._jobs.TryAdd(job.Id, job)) { job.Dispose(); throw new InvalidOperationException("Job ID collision."); }
                 foreach (var old in owner._jobs.Values.Where(j => j.Done).OrderBy(j => j.Started).Take(Math.Max(0, owner._jobs.Count - 50)))
                     if (owner._jobs.TryRemove(old.Id, out var removed)) removed.Dispose();
@@ -237,6 +253,21 @@ public sealed class ProcessToolSet : IDisposable
         private long _offset;
         private bool _done;
         private int? _exitCode;
+        private string? _ownerId, _deviceId, _sessionId;
+        private CancellationTokenRegistration _sessionCancellation;
+        private IDisposable? _resourceLease;
+        public bool BelongsTo(AgentExecutionContext context) => _sessionId == context.SessionId && _ownerId == context.OwnerId && _deviceId == context.AgentDeviceId;
+        public bool BelongsTo(AgentSessionIdentity identity) => _sessionId == identity.SessionId && _ownerId == identity.OwnerId && _deviceId == identity.DeviceId;
+        public void BindOwner(AgentExecutionContext context)
+        {
+            lock (_sync)
+            {
+                _ownerId = context.OwnerId; _deviceId = context.AgentDeviceId; _sessionId = context.SessionId;
+                _resourceLease = context.RetainResources?.Invoke();
+                if (_done) { _resourceLease?.Dispose(); _resourceLease = null; }
+                if (!_done) _sessionCancellation = context.SessionCancellation.UnsafeRegister(static job => ((ManagedJob)job!).Cancel(), this);
+            }
+        }
 
         protected ManagedJob(bool isPty) => IsPty = isPty;
         public string Id { get; } = Guid.NewGuid().ToString("N");
@@ -264,7 +295,7 @@ public sealed class ProcessToolSet : IDisposable
 
         protected void Complete(int? exitCode)
         {
-            lock (_sync) { _exitCode = exitCode; _done = true; }
+            lock (_sync) { _exitCode = exitCode; _done = true; _sessionCancellation.Unregister(); _resourceLease?.Dispose(); _resourceLease = null; }
         }
 
         public string Snapshot(long cursor)
@@ -347,10 +378,11 @@ public sealed class ProcessToolSet : IDisposable
             {
                 try { _process.StandardInput.Close(); } catch (Exception) { }
                 try { await Task.WhenAll(output, error).WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
-                Complete(_process.HasExited ? _process.ExitCode : null);
+                var exitCode = _process.HasExited ? _process.ExitCode : (int?)null;
                 _lease.Dispose();
                 _process.Dispose();
                 _stop.Dispose();
+                Complete(exitCode);
             }
         }
 
@@ -400,6 +432,8 @@ public sealed class ProcessToolSet : IDisposable
         private readonly OwnedProcessLease _lease;
         private readonly CancellationTokenSource _stop;
         private int _cancelled;
+        private readonly SemaphoreSlim _inputSerial = new(1, 1);
+        private readonly object _consoleSync = new();
 
         public ConPtyJob(IReadOnlyList<string> argv, string cwd, int timeout, IReadOnlyDictionary<string, string>? environment, short columns, short rows) : base(true)
         {
@@ -426,6 +460,8 @@ public sealed class ProcessToolSet : IDisposable
                 environmentBlock = BuildEnvironmentBlock(environment);
                 var startup = new StartupInfoEx { AttributeList = attributeList };
                 startup.StartupInfo.Cb = Marshal.SizeOf<StartupInfoEx>();
+                // Explicit NULL handles keep redirected parent stdio out of the pseudoconsole child.
+                startup.StartupInfo.Flags = 0x00000100; // STARTF_USESTDHANDLES
                 var flags = ExtendedStartupInfoPresent | CreateSuspended | (environmentBlock != IntPtr.Zero ? CreateUnicodeEnvironment : 0);
                 if (!CreateProcessW(null, BuildCommandLine(argv), IntPtr.Zero, IntPtr.Zero, false, flags, environmentBlock, cwd, ref startup, out pi))
                     throw new Win32Exception(Marshal.GetLastWin32Error(), $"Could not start '{argv[0]}'.");
@@ -438,6 +474,10 @@ public sealed class ProcessToolSet : IDisposable
                 outputWrite.Dispose(); outputWrite = null;
                 _writer = new FileStream(inputWrite, FileAccess.Write); inputWrite = null;
                 _reader = new FileStream(outputRead, FileAccess.Read); outputRead = null;
+                // Release the host's artificial reference only after the child has its console.
+                // The host now flushes its final frame and closes output naturally when clients exit.
+                hr = ConptyReleasePseudoConsole(_console);
+                if (hr != 0) throw new Win32Exception(hr, "ConptyReleasePseudoConsole failed.");
             }
             catch
             {
@@ -468,41 +508,73 @@ public sealed class ProcessToolSet : IDisposable
             }
             finally
             {
+                try { await output.WaitAsync(TimeSpan.FromSeconds(5)); }
+                catch (TimeoutException)
+                {
+                    Add("system", "\n[jarvis: final PTY drain timed out; closing remaining console clients]\n");
+                    Kill();
+                }
+                // Output is drained concurrently; never close the console merely because the root exited.
                 CloseConsole();
-                try { await output.WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
-                Complete(_process.HasExited ? _process.ExitCode : null);
+                try { await output.WaitAsync(TimeSpan.FromSeconds(5)); }
+                catch (TimeoutException) { Add("system", "\n[jarvis: PTY output cleanup incomplete]\n"); }
+                var exitCode = _process.HasExited ? _process.ExitCode : (int?)null;
                 _writer?.Dispose(); _reader?.Dispose();
                 _lease.Dispose(); _process.Dispose(); _stop.Dispose();
+                Complete(exitCode);
             }
         }
 
         private async Task PumpAsync()
         {
-            var stream = new StreamReader(_reader!, new UTF8Encoding(false), false, 4096, leaveOpen: true);
-            var chars = new char[4096];
+            // Read raw pipe chunks instead of waiting for a large character read to fill.
+            // ConPTY blocks startup on DA1; a headless terminal must answer that query promptly.
+            var decoder = new UTF8Encoding(false).GetDecoder();
+            var handshake = new PtyStartupHandshake();
+            var bytes = new byte[4096]; var chars = new char[4096];
             try
             {
                 int read;
-                while ((read = await stream.ReadAsync(chars.AsMemory())) > 0) Add("pty", new string(chars, 0, read));
+                while ((read = await _reader!.ReadAsync(bytes.AsMemory())) > 0)
+                {
+                    var count = decoder.GetChars(bytes.AsSpan(0, read), chars, false);
+                    var text = new string(chars, 0, count);
+                    Add("pty", text);
+                    if (handshake.Observe(text))
+                        await WriteInputAsync(PtyStartupHandshake.Response, false, _stop.Token);
+                }
+                var tail = decoder.GetChars(ReadOnlySpan<byte>.Empty, chars, true);
+                if (tail > 0) Add("pty", new string(chars, 0, tail));
             }
-            catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
-            finally { stream.Dispose(); }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException or OperationCanceledException) { }
         }
 
-        public override async Task WriteStdinAsync(string text, bool close, CancellationToken ct)
+        public override Task WriteStdinAsync(string text, bool close, CancellationToken ct)
         {
             if (Done) throw new InvalidOperationException("Process has already exited.");
-            var bytes = Encoding.UTF8.GetBytes(text);
-            await _writer!.WriteAsync(bytes, ct);
-            await _writer.FlushAsync(ct);
-            if (close) _writer.Dispose();
+            return WriteInputAsync(text, close, ct);
+        }
+        private async Task WriteInputAsync(string text, bool close, CancellationToken ct)
+        {
+            await _inputSerial.WaitAsync(ct);
+            try
+            {
+                var bytes = Encoding.UTF8.GetBytes(text);
+                await _writer!.WriteAsync(bytes, ct);
+                await _writer.FlushAsync(ct);
+                if (close) _writer.Dispose();
+            }
+            finally { _inputSerial.Release(); }
         }
 
         public override void ResizePty(short columns, short rows)
         {
-            if (Done || _console == IntPtr.Zero) throw new InvalidOperationException("PTY is no longer running.");
-            var hr = ResizePseudoConsole(_console, new Coord { X = columns, Y = rows });
-            if (hr != 0) throw new Win32Exception(hr, "ResizePseudoConsole failed.");
+            lock (_consoleSync)
+            {
+                if (Done || _console == IntPtr.Zero) throw new InvalidOperationException("PTY is no longer running.");
+                var hr = ResizePseudoConsole(_console, new Coord { X = columns, Y = rows });
+                if (hr != 0) throw new Win32Exception(hr, "ResizePseudoConsole failed.");
+            }
         }
 
         public override void Cancel()
@@ -521,8 +593,11 @@ public sealed class ProcessToolSet : IDisposable
 
         private void CloseConsole()
         {
-            var console = Interlocked.Exchange(ref _console, IntPtr.Zero);
-            if (console != IntPtr.Zero) ClosePseudoConsole(console);
+            lock (_consoleSync)
+            {
+                var console = Interlocked.Exchange(ref _console, IntPtr.Zero);
+                if (console != IntPtr.Zero) ClosePseudoConsole(console);
+            }
         }
 
         public override void Dispose() => Cancel();
@@ -573,9 +648,10 @@ public sealed class ProcessToolSet : IDisposable
             public IntPtr ProcessHandle; public IntPtr ThreadHandle; public int ProcessId; public int ThreadId;
         }
         [DllImport("kernel32.dll", SetLastError = true)] private static extern bool CreatePipe(out SafeFileHandle readPipe, out SafeFileHandle writePipe, IntPtr attributes, int size);
-        [DllImport("kernel32.dll", SetLastError = true)] private static extern int CreatePseudoConsole(Coord size, SafeFileHandle input, SafeFileHandle output, uint flags, out IntPtr console);
-        [DllImport("kernel32.dll", SetLastError = true)] private static extern int ResizePseudoConsole(IntPtr console, Coord size);
-        [DllImport("kernel32.dll")] private static extern void ClosePseudoConsole(IntPtr console);
+        [DllImport("conpty.dll", EntryPoint = "ConptyCreatePseudoConsole")] private static extern int CreatePseudoConsole(Coord size, SafeFileHandle input, SafeFileHandle output, uint flags, out IntPtr console);
+        [DllImport("conpty.dll", EntryPoint = "ConptyResizePseudoConsole")] private static extern int ResizePseudoConsole(IntPtr console, Coord size);
+        [DllImport("conpty.dll", EntryPoint = "ConptyClosePseudoConsole")] private static extern void ClosePseudoConsole(IntPtr console);
+        [DllImport("conpty.dll")] private static extern int ConptyReleasePseudoConsole(IntPtr console);
         [DllImport("kernel32.dll", SetLastError = true)] private static extern bool InitializeProcThreadAttributeList(IntPtr list, int count, int flags, ref IntPtr size);
         [DllImport("kernel32.dll", SetLastError = true)] private static extern bool UpdateProcThreadAttribute(IntPtr list, uint flags, IntPtr attribute, IntPtr value, IntPtr size, IntPtr previous, IntPtr returnSize);
         [DllImport("kernel32.dll")] private static extern void DeleteProcThreadAttributeList(IntPtr list);

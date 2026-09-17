@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 <SolidColorBrush x:Key="Bg" Color="#0D1018"/><SolidColorBrush x:Key="Panel" Color="#151923"/><SolidColorBrush x:Key="Line" Color="#292D3D"/>
 <SolidColorBrush x:Key="Text" Color="#EEEFF7"/><SolidColorBrush x:Key="Muted" Color="#8D95AF"/><SolidColorBrush x:Key="Accent" Color="#9474EF"/>
+<SolidColorBrush x:Key="Danger" Color="#FFA5B7"/><SolidColorBrush x:Key="Warning" Color="#F5C584"/><SolidColorBrush x:Key="OnAccent" Color="#0D1018"/>
 <SolidColorBrush x:Key="Text100Brush" Color="#EEEFF7"/><SolidColorBrush x:Key="Text200Brush" Color="#C2C7D7"/><SolidColorBrush x:Key="Text300Brush" Color="#939BB3"/><SolidColorBrush x:Key="Text500Brush" Color="#939BB3"/>
 <SolidColorBrush x:Key="Bg100Brush" Color="#151923"/><SolidColorBrush x:Key="Bg200Brush" Color="#1D2230"/><SolidColorBrush x:Key="Bg300Brush" Color="#282E40"/><SolidColorBrush x:Key="BorderMidBrush" Color="#394057"/>
 <SolidColorBrush x:Key="ClaudeBackgroundColorBrush" Color="#151923"/><SolidColorBrush x:Key="AccentBrandBrush" Color="#9474EF"/><SolidColorBrush x:Key="Oncolor100Brush" Color="White"/><SolidColorBrush x:Key="Warning100Brush" Color="#F5C584"/><FontFamily x:Key="UiFontFamily">Segoe UI</FontFamily>

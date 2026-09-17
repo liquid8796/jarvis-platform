@@ -54,6 +54,7 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             peer.ProtocolVersion = AgentProtocolVersion.Negotiate(hello.ProtocolVersion);
             peer.Capabilities = peer.ProtocolVersion >= AgentProtocolVersion.Current
                 ? AgentProtocolCapabilities.Negotiate(hello.Capabilities) : [];
+            peer.InitializeExecutionSettings(hello.ExecutionSettings);
             peer.UpdateCatalog(hello.CatalogGeneration, hello.CatalogDigest);
             // A new connection replaces only this enrolled device, never other users' connections.
             _peers.AddOrUpdate(device.Id, peer, (_, previous) => { previous.Wire.Abort(); return peer; });
@@ -66,7 +67,8 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             await peer.Wire.SendAsync(new WireMessage("welcome")
             {
                 ProtocolVersion = peer.ProtocolVersion,
-                Capabilities = peer.Capabilities
+                Capabilities = peer.Capabilities,
+                ExecutionSettingsRevision = peer.SupportsExecutionSettings ? peer.ExecutionSettings.Revision : null
             }, stop.Token);
             var heartbeat = WatchAsync(peer, stop.Token);
             try
@@ -80,6 +82,10 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                     {
                         case "ping": await peer.Wire.SendAsync(new WireMessage("pong") { Timestamp = message.Timestamp }, stop.Token); break;
                         case "pong": break;
+                        case "execution.settings.changed":
+                            var revision = peer.ApplyExecutionSettings(message);
+                            await peer.Wire.SendAsync(new WireMessage("execution.settings.ack") { ExecutionSettingsRevision = revision }, stop.Token);
+                            break;
                         case "catalog.changed":
                             await ApplyCatalogChangedAsync(peer, message, stop.Token);
                             break;
@@ -161,7 +167,7 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             throw new InvalidOperationException("Your selected agent is offline.");
         if (!await IsAuthorizedAsync(deviceId, ownerId, peer.TokenHash, cancellationToken))
             throw new UnauthorizedAccessException("Device authorization expired or was revoked.");
-        if (!await peer.Slots.WaitAsync(0, cancellationToken)) throw new InvalidOperationException("Agent busy. No command was dispatched.");
+        using var admission = await peer.EnterAsync(AgentSessionRules.IsControlTool(toolId), cancellationToken);
         var id = Guid.NewGuid().ToString("N");
         var completion = new TaskCompletionSource<ToolReply>(TaskCreationOptions.RunContinuationsAsynchronously);
         peer.Pending[id] = completion;
@@ -169,7 +175,7 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
         timeout.CancelAfter(TimeSpan.FromSeconds(options.ToolTimeoutSeconds));
         try
         {
-            await peer.Wire.SendAsync(new WireMessage("call") { Id = id, ToolId = toolId, SessionId = sessionId,
+            await peer.Wire.SendAsync(new WireMessage("call") { Id = id, ToolId = toolId, SessionId = sessionId, OwnerId = ownerId,
                 Arguments = arguments, DeadlineUtc = DateTimeOffset.UtcNow.AddSeconds(options.ToolTimeoutSeconds),
                 ExpectedCatalogGeneration = peer.CatalogGeneration > 0 ? peer.CatalogGeneration : null,
                 ExpectedCatalogDigest = peer.CatalogDigest }, timeout.Token);
@@ -182,9 +188,9 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             catch (Exception ex) when (ex is WebSocketException or IOException or OperationCanceledException or ObjectDisposedException) { }
             throw;
         }
-        finally { peer.Pending.TryRemove(id, out _); peer.Slots.Release(); }
+        finally { peer.Pending.TryRemove(id, out _); }
     }
-    private sealed class Peer(string owner, string device, string hash, WireSocket wire)
+    private sealed partial class Peer(string owner, string device, string hash, WireSocket wire)
     {
         public string OwnerId { get; } = owner;
         public string DeviceId { get; } = device;

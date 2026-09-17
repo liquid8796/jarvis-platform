@@ -5,6 +5,7 @@ namespace Jarvis.Agent.Core;
 public sealed record AgentOptions(string ServerUrl, string DeviceId, string Workspace,
     bool AllowLoopbackHttp = false, IReadOnlyList<string>? AdditionalDirectories = null)
 {
+    public AgentExecutionSettings ExecutionSettings { get; init; } = new();
     public Uri ValidateAndGetWebSocketUri()
     {
         if (!Uri.TryCreate(ServerUrl, UriKind.Absolute, out var uri) ||
@@ -13,6 +14,7 @@ public sealed record AgentOptions(string ServerUrl, string DeviceId, string Work
             throw new ArgumentException("Use an HTTPS server URL. HTTP is allowed only for explicit loopback development.");
         if (!Guid.TryParse(DeviceId, out _)) throw new ArgumentException("Invalid device ID.");
         _ = new WorkspaceDirectories(Workspace, AdditionalDirectories);
+        ExecutionSettings.Validate();
         return new UriBuilder(uri) { Scheme = uri.Scheme == "https" ? "wss" : "ws", Path = "/agent/connect" }.Uri;
     }
 }
@@ -21,6 +23,17 @@ public sealed record AgentExecutionContext(string Workspace, string CallId, stri
     public IReadOnlyList<string> AdditionalDirectories { get; init; } = [];
     public string? ThreadId { get; init; }
     public string? TurnId { get; init; }
+    public string? OwnerId { get; init; }
+    public string? AgentDeviceId { get; init; }
+    public long? WorkspaceRevision { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CancellationToken SessionCancellation { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Func<IDisposable>? RetainResources { get; init; }
+    public AgentSessionIdentity RequireSessionIdentity() =>
+        !string.IsNullOrWhiteSpace(OwnerId) && !string.IsNullOrWhiteSpace(AgentDeviceId) && AgentSessionRules.IsSessionId(SessionId)
+            ? new(OwnerId, AgentDeviceId, SessionId)
+            : throw new AgentRequestException("SESSION_REQUIRED", "Open a session with session__open and use its sessionHandle.");
     // Set by the local dispatcher, never taken from remote arguments or the wire envelope.
     public bool FullPermission { get; init; }
 }

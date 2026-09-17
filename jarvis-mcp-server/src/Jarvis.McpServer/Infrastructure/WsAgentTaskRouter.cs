@@ -20,7 +20,7 @@ public sealed partial class WsAgentRouter : IAgentTaskRouter
             throw new InvalidOperationException("Selected agent does not support task-v1. Upgrade the agent; ordinary tools remain available.");
         if (!await IsAuthorizedAsync(deviceId, ownerId, peer.TokenHash, cancellationToken))
             throw new UnauthorizedAccessException("Device authorization expired or was revoked.");
-        if (!await peer.Slots.WaitAsync(0, cancellationToken)) throw new InvalidOperationException("Agent control channel is busy. No task request was sent.");
+        using var admission = await peer.EnterAsync(control: true, cancellationToken);
         var id = Guid.NewGuid().ToString("N");
         var completion = new TaskCompletionSource<RemoteTaskReply>(TaskCreationOptions.RunContinuationsAsynchronously);
         peer.TaskPending[id] = completion;
@@ -37,6 +37,6 @@ public sealed partial class WsAgentRouter : IAgentTaskRouter
             return reply;
         }
         // A lost create acknowledgement is not a reason to replay a task. Caller can query the same taskId.
-        finally { peer.TaskPending.TryRemove(id, out _); peer.Slots.Release(); }
+        finally { peer.TaskPending.TryRemove(id, out _); }
     }
 }

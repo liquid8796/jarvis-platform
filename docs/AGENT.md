@@ -1,10 +1,28 @@
 # Jarvis Agent operator guide
 
+## Multi-chat operation in 1.0.64
+
+The default workspace is optional. Connection center can clear it; Save defaults updates only newly opened sessions, not active chats or already accepted requests. Relative file paths and shell/git calls require a session workspace or explicit call `workingDirectory`. Absolute file paths work without a default. Project journal tools require a selected session project; a missing scope returns WORKSPACE_REQUIRED. CLI visual output with no workspace goes to the agent's dedicated local visual-artifacts area, never an accidental executable directory.
+
+In each independent chat, call `session__open` and keep its returned `_jarvis.sessionHandle` separate. The same account may use separate chats on different client devices against the same enrolled agent. Use `workspace__get` / `workspace__set` to select, change or clear that chat's folder. An explicit workingDirectory overrides one call only. Folder selection remains working context, not Full permission or an OS-access bypass.
+
+**Execution limits** edits local budgets, default 5 for calls/processes/tasks. Save commits a revision and applies it without reconnecting; the UI distinguishes saved locally, applied locally and server acknowledgement pending/received. Positive concurrency values are not silently clamped. Queue capacity/timeout are separate bounded advanced fields. High values show a resource warning. Lowering limits does not kill work. The server's HTTP anti-abuse rate limit is separate.
+
+**Sessions** shows metadata, current workspace/revision, active/queued calls, process/task counts, resource ownership and unread events. Filter by label, folder or session ID; Show closed sessions exposes retained history. Stop work cancels the selected session's accepted work and owned tasks/processes, leaving the session available for future requests. Close session is confirmed and terminal for its handle; owned tabs are cleaned up where the browser is reachable. A cleanup warning means tabs may remain open, not that other sessions were stopped. Global Pause remains the distinct all-session control.
+
+Read an existing file in the current chat before editing or replacing it. FILE_READ_REQUIRED or FILE_CHANGED requires a fresh Read and reconciliation, not retrying the mutation blindly. Keep separate Git worktrees for independent code changes. Shell commands have unknown effects and remain conservatively serialized against conflicting resource use; increasing the call budget does not remove this coordination or the one-desktop-input rule.
+
+### Upgrade / recovery
+
+Publish the matching server and agent, update/reload Jarvis Browser **1.2.0**, then refresh/reconnect the MCP client's tool catalog. The new agent rejects a browser extension lacking application-session support. A supported application-session agent does not silently fall back to the old account-wide session. Existing old agents retain their negotiated legacy path during a staged server upgrade. Preserve the server data directory, local session database and local settings; do not copy credentials into release packages. Handles expire after 30 days; open a new session when required. No live restart is inferred from source commit or publish.
+
+Sessions can read their mailbox on the next call; this does not wake an idle ChatGPT/Claude conversation. Shared browser login cookies, external file writers and actual concurrent use of the physical keyboard remain outside chat-state isolation.
+
 Open the full extracted tree in Visual Studio 2026; publish the CLI and desktop together using `scripts/Build.ps1`. The resulting agent is an interactive user process on Windows, not a Windows Service. No elevation is requested. Win10/11 behavior, multi-monitor scaling, UAC limitations, clipboard and hotkeys must be exercised using ACCEPTANCE.md before use.
 
 ## GUI
 
-Paste the HTTPS origin (no `/mcp` path), enrolled device UUID, one-time enrollment token, and an existing workspace. The private profile is `%LOCALAPPDATA%\JarvisAgent\agent.local.json`; token is DPAPI protected for the current Windows user. Connect saves the profile but does not arm. Use Arm control to permit requests without an automatic time limit until you press Pause, Disconnect or Exit. Sensitive calls open an approval dialog showing the exact tool and arguments. Computer/browser native permissions may ask again. Deny is the default.
+Paste the HTTPS origin (no `/mcp` path), enrolled device UUID and one-time enrollment token. The default workspace may be empty; each chat can choose its own existing folder later with `workspace__set`. The private profile is `%LOCALAPPDATA%\JarvisAgent\agent.local.json`; token is DPAPI protected for the current Windows user. Connect saves the profile but does not arm. Use Arm control to permit requests without an automatic time limit until you press Pause, Disconnect or Exit. Sensitive calls open an approval dialog showing the exact tool and arguments. Computer/browser native permissions may ask again. Deny is the default.
 
 Minimize/close hides to system tray; closing the window is not the same as Exit. The tray menu offers restore, pause, and exit. `Ctrl+Alt+Pause` pauses when registration succeeds; another application may occupy this hotkey, so tray Pause remains available. No auto-start entry is installed. Temporary connection loss cancels actions and owned managed processes but preserves your explicit arm choice for reconnect in the same running process. Calls are never replayed. Manual Disconnect/Exit clears the grant; restarting the application always starts paused.
 
