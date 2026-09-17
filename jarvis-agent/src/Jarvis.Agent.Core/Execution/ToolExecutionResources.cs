@@ -16,11 +16,11 @@ public static class ToolExecutionResources
         if (id is "process.start" or "process.spawn" || tool.Category == "shell")
             return new(["*"], true); // Arbitrary commands are not assumed to remain inside cwd.
         if (tool.Category is "session" or "workspace" or "thread" or "workflow")
-            return new(["coordination|" + tool.Category + "|" + context.SessionId], !tool.ReadOnly);
+            return new(["coordination|" + tool.Category + "|" + context.IsolationScopeId], !tool.ReadOnly);
         if (tool.Category == "computer") return new(["desktop"], true);
         if (tool.Category == "browser")
         {
-            var resources = new List<string> { "browser|" + context.SessionId };
+            var resources = new List<string> { "browser|" + context.IsolationScopeId };
             if (MayChangeDesktop(tool.Id)) resources.Add("desktop");
             return new(resources, true);
         }

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.65 - 2026-09-17
+
+- Make `_jarvis.sessionHandle` optional for ordinary MCP tools and `agent_task_*`: missing handles now dispatch through a per-call ephemeral execution ID instead of failing `SESSION_REQUIRED` before the local agent. Explicit session/workspace tools still require a validated owner/device-bound handle.
+- Keep stateful sessionless resources usable across later prompts with a stable authenticated owner/device isolation scope for process jobs, filesystem read-before-write observations, computer state, per-session adapters, browser suites, scheduler fairness and resource claims; explicit `js_...` sessions retain strict per-session ownership.
+- Add resumable `session__stop_work`; remove destructive `session__close` from normal tool discovery while retaining raw/operator/UI close behavior. A stopped session remains readable/resumable; only explicit close is terminal.
+- Add pre-dispatch gateway rejection audit records such as `rejected:SESSION_REQUIRED` without logging tool arguments or session handles, plus reason-coded agent reachability states for connect/reconnect/heartbeat/transport diagnostics.
+- Add regressions for prompt-to-prompt ordinary calls without handles, sessionless task/process/file/computer/browser continuity, explicit-session isolation, resumable stop-work and rejection auditing.
+- Bump package/assembly/file versions to 1.0.65 / 1.0.65.0. Browser extension remains 1.2.0; production deployment remains a separate step.
+
 ## 1.0.64 - 2026-09-17
 
 - Add protected application-session handles bound to authenticated owner and agent, schema envelope validation/stripping, persistent metadata/workspace revisions and bounded coordination mailboxes. Missing/foreign/closed sessions fail explicitly; handles are not permissions and metadata never exposes another session's handle.

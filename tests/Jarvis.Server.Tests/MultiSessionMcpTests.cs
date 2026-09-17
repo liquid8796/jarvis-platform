@@ -1,6 +1,9 @@
 using System.Text.Json;
 using Jarvis.Agent.Core;
+using Jarvis.McpServer.Infrastructure;
 using Jarvis.Protocol;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Jarvis.Server.Tests;
 
@@ -14,6 +17,10 @@ public sealed partial class AgentTaskMcpTests
         using var first = await GrantAsync(app, admin, peer.DeviceId);
         using var second = await GrantAsync(app, admin, peer.DeviceId);
         var listed = await RpcAsync(first, "tools/list", new { });
+        var published = listed.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString()).ToArray();
+        Assert.Contains("session__stop_work", published);
+        Assert.DoesNotContain("session__close", published);
         var a = ParseText(await RawSessionCall(first, "session__open", new { label = "Laptop chat" }));
         var b = ParseText(await RawSessionCall(second, "session__open", new { label = "Phone chat" }));
         var ha = a.GetProperty("sessionHandle").GetString()!;
@@ -22,9 +29,12 @@ public sealed partial class AgentTaskMcpTests
         var sb = b.GetProperty("sessionId").GetString()!;
         Assert.NotEqual(sa, sb);
         Assert.NotEqual(ha, hb);
-        var missing = await RawSessionCall(first, "test__session_context", new { });
-        Assert.True(missing.GetProperty("isError").GetBoolean());
-        Assert.Contains("SESSION_REQUIRED", missing.GetRawText());
+        var turnTwoWithoutHandle = await RawSessionCall(first, "test__session_context", new { });
+        Assert.False(turnTwoWithoutHandle.GetProperty("isError").GetBoolean(), turnTwoWithoutHandle.GetRawText());
+        var sessionless = ParseText(turnTwoWithoutHandle);
+        Assert.StartsWith("call_", sessionless.GetProperty("sessionId").GetString(), StringComparison.Ordinal);
+        Assert.Empty(sessionless.GetProperty("workspace").GetString()!);
+        Assert.Equal(a.GetProperty("deviceId").GetString(), sessionless.GetProperty("agentDeviceId").GetString());
         var clear = await RawSessionCall(first, "workspace__set", new { _jarvis = new { sessionHandle = ha }, path = (string?)null, expectedRevision = 0 });
         Assert.False(clear.GetProperty("isError").GetBoolean(), clear.GetRawText());
         var ca = ParseText(await RawSessionCall(first, "test__session_context", new { _jarvis = new { sessionHandle = ha } }));
@@ -51,6 +61,10 @@ public sealed partial class AgentTaskMcpTests
         var foreign = await RawSessionCall(second, "agent_task_get", new { _jarvis = new { sessionHandle = hb }, taskId });
         Assert.True(foreign.GetProperty("isError").GetBoolean());
         Assert.Contains("not_found", foreign.GetRawText());
+        var stopped = await RawSessionCall(first, "session__stop_work", new { _jarvis = new { sessionHandle = ha } });
+        Assert.False(stopped.GetProperty("isError").GetBoolean(), stopped.GetRawText());
+        Assert.False((await RawSessionCall(first, "session__get", new { _jarvis = new { sessionHandle = ha } })).GetProperty("isError").GetBoolean());
+        Assert.False((await RawSessionCall(first, "session__open", new { _jarvis = new { sessionHandle = ha } })).GetProperty("isError").GetBoolean());
         var closed = await RawSessionCall(first, "session__close", new { _jarvis = new { sessionHandle = ha } });
         Assert.False(closed.GetProperty("isError").GetBoolean(), closed.GetRawText());
         var resumedClosed = await RawSessionCall(first, "session__open", new { _jarvis = new { sessionHandle = ha } });
@@ -62,6 +76,36 @@ public sealed partial class AgentTaskMcpTests
         AssertOutputMatches(listed, "agent_task_create", created);
         AssertOutputMatches(listed, "agent_task_get", foreign);
         AssertOutputMatches(listed, "session__open", await RawSessionCall(second, "session__open", new { _jarvis = new { sessionHandle = hb } }));
+    }
+
+    [Fact]
+    public async Task Sessionless_task_lifecycle_survives_later_calls_without_a_handle()
+    {
+        using var app = new ServerFixture(); using var admin = await app.Admin();
+        await using var peer = await TaskAgentPeer.ConnectAsync(app, admin, new SessionContextProbe());
+        using var client = await GrantAsync(app, admin, peer.DeviceId);
+        var created = await RawSessionCall(client, "agent_task_create", new { goal = "Sessionless continuity task" });
+        Assert.False(created.GetProperty("isError").GetBoolean(), created.GetRawText());
+        var taskId = ParseText(created).GetProperty("task").GetProperty("taskId").GetString()!;
+        var later = await RawSessionCall(client, "agent_task_get", new { taskId });
+        Assert.False(later.GetProperty("isError").GetBoolean(), later.GetRawText());
+        Assert.Equal(taskId, ParseText(later).GetProperty("task").GetProperty("taskId").GetString());
+    }
+
+    [Fact]
+    public async Task Missing_explicit_session_context_is_audited_before_dispatch()
+    {
+        using var app = new ServerFixture(); using var admin = await app.Admin();
+        await using var peer = await TaskAgentPeer.ConnectAsync(app, admin, new SessionContextProbe());
+        using var client = await GrantAsync(app, admin, peer.DeviceId);
+        var rejected = await RawSessionCall(client, "workspace__get", new { });
+        Assert.True(rejected.GetProperty("isError").GetBoolean());
+        Assert.Contains("SESSION_REQUIRED", rejected.GetRawText(), StringComparison.Ordinal);
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var auditEntry = await db.Audit.SingleAsync(a => a.Action == "tool.workspace__get");
+        Assert.Equal("rejected:SESSION_REQUIRED", auditEntry.Outcome);
+        Assert.False(string.IsNullOrWhiteSpace(auditEntry.CorrelationId));
     }
 
     private static async Task<JsonElement> RawSessionCall(HttpClient client, string name, object arguments) =>

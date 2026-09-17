@@ -11,7 +11,7 @@ using ModelContextProtocol.Protocol;
 
 namespace Jarvis.McpServer.Transport;
 
-/// <summary>Dynamic installed-schema adapter with OAuth-bound application sessions, never caller-selected routing.</summary>
+/// <summary>Dynamic installed-schema adapter with OAuth-bound optional application sessions, never caller-selected routing.</summary>
 public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWriter audit, IHttpContextAccessor http,
     AgentTaskService tasks, McpSessionContext sessions)
 {
@@ -29,26 +29,32 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
         // Like task lifecycle methods, these are installed host bookkeeping tools. They never execute
         // arbitrary catalog content, and the agent retains its normal exact-ID approval checks.
         if (scoped)
-            tools.AddRange(capabilities.Values.Where(t => AgentSessionRules.IsTool(t.Id))
+            tools.AddRange(capabilities.Values.Where(t => AgentSessionRules.IsTool(t.Id) && t.Id != "session.close")
                 .Select(t => PublicTool(t, t.Id.Replace(".", "__", StringComparison.Ordinal), t.Description, true)));
         if (tasks.SupportsTasks(user.Id, device.Id))
             foreach (var tool in AgentTaskMcpTools.List())
             {
-                if (scoped) tool.InputSchema = sessions.AugmentSchema(tool.InputSchema, required: true);
+                if (scoped) tool.InputSchema = sessions.AugmentSchema(tool.InputSchema, required: false);
                 tools.Add(tool);
             }
         return new ListToolsResult { Tools = tools.OrderBy(t => t.Name, StringComparer.Ordinal).ToList() };
     }
 
-    private Tool PublicTool(ToolDescriptor descriptor, string name, string description, bool scoped) => new()
+    private Tool PublicTool(ToolDescriptor descriptor, string name, string description, bool scoped)
     {
-        Name = name,
-        Description = description + (scoped && descriptor.Id != "session.open"
-            ? " Include this chat's _jarvis.sessionHandle returned by session__open." : ""),
-        InputSchema = scoped ? sessions.AugmentSchema(descriptor.InputSchema, descriptor.Id != "session.open") : descriptor.InputSchema,
-        OutputSchema = McpOutputSchemas.ToolReply,
-        Annotations = new ToolAnnotations { ReadOnlyHint = descriptor.ReadOnly, DestructiveHint = !descriptor.ReadOnly, OpenWorldHint = true }
-    };
+        var requiresSession = scoped && descriptor.Id != "session.open" && AgentSessionRules.IsTool(descriptor.Id);
+        var contextHint = !scoped || descriptor.Id == "session.open" ? "" : requiresSession
+            ? " Requires this chat's _jarvis.sessionHandle returned by session__open."
+            : " Optionally include this chat's _jarvis.sessionHandle for explicit session workspace and ownership.";
+        return new()
+        {
+            Name = name,
+            Description = description + contextHint,
+            InputSchema = scoped ? sessions.AugmentSchema(descriptor.InputSchema, requiresSession) : descriptor.InputSchema,
+            OutputSchema = McpOutputSchemas.ToolReply,
+            Annotations = new ToolAnnotations { ReadOnlyHint = descriptor.ReadOnly, DestructiveHint = !descriptor.ReadOnly, OpenWorldHint = true }
+        };
+    }
 
     public async Task<CallToolResult> CallAsync(CallToolRequestParams request, CancellationToken ct)
     {
@@ -59,7 +65,8 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
         if (arguments.GetRawText().Length > 262144) return Error("Tool arguments exceed 256 KiB.", request.Name);
         IssuedMcpSession? issued = null;
         string? handle = null;
-        var sessionId = "oauth:" + user.Id + ":" + device.Id;
+        var forwarded = false;
+        var sessionId = scoped ? AgentSessionRules.NewEphemeralExecutionId() : "oauth:" + user.Id + ":" + device.Id;
         try
         {
             if (scoped)
@@ -72,18 +79,27 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
                     issued = sessions.Issue(user.Id, device.Id);
                     sessionId = issued.SessionId; handle = issued.SessionHandle;
                 }
-                else sessionId = sessions.Resolve(user.Id, device.Id, handle);
+                else if (handle is not null)
+                {
+                    sessionId = sessions.Resolve(user.Id, device.Id, handle);
+                }
+                else if (RequiresExplicitSession(request.Name))
+                {
+                    sessionId = sessions.Resolve(user.Id, device.Id, null);
+                }
             }
+            var explicitSession = AgentSessionRules.IsSessionId(sessionId);
             if (RemoteTaskRules.IsReservedName(request.Name))
             {
-                if (scoped && request.Name == "agent_task_tools")
+                forwarded = true;
+                if (explicitSession && request.Name == "agent_task_tools")
                 {
                     var check = await router.CallAsync(user.Id, device.Id, "session.get", WireJson.Element(new { }), sessionId, ct);
                     if (check.IsError) return Error(check.Text, request.Name);
                 }
                 var clean = new CallToolRequestParams { Name = request.Name,
                     Arguments = arguments.Deserialize<Dictionary<string, JsonElement>>(WireJson.Options) };
-                return await AgentTaskMcpTools.CallAsync(tasks, user.Id, device.Id, clean, ct, scoped ? sessionId : null);
+                return await AgentTaskMcpTools.CallAsync(tasks, user.Id, device.Id, clean, ct, explicitSession ? sessionId : null);
             }
             ToolDescriptor? tool;
             if (AgentSessionRules.IsPublicTool(request.Name))
@@ -106,16 +122,37 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
                 toolId = "session.get";
                 arguments = WireJson.Element(new { });
             }
+            forwarded = true;
             return await DispatchAsync(user.Id, device.Id, request.Name, toolId, arguments, sessionId,
                 request.Name == "session__open" ? handle : null, issued?.ExpiresAt, ct);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException or IOException or
             System.Net.WebSockets.WebSocketException or OperationCanceledException)
         {
+            var code = (ex as AgentRequestException)?.Code ?? (ex is OperationCanceledException ? "CANCELLED_OR_TIMEOUT" : "GATEWAY_REJECTED");
+            if (!forwarded)
+            {
+                using var auditTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await audit.WriteAsync(new()
+                    {
+                        UserId = user.Id, DeviceId = device.Id, Action = "tool." + request.Name,
+                        Outcome = "rejected:" + code, CorrelationId = Guid.NewGuid().ToString("N")
+                    }, auditTimeout.Token);
+                }
+                catch (Exception auditError) when (auditError is OperationCanceledException or InvalidOperationException or DbUpdateException)
+                {
+                    _ = auditError;
+                }
+            }
             return Error(ex is OperationCanceledException
                 ? "Call cancelled or timed out. Completion may be unknown; verify state before repeating mutating actions." : ex.Message, request.Name, (ex as AgentRequestException)?.Code);
         }
     }
+
+    private static bool RequiresExplicitSession(string name) =>
+        AgentSessionRules.IsPublicTool(name) && name != "session__open";
 
     private async Task<CallToolResult> DispatchAsync(string owner, string device, string name, string toolId,
         JsonElement arguments, string sessionId, string? handle, DateTimeOffset? expiresAt, CancellationToken ct)

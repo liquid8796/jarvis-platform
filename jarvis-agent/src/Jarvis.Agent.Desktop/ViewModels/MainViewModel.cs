@@ -132,7 +132,15 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
         _runtime.Gate.Changed += armed => _owner.Dispatcher.InvokeAsync(() =>
             Control = armed ? "Armed · until you pause" : "Control paused");
         _runtime.Connection.Activity += e => _owner.Dispatcher.InvokeAsync(() => { Events.Insert(0, e); while (Events.Count > 150) Events.RemoveAt(Events.Count - 1); });
-        _runtime.Connection.ConnectionChanged += connected => _owner.Dispatcher.InvokeAsync(() => Status = connected ? "Connected securely" : "Disconnected · retrying");
+        _runtime.Connection.ReachabilityChanged += state => _owner.Dispatcher.InvokeAsync(() => Status = state.Code switch
+        {
+            "CONNECTED_HEALTHY" => "Connected securely",
+            "CONNECTING" => "Connecting…",
+            "RECONNECTING" => "Reconnecting · calls are not replayed",
+            "HEARTBEAT_STALE" => "Heartbeat stale · reconnecting",
+            "TRANSPORT_INTERRUPTED" => "Connection interrupted · retrying",
+            _ => "Disconnected"
+        });
         Tools.Clear(); foreach (var descriptor in _runtime.Connection.Descriptors) Tools.Add(descriptor.Name);
         Status = "Connecting…"; Changed();
         _connectedOptions = options; _connectedToken = Token;

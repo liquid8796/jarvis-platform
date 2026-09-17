@@ -1,6 +1,14 @@
 # API overview
 
-## Application-session MCP contract ? 1.0.64
+## Prompt-continuity MCP contract — 1.0.65
+
+Ordinary tools and `agent_task_*` accept `_jarvis.sessionHandle` when the client has one, but no longer require it. If omitted, the gateway generates a bounded `call_<random>` execution ID for that invocation and dispatches it to the authenticated enrolled agent. Sessionless state that legitimately spans later calls is keyed to a stable owner/device isolation scope; explicit `js_...` sessions still use the protected handle for strict workspace/mailbox/browser/session ownership.
+
+`session__open` is optional for ordinary execution and remains the entry point for explicit per-chat coordination. `session__get`, `session__list`, `session__send_message`, `session__read_events`, `session__stop_work`, `workspace__get` and `workspace__set` require an explicit handle. `session__close` is intentionally omitted from normal `tools/list`; the raw/operator/UI close path remains for deliberate terminal cleanup. `session__stop_work` cancels owned work without closing the session.
+
+A missing/invalid handle on an ordinary filesystem/Git/shell/process/computer/browser/task call must not produce `SESSION_REQUIRED`; the same error is still correct for explicit session/workspace management. Gateway rejections before dispatch are audited as `rejected:<code>` with correlation/user/device metadata only; arguments and opaque handles are not persisted.
+
+## Application-session MCP contract — 1.0.64
 
 For negotiated application-session agents, every ordinary tool and `agent_task_*` operation accepts a reserved `_jarvis` object with exactly `sessionHandle`. The gateway authenticates OAuth, checks owner/device/expiry, strips this envelope, then validates the installed tool schema. An arbitrary deviceId or a sessionId from the session list cannot impersonate a session. The MCP transport stays stateless; clients must not treat an access token or Mcp-Session-Id as a per-chat ID.
 

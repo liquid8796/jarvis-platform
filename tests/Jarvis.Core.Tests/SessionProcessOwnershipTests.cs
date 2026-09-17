@@ -32,6 +32,21 @@ public sealed class SessionProcessOwnershipTests
     }
 
     [Fact]
+    public async Task Sessionless_job_survives_ephemeral_call_ids_but_remains_owner_device_scoped()
+    {
+        using var tools = new ProcessToolSet();
+        var first = SessionlessContext();
+        var second = SessionlessContext();
+        var id = await Start(tools, first);
+        var own = await Tool(tools, "process.read").ExecuteAsync(WireJson.Element(new { jobId = id }), second, CancellationToken.None);
+        Assert.False(own.IsError, own.Text);
+        var explicitSession = Context();
+        Assert.True((await Tool(tools, "process.read").ExecuteAsync(WireJson.Element(new { jobId = id }), explicitSession, CancellationToken.None)).IsError);
+        Assert.True((await Tool(tools, "process.read").ExecuteAsync(WireJson.Element(new { jobId = id }), second with { OwnerId = "different-owner" }, CancellationToken.None)).IsError);
+        Assert.True((await Tool(tools, "process.read").ExecuteAsync(WireJson.Element(new { jobId = id }), second with { AgentDeviceId = "different-agent" }, CancellationToken.None)).IsError);
+    }
+
+    [Fact]
     public async Task Default_limit_allows_five_owned_jobs_and_absolute_workdir_with_empty_workspace()
     {
         using var tools = new ProcessToolSet();
@@ -84,6 +99,8 @@ public sealed class SessionProcessOwnershipTests
     }
 
     private static AgentExecutionContext Context() => new(Path.GetTempPath(), Guid.NewGuid().ToString("N"), AgentSessionRules.NewSessionId())
+    { OwnerId = "owner", AgentDeviceId = "agent" };
+    private static AgentExecutionContext SessionlessContext() => new(Path.GetTempPath(), Guid.NewGuid().ToString("N"), AgentSessionRules.NewEphemeralExecutionId())
     { OwnerId = "owner", AgentDeviceId = "agent" };
     private static IAgentTool Tool(ProcessToolSet tools, string id) => tools.Tools.Single(t => t.Descriptor.Id == id);
     private static async Task<string> Start(ProcessToolSet tools, AgentExecutionContext context, string? directory = null)

@@ -31,10 +31,21 @@ public sealed partial class AgentConnection : IAsyncDisposable
     private long _lastPong;
     public event Action<AgentEvent>? Activity;
     public event Action<bool>? ConnectionChanged;
+    public event Action<AgentReachabilityStatus>? ReachabilityChanged;
+    private AgentReachabilityStatus _reachability = new("DISCONNECTED", "Agent is not connected.", false);
+    public AgentReachabilityStatus Reachability => Volatile.Read(ref _reachability);
     public bool IsConnected { get; private set; }
     public DynamicToolRegistry ToolRegistry => _registry;
     public IReadOnlyList<ToolDescriptor> Descriptors => _registry.Snapshot.Descriptors;
     public bool AdaptiveCoordinatorAvailable => _adaptiveCoordinator is not null;
+    private void SetReachability(string code, string detail, bool online)
+    {
+        var next = new AgentReachabilityStatus(code, detail, online);
+        Volatile.Write(ref _reachability, next);
+        foreach (var handler in ReachabilityChanged?.GetInvocationList() ?? [])
+            try { ((Action<AgentReachabilityStatus>)handler)(next); } catch (Exception) { }
+        Emit("connection", $"[{code}] {detail}");
+    }
 
     public AgentConnection(IEnumerable<IAgentTool> tools, IApprovalService approval, LocalControlGate gate, ToolPermissionPolicy? permissions = null,
         string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null)
@@ -142,7 +153,8 @@ public sealed partial class AgentConnection : IAsyncDisposable
         {
             try
             {
-                Emit("connection", attempt == 0 ? "Connecting securelyâ€¦" : "Reconnecting; interrupted calls will not be replayed.");
+                SetReachability(attempt == 0 ? "CONNECTING" : "RECONNECTING",
+                    attempt == 0 ? "Connecting securely…" : "Reconnecting; interrupted calls will not be replayed.", false);
                 using var socket = await _socketConnector(endpoint, token, stop.Token).ConfigureAwait(false);
                 var wire = _current = new WireSocket(socket);
                 var catalog = _registry.Snapshot;
@@ -167,7 +179,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
                 }
                 Interlocked.Exchange(ref _lastPong, Environment.TickCount64);
                 IsConnected = true; ConnectionChanged?.Invoke(true); attempt = 0;
-                Emit("connection", "Connected. Local tool-permission settings apply; control must be armed locally.");
+                SetReachability("CONNECTED_HEALTHY", "Connected. Local tool-permission settings apply; control must be armed locally.", true);
                 var heartbeat = HeartbeatAsync(wire, session.Token);
                 try
                 {
@@ -203,12 +215,17 @@ public sealed partial class AgentConnection : IAsyncDisposable
             }
             catch (OperationCanceledException) when (stop.IsCancellationRequested) { break; }
             catch (Exception ex) when (ex is WebSocketException or IOException or System.Text.Json.JsonException or OperationCanceledException)
-            { Emit("connection", "Connection interrupted: " + ex.GetType().Name); }
-            finally { IsConnected = false; ConnectionChanged?.Invoke(false); _current = null; }
+            { SetReachability("TRANSPORT_INTERRUPTED", "Connection interrupted: " + ex.GetType().Name, false); }
+            finally
+            {
+                IsConnected = false; ConnectionChanged?.Invoke(false); _current = null;
+                if (!stop.IsCancellationRequested && Reachability.Online)
+                    SetReachability("TRANSPORT_INTERRUPTED", "Server connection ended; reconnecting without replaying interrupted calls.", false);
+            }
             try { await Task.Delay(TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, Math.Min(attempt++, 5))) + Random.Shared.NextDouble()), stop.Token); }
             catch (OperationCanceledException) { break; }
         }
-        Emit("connection", "Disconnected.");
+        SetReachability("DISCONNECTED", "Disconnected.", false);
     }
     private async Task HeartbeatAsync(WireSocket wire, CancellationToken cancellationToken)
     {
@@ -216,9 +233,16 @@ public sealed partial class AgentConnection : IAsyncDisposable
         while (await timer.WaitForNextTickAsync(cancellationToken))
         {
             if (Environment.TickCount64 - Interlocked.Read(ref _lastPong) > 50_000)
-            { wire.Abort(); return; }
+            {
+                SetReachability("HEARTBEAT_STALE", "No server heartbeat acknowledgement for 50 seconds; forcing a reconnect.", false);
+                wire.Abort(); return;
+            }
             try { await wire.SendAsync(new WireMessage("ping") { Timestamp = Environment.TickCount64 }, cancellationToken); }
-            catch (Exception ex) when (ex is WebSocketException or IOException) { wire.Abort(); return; }
+            catch (Exception ex) when (ex is WebSocketException or IOException)
+            {
+                SetReachability("TRANSPORT_INTERRUPTED", "Heartbeat send failed: " + ex.GetType().Name, false);
+                wire.Abort(); return;
+            }
             if (!_gate.IsArmed) foreach (var active in _running.Values)
                 try { active.Cancel(); } catch (ObjectDisposedException) { }
         }

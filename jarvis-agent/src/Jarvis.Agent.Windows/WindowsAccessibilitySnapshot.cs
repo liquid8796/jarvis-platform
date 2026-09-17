@@ -153,7 +153,7 @@ public sealed class ComputerStateTool : IAgentTool
     public Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var snapshot = _states.Capture(context.SessionId, _observer.Capture());
+        var snapshot = _states.Capture(context.IsolationScopeId, _observer.Capture());
         var text = SerializeBounded(snapshot);
         return Task.FromResult(new ToolReply(text));
     }

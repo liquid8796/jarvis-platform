@@ -8,7 +8,7 @@ public sealed class SessionFileObservations
 {
     private const int Capacity = 8192;
     private readonly object _sync = new();
-    private readonly Dictionary<(AgentSessionIdentity Identity, string Path), FileObservation> _observed = new();
+    private readonly Dictionary<(string Scope, string Path), FileObservation> _observed = new();
     public sealed record FileObservation(bool Exists, string Hash);
 
     private static string Key(string path)
@@ -31,10 +31,13 @@ public sealed class SessionFileObservations
         { return new(false, ""); }
     }
     public async Task RememberAsync(AgentSessionIdentity identity, string path, CancellationToken ct) =>
-        Remember(identity, path, await CaptureAsync(path, ct));
-    public void Remember(AgentSessionIdentity identity, string path, FileObservation observation)
+        Remember(identity.SessionId, path, await CaptureAsync(path, ct));
+    public async Task RememberAsync(string scope, string path, CancellationToken ct) =>
+        Remember(scope, path, await CaptureAsync(path, ct));
+    public void Remember(AgentSessionIdentity identity, string path, FileObservation observation) => Remember(identity.SessionId, path, observation);
+    public void Remember(string scope, string path, FileObservation observation)
     {
-        var key = (identity, Key(path));
+        var key = (scope, Key(path));
         lock (_sync)
         {
             _observed.Remove(key);
@@ -42,9 +45,11 @@ public sealed class SessionFileObservations
             _observed[key] = observation;
         }
     }
-    public async Task ValidateWriteAsync(AgentSessionIdentity identity, string path, CancellationToken ct)
+    public Task ValidateWriteAsync(AgentSessionIdentity identity, string path, CancellationToken ct) =>
+        ValidateWriteAsync(identity.SessionId, path, ct);
+    public async Task ValidateWriteAsync(string scope, string path, CancellationToken ct)
     {
-        var key = (identity, Key(path));
+        var key = (scope, Key(path));
         FileObservation? before;
         lock (_sync) _observed.TryGetValue(key, out before);
         var current = await CaptureAsync(path, ct);
@@ -53,14 +58,16 @@ public sealed class SessionFileObservations
         if (before is null && current.Exists)
             throw new AgentRequestException("FILE_READ_REQUIRED", "Read the existing file in this session before changing it. Another session's read does not authorize a stale overwrite.");
     }
-    public void Forget(AgentSessionIdentity identity)
+    public void Forget(AgentSessionIdentity identity) => Forget(identity.SessionId);
+    public void Forget(string scope)
     {
         lock (_sync)
-            foreach (var key in _observed.Keys.Where(key => key.Identity == identity).ToArray()) _observed.Remove(key);
+            foreach (var key in _observed.Keys.Where(key => key.Scope == scope).ToArray()) _observed.Remove(key);
     }
-    public void Forget(AgentSessionIdentity identity, string path)
+    public void Forget(AgentSessionIdentity identity, string path) => Forget(identity.SessionId, path);
+    public void Forget(string scope, string path)
     {
-        var key = (identity, Key(path));
+        var key = (scope, Key(path));
         lock (_sync) _observed.Remove(key);
     }
 }

@@ -22,7 +22,7 @@ public sealed partial class AgentConnection
     public event Action<AgentExecutionSettings>? ExecutionSettingsChanged;
 
     private static string SchedulingKey(AgentExecutionContext context) =>
-        (context.OwnerId ?? "legacy") + "|" + (context.AgentDeviceId ?? "local") + "|" + context.SessionId;
+        (context.OwnerId ?? "legacy") + "|" + (context.AgentDeviceId ?? "local") + "|" + context.IsolationScopeId;
 
     private void InitializeExecutionSettings(AgentExecutionSettings settings)
     {

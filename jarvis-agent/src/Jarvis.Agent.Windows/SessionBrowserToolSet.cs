@@ -8,7 +8,7 @@ using JarvisCode.App.Services;
 
 namespace Jarvis.Agent.Windows;
 
-/// <summary>Each application session has its own site-consent cache, image directory and browser selection.</summary>
+/// <summary>Explicit application sessions isolate browser state; sessionless calls use a stable owner/device legacy scope so ordinary browser tools stay callable across prompts.</summary>
 public sealed class SessionBrowserToolSet
 {
     private readonly BrowserBridge _bridge;
@@ -17,6 +17,7 @@ public sealed class SessionBrowserToolSet
     private readonly string _root;
     private readonly ComputerStateTracker _states;
     private readonly ConcurrentDictionary<AgentSessionIdentity, Lazy<Suite>> _suites = new();
+    private readonly ConcurrentDictionary<string, Lazy<Suite>> _sessionlessSuites = new(StringComparer.Ordinal);
     public IReadOnlyList<IAgentTool> Tools { get; }
 
     public SessionBrowserToolSet(BrowserBridge bridge, IUserQuestions questions, IArtifactSink artifacts,
@@ -29,6 +30,10 @@ public sealed class SessionBrowserToolSet
 
     private Suite Create(AgentSessionIdentity identity) => new(JarvisBrowserTools.Create(_bridge,
         Path.Combine(_root, "browser-images", identity.SessionId))
+        .Select(tool => new LegacyToolAdapter(tool, "browser", _questions, _artifacts, _root))
+        .ToDictionary(tool => tool.Descriptor.Id, tool => (IAgentTool)tool, StringComparer.Ordinal));
+    private Suite CreateSessionless(string scope) => new(JarvisBrowserTools.Create(_bridge,
+        Path.Combine(_root, "browser-images", scope))
         .Select(tool => new LegacyToolAdapter(tool, "browser", _questions, _artifacts, _root))
         .ToDictionary(tool => tool.Descriptor.Id, tool => (IAgentTool)tool, StringComparer.Ordinal));
 
@@ -48,18 +53,22 @@ public sealed class SessionBrowserToolSet
         public ToolDescriptor Descriptor { get; } = descriptor;
         public async Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context, CancellationToken ct)
         {
-            var identity = context.RequireSessionIdentity();
+            var identity = context.TrySessionIdentity();
             context.SessionCancellation.ThrowIfCancellationRequested();
-            var suite = owner._suites.GetOrAdd(identity, key => new Lazy<Suite>(() => owner.Create(key))).Value;
+            var suite = identity is null
+                ? owner._sessionlessSuites.GetOrAdd(context.IsolationScopeId, key => new Lazy<Suite>(() => owner.CreateSessionless(key))).Value
+                : owner._suites.GetOrAdd(identity, key => new Lazy<Suite>(() => owner.Create(key))).Value;
             await suite.Serial.WaitAsync(ct);
+            IDisposable? applicationScope = null;
             try
             {
                 context.SessionCancellation.ThrowIfCancellationRequested();
-                using var scope = owner._bridge.EnterApplicationSession(identity.SessionId);
+                if (identity is not null) applicationScope = owner._bridge.EnterApplicationSession(identity.SessionId);
                 return await suite.Tools[Descriptor.Id].ExecuteAsync(arguments, context, ct);
             }
             finally
             {
+                applicationScope?.Dispose();
                 if (ToolExecutionResources.MayChangeDesktop(Descriptor.Id)) owner._states.InvalidateAll();
                 suite.Serial.Release();
             }

@@ -1,5 +1,11 @@
 # Agent Task Gateway (Approach A)
 
+## 1.0.65 prompt-continuity task ownership
+
+The `agent_task_*` MCP surface now treats `_jarvis.sessionHandle` as optional. With a validated explicit session, task ownership remains owner+agent+session and sibling chats cannot read/cancel that task. Without a handle, task calls remain usable across later prompts under the authenticated owner+enrolled-agent sessionless scope; task IDs stay opaque and owner/device checks still apply. The gateway never treats a missing model-carried handle as loss of the OAuth/device binding.
+
+Creation snapshots the selected project/workspace exactly as before. Explicit-session stop/close only cancels tasks owned by that explicit session; sessionless tasks are not accidentally captured by a later `js_...` cleanup. Transport/reconnect still never replays task mutations with unknown completion.
+
 ## 1.0.64 session-aware task ownership
 
 The `agent_task_*` MCP surface now carries the same validated `_jarvis.sessionHandle` as ordinary tools. Requests are scoped to authenticated owner, enrolled agent and creating application session. Task/project/workspace context is snapshotted at creation; child tasks retain parent ownership and may only narrow execution mode. Read, artifact and cancel operations from another chat are denied even when the account matches. Local operator dashboard compatibility is separate from scoped MCP.

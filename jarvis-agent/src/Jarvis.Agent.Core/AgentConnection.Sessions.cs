@@ -60,8 +60,20 @@ public sealed partial class AgentConnection
         var id = call.SessionId ?? "remote";
         if (!AgentSessionRules.IsSessionId(id))
         {
-            if (_sessionProtocol || AgentSessionRules.IsTool(call.ToolId ?? ""))
-                throw new AgentRequestException("SESSION_REQUIRED", "Open a new session with session__open and include _jarvis.sessionHandle on subsequent calls.");
+            if (AgentSessionRules.IsTool(call.ToolId ?? ""))
+                throw new AgentRequestException("SESSION_REQUIRED", "Open a new session with session__open before using session or workspace management tools.");
+            if (_sessionProtocol)
+            {
+                if (!AgentSessionRules.IsEphemeralExecutionId(id))
+                    throw new AgentRequestException("SESSION_INVALID", "Sessionless calls require a gateway-issued ephemeral execution ID.");
+                if (string.IsNullOrWhiteSpace(call.OwnerId) || string.IsNullOrWhiteSpace(_deviceId))
+                    throw new AgentRequestException("SESSION_INVALID", "Authenticated owner and enrolled agent identity are required.");
+                return new("", call.Id!, id)
+                {
+                    AdditionalDirectories = [], OwnerId = call.OwnerId, AgentDeviceId = _deviceId,
+                    ThreadId = call.ThreadId, TurnId = call.TurnId, SessionCancellation = CancellationToken.None
+                };
+            }
             // Only a legacy peer which did not negotiate application sessions can use the old context.
             return new(legacyWorkspace.Primary, call.Id!, id)
             { AdditionalDirectories = legacyWorkspace.Additional, ThreadId = call.ThreadId, TurnId = call.TurnId };

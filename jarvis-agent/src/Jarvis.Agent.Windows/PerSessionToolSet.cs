@@ -9,14 +9,14 @@ namespace Jarvis.Agent.Windows;
 public sealed class PerSessionToolSet
 {
     private readonly Func<IReadOnlyList<IAgentTool>> _factory;
-    private readonly ConcurrentDictionary<AgentSessionIdentity, Lazy<Suite>> _sessions = new();
+    private readonly ConcurrentDictionary<string, Lazy<Suite>> _sessions = new(StringComparer.Ordinal);
     public IReadOnlyList<IAgentTool> Tools { get; }
     public PerSessionToolSet(Func<IReadOnlyList<IAgentTool>> factory)
     {
         _factory = factory;
         Tools = factory().Select(tool => (IAgentTool)new ScopedTool(this, tool.Descriptor)).ToArray();
     }
-    public void Forget(AgentSessionIdentity identity) => _sessions.TryRemove(identity, out _);
+    public void Forget(AgentSessionIdentity identity) => _sessions.TryRemove(identity.SessionId, out _);
     private sealed record Suite(IReadOnlyDictionary<string, IAgentTool> Tools)
     {
         public SemaphoreSlim Serial { get; } = new(1, 1);
@@ -26,8 +26,8 @@ public sealed class PerSessionToolSet
         public ToolDescriptor Descriptor { get; } = descriptor;
         public async Task<ToolReply> ExecuteAsync(JsonElement args, AgentExecutionContext context, CancellationToken ct)
         {
-            var identity = context.RequireSessionIdentity();
-            var suite = owner._sessions.GetOrAdd(identity, _ => new Lazy<Suite>(() =>
+            var scope = context.IsolationScopeId;
+            var suite = owner._sessions.GetOrAdd(scope, _ => new Lazy<Suite>(() =>
                 new Suite(owner._factory().ToDictionary(t => t.Descriptor.Id, StringComparer.Ordinal)))).Value;
             await suite.Serial.WaitAsync(ct);
             try { context.SessionCancellation.ThrowIfCancellationRequested(); return await suite.Tools[Descriptor.Id].ExecuteAsync(args, context, ct); }

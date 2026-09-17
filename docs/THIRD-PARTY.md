@@ -1,5 +1,9 @@
 # Third-party source and dependencies
 
+## 1.0.65 dependency status
+
+No third-party dependency, browser-extension or vendored-bridge version changed in 1.0.65. Shipping Jarvis package/assembly/file versions are 1.0.65 / 1.0.65.0; the BrowserBridge remains 1.0.25 / 1.0.25.0 and the browser extension remains 1.2.0. The dependency/license notes from 1.0.64 therefore remain applicable.
+
 ## 1.0.64 dependency and bridge changes
 
 The existing vendored BrowserBridge was intentionally modified to propagate application-session envelopes and isolate selected browsers while preserving legacy bridge behavior. Its package/assembly/file versions are now 1.0.25 / 1.0.25.0; the shipping Jarvis products are 1.0.64 / 1.0.64.0. Older baseline parity reports below are historical, not evidence that this bridge remains byte-identical.

@@ -47,7 +47,7 @@ public sealed class StatefulComputerToolAdapter : IAgentTool
             var stateId = args["stateId"]?.GetValue<string>();
             if (string.IsNullOrWhiteSpace(stateId))
                 throw new InvalidOperationException("A current stateId from computer.screenshot or computer.get_state is required before computer_batch.");
-            _states.Validate(context.SessionId, stateId);
+            _states.Validate(context.IsolationScopeId, stateId);
             args.Remove("stateId");
             try
             {
@@ -71,7 +71,7 @@ public sealed class StatefulComputerToolAdapter : IAgentTool
         }
         if (!_capturesState || result.IsError) return result;
 
-        var state = _states.Capture(context.SessionId, _observer.Capture());
+        var state = _states.Capture(context.IsolationScopeId, _observer.Capture());
         return result with
         {
             Text = result.Text + $"\nJarvis computer state: stateId={state.StateId}; generation={state.Generation}; observedAt={state.ObservedAt:O}. Use this stateId for the next computer_batch only."

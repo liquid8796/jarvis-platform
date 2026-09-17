@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Jarvis.Protocol;
 namespace Jarvis.Agent.Core;
@@ -30,10 +32,20 @@ public sealed record AgentExecutionContext(string Workspace, string CallId, stri
     public CancellationToken SessionCancellation { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]
     public Func<IDisposable>? RetainResources { get; init; }
-    public AgentSessionIdentity RequireSessionIdentity() =>
-        !string.IsNullOrWhiteSpace(OwnerId) && !string.IsNullOrWhiteSpace(AgentDeviceId) && AgentSessionRules.IsSessionId(SessionId)
-            ? new(OwnerId, AgentDeviceId, SessionId)
-            : throw new AgentRequestException("SESSION_REQUIRED", "Open a session with session__open and use its sessionHandle.");
+    public bool HasExplicitSession => AgentSessionRules.IsSessionId(SessionId);
+    public bool IsSessionlessExecution => AgentSessionRules.IsEphemeralExecutionId(SessionId);
+    public string IsolationScopeId => IsSessionlessExecution ? SessionlessIsolationScope(OwnerId, AgentDeviceId) : SessionId;
+    public static string SessionlessIsolationScope(string? ownerId, string? deviceId)
+    {
+        var material = Encoding.UTF8.GetBytes((ownerId ?? "legacy-owner") + "\n" + (deviceId ?? "legacy-device"));
+        var hash = SHA256.HashData(material);
+        return "anon_" + Convert.ToHexString(hash.AsSpan(0, 16)).ToLowerInvariant();
+    }
+    public AgentSessionIdentity? TrySessionIdentity() =>
+        !string.IsNullOrWhiteSpace(OwnerId) && !string.IsNullOrWhiteSpace(AgentDeviceId) && HasExplicitSession
+            ? new(OwnerId, AgentDeviceId, SessionId) : null;
+    public AgentSessionIdentity RequireSessionIdentity() => TrySessionIdentity() ??
+        throw new AgentRequestException("SESSION_REQUIRED", "Open a session with session__open and use its sessionHandle.");
     // Set by the local dispatcher, never taken from remote arguments or the wire envelope.
     public bool FullPermission { get; init; }
 }
@@ -53,3 +65,4 @@ public interface IArtifactSink
     Task ShowAsync(WidgetArtifact artifact, CancellationToken cancellationToken);
 }
 public sealed record AgentEvent(DateTimeOffset Time, string Kind, string Message);
+public sealed record AgentReachabilityStatus(string Code, string Detail, bool Online);

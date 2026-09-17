@@ -1,5 +1,11 @@
 # Required acceptance before live use
 
+## 1.0.65 multi-prompt continuity acceptance
+
+Automated gates must prove: an ordinary tool succeeds on a later prompt without `_jarvis.sessionHandle`; explicit session/workspace management still rejects a missing handle; sessionless task/process/file/computer/browser state survives fresh `call_...` IDs for the same authenticated owner+device; explicit `js_...` sessions remain isolated; `session__stop_work` is resumable; `session__close` is absent from normal discovery but raw/operator close remains terminal; pre-dispatch rejections create metadata-only audit rows; reconnect status reports reason-coded states without replaying interrupted mutations.
+
+Run the existing full release verification plus the new focused Server/Core/Windows regressions before packaging. Real client acceptance must include at least two consecutive prompts in one ChatGPT conversation where the second prompt invokes an ordinary Jarvis tool without a replayed handle, and a second independent chat that uses `session__open` to verify strict explicit-session isolation. A cached 1.0.64 schema that still requires `_jarvis` on ordinary tools is a failed upgrade and must be refreshed.
+
 ## 1.0.64 multi-session acceptance
 
 Automated release gates: all Core/Windows/Server maintained test projects; Node browser-session isolation suite; Python UI and native-publish checks; complete Release solution build; self-contained win-x64 Desktop/CLI and Linux ARM64 server publish; current-version consistency; isolated WPF smoke with zero binding errors; PTY smoke against each published Windows entry point; archive integrity and private-state/font exclusion. Exact executed results belong in BUILD-STATUS.md, not this checklist.

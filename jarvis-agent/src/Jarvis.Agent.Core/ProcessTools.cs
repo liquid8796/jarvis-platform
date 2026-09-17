@@ -254,15 +254,22 @@ public sealed class ProcessToolSet : IDisposable
         private bool _done;
         private int? _exitCode;
         private string? _ownerId, _deviceId, _sessionId;
+        private bool _sessionless;
         private CancellationTokenRegistration _sessionCancellation;
         private IDisposable? _resourceLease;
-        public bool BelongsTo(AgentExecutionContext context) => _sessionId == context.SessionId && _ownerId == context.OwnerId && _deviceId == context.AgentDeviceId;
-        public bool BelongsTo(AgentSessionIdentity identity) => _sessionId == identity.SessionId && _ownerId == identity.OwnerId && _deviceId == identity.DeviceId;
+        public bool BelongsTo(AgentExecutionContext context)
+        {
+            if (_ownerId != context.OwnerId || _deviceId != context.AgentDeviceId) return false;
+            return _sessionless ? AgentSessionRules.IsEphemeralExecutionId(context.SessionId) : _sessionId == context.SessionId;
+        }
+        public bool BelongsTo(AgentSessionIdentity identity) => !_sessionless && _sessionId == identity.SessionId && _ownerId == identity.OwnerId && _deviceId == identity.DeviceId;
         public void BindOwner(AgentExecutionContext context)
         {
             lock (_sync)
             {
-                _ownerId = context.OwnerId; _deviceId = context.AgentDeviceId; _sessionId = context.SessionId;
+                _ownerId = context.OwnerId; _deviceId = context.AgentDeviceId;
+                _sessionless = AgentSessionRules.IsEphemeralExecutionId(context.SessionId);
+                _sessionId = _sessionless ? null : context.SessionId;
                 _resourceLease = context.RetainResources?.Invoke();
                 if (_done) { _resourceLease?.Dispose(); _resourceLease = null; }
                 if (!_done) _sessionCancellation = context.SessionCancellation.UnsafeRegister(static job => ((ManagedJob)job!).Cancel(), this);

@@ -1,5 +1,13 @@
 # Jarvis Agent operator guide
 
+## Prompt continuity in 1.0.65
+
+Ordinary MCP tools no longer depend on the model replaying `_jarvis.sessionHandle` across turns. Without a handle, the gateway creates a per-call ephemeral execution ID and the agent uses a stable authenticated owner/device isolation scope for local state that must survive a later prompt. Explicit `session__open` remains available when a chat needs its own workspace, mailbox, browser application session or coordination metadata; `workspace__*` and `session__*` management calls still require that protected handle.
+
+`session__stop_work` cancels only the explicit session's accepted work/resources and leaves the session resumable. Destructive `session__close` is no longer advertised in the normal MCP tool list; the Agent Sessions UI/operator path may still close a session explicitly. Sessionless process jobs, read-before-write file observations, computer state and browser/tool adapters are scoped by authenticated owner + enrolled device rather than by a model-carried secret. Explicit sessions retain strict `js_...` ownership boundaries.
+
+Connection status now exposes reason-coded states (`CONNECTING`, `RECONNECTING`, `CONNECTED_HEALTHY`, `HEARTBEAT_STALE`, `TRANSPORT_INTERRUPTED`, `DISCONNECTED`). Gateway rejections before agent dispatch are audited by error code without recording tool arguments or session handles. A missing/invalid handle must not make ordinary tools unavailable; it affects only explicit session/workspace operations.
+
 ## Multi-chat operation in 1.0.64
 
 The default workspace is optional. Connection center can clear it; Save defaults updates only newly opened sessions, not active chats or already accepted requests. Relative file paths and shell/git calls require a session workspace or explicit call `workingDirectory`. Absolute file paths work without a default. Project journal tools require a selected session project; a missing scope returns WORKSPACE_REQUIRED. CLI visual output with no workspace goes to the agent's dedicated local visual-artifacts area, never an accidental executable directory.

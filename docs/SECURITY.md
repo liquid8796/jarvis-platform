@@ -1,5 +1,11 @@
 # Security boundaries and threat model
 
+## 1.0.65 sessionless security scope
+
+Ordinary calls without an explicit application session are still authenticated by the OAuth owner and enrolled agent. Local state that must survive later prompts in this mode is scoped to that owner+agent pair; use `session__open` when separate chats require stricter workspace, mailbox or browser isolation. Explicit session/workspace operations still require a validated handle.
+
+A sessionless resource remains bound to owner+agent plus its opaque resource ID; an explicit-session resource also requires its `js_...` session. `session__stop_work` is the resumable cancellation path. Destructive `session__close` remains available to the operator/UI but is not advertised in normal model discovery. Gateway rejection audit stores metadata and error codes, not tool arguments or session handles.
+
 ## 1.0.64 multi-session boundaries
 
 Application handles are protected with the server's existing persisted Data Protection key ring, bound to authenticated owner and enrolled execution device, expire after 30 days, and are never returned by list/metadata operations. They are not a replacement for OAuth, per-tool approval, persistent constrained-process grants, or Arm/Pause. Retain and protect the server data directory during upgrades. Never log or copy handles into inter-session messages.

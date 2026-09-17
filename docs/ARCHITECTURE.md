@@ -1,6 +1,14 @@
 # Architecture decisions · 1.0.60
 
-## 1.0.64 application-session architecture (current)
+## 1.0.65 prompt-continuity architecture (current)
+
+MCP transport remains stateless, and ordinary calls no longer depend on an opaque application-session handle surviving in model context. `McpGateway` validates an explicit handle when present; otherwise ordinary tools and `agent_task_*` receive a fresh `call_<random>` execution ID. The agent never persists that call ID as a chat session. Stateful local components that need cross-call continuity derive a stable `anon_<hash>` isolation scope from authenticated owner + enrolled device; explicit `js_...` application sessions continue to use their own session ID and protected metadata/workspace/mailbox boundaries.
+
+The stable sessionless scope is intentionally not a substitute chat identifier: two chats using the same OAuth account and enrolled agent without explicit sessions may share sessionless process/browser/local-state ownership. Clients that need strict per-chat isolation call `session__open`. This tradeoff keeps Jarvis callable when the host drops a prior handle while preserving a deliberate path to stronger isolation. Resource IDs/job IDs remain unguessable and owner/device checks remain mandatory.
+
+`session__stop_work` is a resumable cancellation operation. Model discovery omits terminal `session__close`; operator/UI/raw close remains available for deliberate cleanup. Scheduler fairness and browser/file/computer state use `IsolationScopeId`, so new ephemeral call IDs do not reset state on every prompt. Gateway rejection audit occurs even before agent dispatch, and agent reachability emits reason-coded connection states without changing the WSS wire protocol or replay semantics.
+
+## 1.0.64 application-session architecture (historical release contract)
 
 These rules supersede older shared OAuth-session, fixed 4-call and mandatory-workspace descriptions below. MCP remains stateless. `McpSessionContext` protects a random application-session ID with ASP.NET Data Protection, the authenticated account and the OAuth-bound execution device. A transport connection, access token, browser or chat client device is not used as a chat ID. Each chat must retain its own handle; deliberately reusing a handle means sharing that logical session.
 

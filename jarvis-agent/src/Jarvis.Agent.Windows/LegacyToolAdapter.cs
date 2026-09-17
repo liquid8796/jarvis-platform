@@ -93,18 +93,18 @@ public sealed class LegacyToolAdapter : IAgentTool
             AskUserAsync = _questions.AskAsync, SessionLifetime = cancellationToken };
         var filePath = Descriptor.Category == "filesystem" ? (args["file_path"] ?? args["notebook_path"])?.GetValue<string>() : null;
         var trackFile = _fileObservations is not null && filePath is not null;
-        var identity = trackFile ? execution.RequireSessionIdentity() : null;
+        var observationScope = trackFile ? execution.IsolationScopeId : null;
         SessionFileObservations.FileObservation? before = null;
         if (trackFile)
         {
-            if (!_tool.IsReadOnly) await _fileObservations!.ValidateWriteAsync(identity!, filePath!, cancellationToken);
+            if (!_tool.IsReadOnly) await _fileObservations!.ValidateWriteAsync(observationScope!, filePath!, cancellationToken);
             before = await SessionFileObservations.CaptureAsync(filePath!, cancellationToken);
         }
         ToolResult result;
         try { result = await _tool.ExecuteAsync(args, context, cancellationToken); }
         catch
         {
-            if (trackFile && !_tool.IsReadOnly) _fileObservations!.Forget(identity!, filePath!);
+            if (trackFile && !_tool.IsReadOnly) _fileObservations!.Forget(observationScope!, filePath!);
             throw;
         }
         if (trackFile)
@@ -114,12 +114,12 @@ public sealed class LegacyToolAdapter : IAgentTool
                 var after = await SessionFileObservations.CaptureAsync(filePath!, cancellationToken);
                 if (_tool.IsReadOnly && before != after)
                 {
-                    _fileObservations!.Forget(identity!, filePath!);
+                    _fileObservations!.Forget(observationScope!, filePath!);
                     throw new AgentRequestException("FILE_CHANGED", "File changed while being read. Read it again before editing.");
                 }
-                _fileObservations!.Remember(identity!, filePath!, after);
+                _fileObservations!.Remember(observationScope!, filePath!, after);
             }
-            else if (!_tool.IsReadOnly) _fileObservations!.Forget(identity!, filePath!);
+            else if (!_tool.IsReadOnly) _fileObservations!.Forget(observationScope!, filePath!);
         }
         return new ToolReply(result.Content + (result.FollowUpText is null ? "" : "\n" + result.FollowUpText), result.IsError,
             result.Images?.Select(i => new WireImage(i.MediaType, i.Base64Data)).ToArray());
