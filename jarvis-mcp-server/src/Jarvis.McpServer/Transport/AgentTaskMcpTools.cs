@@ -10,7 +10,7 @@ internal static class AgentTaskMcpTools
 {
     public static IReadOnlyList<Tool> List() => new[] { "create", "plan", "get", "artifacts", "cancel", "tools" }.Select(operation => new Tool
     {
-        Name = RemoteTaskRules.McpName(operation), InputSchema = Schema(operation),
+        Name = RemoteTaskRules.McpName(operation), Title = Title(operation), InputSchema = Schema(operation),
         OutputSchema = McpOutputSchemas.ForTask(operation),
         Description = operation switch
         {
@@ -21,9 +21,19 @@ internal static class AgentTaskMcpTools
             "cancel" => "Cancel a task and its owned process job on the OAuth-bound local agent. Cancellation is cooperative; inspect the terminal state before submitting new work. Completed tasks are not replayed or changed.",
             _ => "List enabled, installed task tool descriptors on the OAuth-bound device, including canonical Id, schema and read-only/sensitive metadata. A published capability still requires existing local approval; metadata never grants Full permission."
         },
-        Annotations = new ToolAnnotations { ReadOnlyHint = operation is "get" or "artifacts" or "tools",
+        Annotations = new ToolAnnotations { Title = Title(operation), ReadOnlyHint = operation is "get" or "artifacts" or "tools",
             DestructiveHint = operation is "create" or "plan" or "cancel", OpenWorldHint = true }
     }).ToArray();
+
+    private static string Title(string operation) => operation switch
+    {
+        "create" => "Create Agent Task",
+        "plan" => "Plan Agent Task",
+        "get" => "Get Agent Task",
+        "artifacts" => "Read Task Artifacts",
+        "cancel" => "Cancel Agent Task",
+        _ => "List Agent Task Tools"
+    };
 
     public static async Task<CallToolResult> CallAsync(AgentTaskService tasks, string owner, string device,
         CallToolRequestParams request, CancellationToken ct, string? sessionId = null)

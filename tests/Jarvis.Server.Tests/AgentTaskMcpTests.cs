@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Jarvis.Agent.Core;
 using Jarvis.Protocol;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -15,13 +16,17 @@ public sealed partial class AgentTaskMcpTests
     public async Task OAuth_client_discovers_creates_and_reads_tasks_without_forging_device()
     {
         using var app = new ServerFixture(); using var admin = await app.Admin();
-        await using var peer = await TaskAgentPeer.ConnectAsync(app, admin);
+        await using var peer = await TaskAgentPeer.ConnectAsync(app, admin, new MetadataFixtureTool());
         using var client = await GrantAsync(app, admin, peer.DeviceId);
         var listed = await RpcAsync(client, "tools/list", new { });
         var names = listed.GetProperty("result").GetProperty("tools").EnumerateArray()
             .Select(t => t.GetProperty("name").GetString()).ToArray();
         foreach (var operation in new[] { "create", "plan", "get", "artifacts", "cancel", "tools" })
             Assert.Contains("agent_task_" + operation, names);
+        AssertToolMetadata(listed, "agent_task_artifacts", "Read Task Artifacts", readOnly: true, destructive: false, openWorld: true);
+        AssertToolMetadata(listed, "session__open", "Session Open", readOnly: false, destructive: true, openWorld: true);
+        AssertToolMetadata(listed, "process__read", "Process Read", readOnly: true, destructive: false, openWorld: true);
+        AssertToolMetadata(listed, "workflow__AskUserQuestion", "Workflow Ask User Question", readOnly: true, destructive: false, openWorld: true);
         var tools = await CallAsync(client, "agent_task_tools", new { });
         Assert.Contains("process.start", tools.GetProperty("content")[0].GetProperty("text").GetString());
         var create = await CallAsync(client, "agent_task_create", new { goal = "MCP integration fixture" });
@@ -86,6 +91,25 @@ public sealed partial class AgentTaskMcpTests
         if (text.TrimStart().StartsWith('{')) return JsonSerializer.Deserialize<JsonElement>(text);
         var data = text.Split('\n').Last(line => line.StartsWith("data: ", StringComparison.Ordinal));
         return JsonSerializer.Deserialize<JsonElement>(data[6..]);
+    }
+    private static void AssertToolMetadata(JsonElement listed, string name, string title,
+        bool readOnly, bool destructive, bool openWorld)
+    {
+        var tool = listed.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Single(t => t.GetProperty("name").GetString() == name);
+        Assert.Equal(title, tool.GetProperty("title").GetString());
+        var annotations = tool.GetProperty("annotations");
+        Assert.Equal(title, annotations.GetProperty("title").GetString());
+        Assert.Equal(readOnly, annotations.GetProperty("readOnlyHint").GetBoolean());
+        Assert.Equal(destructive, annotations.GetProperty("destructiveHint").GetBoolean());
+        Assert.Equal(openWorld, annotations.GetProperty("openWorldHint").GetBoolean());
+    }
+    private sealed class MetadataFixtureTool : IAgentTool
+    {
+        public ToolDescriptor Descriptor { get; } = new("fixture.metadata", "workflow__AskUserQuestion", "workflow",
+            "Fixture for human-readable MCP metadata.", WireJson.Element(new { type = "object" }), true);
+        public Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(new ToolReply("ok"));
     }
     private static async Task<HttpClient> GrantAsync(ServerFixture app, HttpClient admin, string deviceId)
     {

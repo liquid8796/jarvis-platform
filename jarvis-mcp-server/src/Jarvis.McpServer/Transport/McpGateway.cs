@@ -46,13 +46,16 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
         var contextHint = !scoped || descriptor.Id == "session.open" ? "" : requiresSession
             ? " Requires this chat's _jarvis.sessionHandle returned by session__open."
             : " Optionally include this chat's _jarvis.sessionHandle for explicit session workspace and ownership.";
+        var title = McpToolMetadata.TitleFor(name);
         return new()
         {
             Name = name,
+            Title = title,
             Description = description + contextHint,
             InputSchema = scoped ? sessions.AugmentSchema(descriptor.InputSchema, requiresSession) : descriptor.InputSchema,
             OutputSchema = McpOutputSchemas.ToolReply,
-            Annotations = new ToolAnnotations { ReadOnlyHint = descriptor.ReadOnly, DestructiveHint = !descriptor.ReadOnly, OpenWorldHint = true }
+            Annotations = new ToolAnnotations { Title = title, ReadOnlyHint = descriptor.ReadOnly,
+                DestructiveHint = !descriptor.ReadOnly, OpenWorldHint = true }
         };
     }
 

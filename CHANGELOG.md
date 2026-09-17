@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.66 - 2026-09-17
+
+- Publish human-readable MCP `title` plus matching `annotations.title` for every dynamic Jarvis action and all six `agent_task_*` tools, following the metadata pattern used by mature MCP servers such as Desktop Commander; dynamic titles split namespace/underscore and Pascal/camel-case identifier boundaries.
+- Preserve existing read-only/destructive/open-world hints, schemas, permissions, routing and execution behavior; ChatGPT remains responsible for the final compact/collapse presentation.
+- Add JSON-RPC `tools/list` regression coverage for task, session and dynamic process actions.
+- Bump package/assembly/file versions to 1.0.66 / 1.0.66.0. Production deployment and ChatGPT tool-definition refresh remain separate steps.
+
 ## 1.0.65 - 2026-09-17
 
 - Make `_jarvis.sessionHandle` optional for ordinary MCP tools and `agent_task_*`: missing handles now dispatch through a per-call ephemeral execution ID instead of failing `SESSION_REQUIRED` before the local agent. Explicit session/workspace tools still require a validated owner/device-bound handle.
