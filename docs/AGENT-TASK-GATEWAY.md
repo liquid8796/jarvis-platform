@@ -1,5 +1,15 @@
 # Agent Task Gateway (Approach A)
 
+## 1.0.67 goal-owned autonomous execution
+
+Goal-only `AUTONOMOUS` tasks can now execute when the Windows/embedding host explicitly injects an `IRemoteTaskAgenticCoordinator`. `READ_ONLY` and `NORMAL` goal-only requests keep the existing `NEEDS_PLAN` behavior, and an autonomous request without an agentic coordinator also stays `NEEDS_PLAN`. Core does not select a model provider, store model credentials, or treat this coordinator as a permission grant.
+
+The coordinator receives bounded deterministic coding prompt layers plus the resolved project and current installed-tool descriptors. Its generated plan must retain the original goal, execution mode, timeout and resolved project, contain at least one step, satisfy the normal 32-step/stage/schema bounds, and reference only current installed tools. The plan is durably saved before execution and all steps continue through the existing Arm/Pause, owner/session, workspace, permission, approval, timeout and no-replay paths.
+
+For agentic autonomous tasks, successful tool calls are no longer sufficient for `COMPLETED`. After planned steps succeed, the coordinator receives bounded task artifacts and independently verifies the goal. A failed goal verdict either fails the task or may request up to two bounded repair rounds. Repair steps are appended to the persisted plan, revalidated as a complete plan, executed by the same guarded runner, and followed by another goal-verification pass. Goal-verifier outcomes are retained as bounded VERIFY artifacts.
+
+`CodingPromptAssembler` orders and bounds base coding policy, rendered frontend/browser policy, workspace/goal context, sorted tool capability metadata, optional skill instructions, execution outcomes and verification debt. These layers are instruction/evidence context only; they never bypass local policy or cause a paid model to be selected automatically.
+
 ## 1.0.65 prompt-continuity task ownership
 
 The `agent_task_*` MCP surface now treats `_jarvis.sessionHandle` as optional. With a validated explicit session, task ownership remains owner+agent+session and sibling chats cannot read/cancel that task. Without a handle, task calls remain usable across later prompts under the authenticated owner+enrolled-agent sessionless scope; task IDs stay opaque and owner/device checks still apply. The gateway never treats a missing model-carried handle as loss of the OAuth/device binding.
@@ -24,7 +34,7 @@ Limits: 2 running tasks per agent, 32 steps, 3 attempts only for safe reads, 1..
 
 HTTP cookie APIs keep the existing CSRF protection. MCP task tools keep OAuth resource/scope/stamp/device checks. Per-task authorization is checked again on the local agent. New tasks cannot run unpublished tool capabilities, and nested task submission is not an installed tool.
 
-This is supervised client-planned execution, not proof of full autonomous LLM engineering or superiority to Codex. Production restart/deployment and live paid model calls are outside this patch.
+Without an injected agentic coordinator this remains supervised client-planned execution. With one, Core supplies bounded planning/verification contracts but does not prove a particular model provider, autonomous coding quality, or superiority to Codex; production restart/deployment and live paid model configuration remain separate concerns.
 
 ## Running a task through MCP
 
@@ -66,7 +76,7 @@ Example arguments to `agent_task_create` (synthetic example, not an automaticall
 
 Poll `agent_task_get` with `taskId`; fetch `agent_task_artifacts` after progress or completion. The latter returns text artifacts (not arbitrary binary file downloads), at most 20 entries/page and 16,000 retained characters/attempt. Follow `nextOffset` until absent. `expectedText` matches the retained output only. A successfully started process is not a successful build: actual nonzero exitCode fails the step and stops subsequent stages. On Windows explicitly propagate native command exit codes in PowerShell (`exit $LASTEXITCODE`) when composing commands.
 
-Creating without `steps` persists a `NEEDS_PLAN` task. Submit `agent_task_plan` with the same taskId, goal, project, mode and overall timeout, plus non-empty steps. Existing executing/terminal tasks cannot be replanned; a client that generates a repair must inspect failures and deliberately create a new task ID. There is no autonomous error-to-source-code patch generator in the agent.
+Creating without `steps` persists `NEEDS_PLAN` for READ_ONLY/NORMAL and for AUTONOMOUS when no agentic coordinator is configured. With an injected `IRemoteTaskAgenticCoordinator`, goal-only AUTONOMOUS creation queues local planning; otherwise submit `agent_task_plan` with the same taskId, goal, project, mode and overall timeout plus non-empty steps. Existing executing/terminal tasks cannot be externally replanned. Agentic step/goal repairs are bounded to the current task and are always revalidated before execution.
 
 For the cookie HTTP APIs, include `deviceId` in create/plan bodies and in query/cancel URLs. HTTP create/plan return the snapshot directly; MCP returns the same `RemoteTaskReply` as both structured content and legacy JSON-encoded text (since 1.0.62). The server logs operation/outcome/correlation IDs, not goal, command text or artifact contents.
 
@@ -84,7 +94,7 @@ Tool names, inputs, OAuth owner/device routing, local Arm/Pause/approval enforce
 
 ## Runtime, recovery and local controls
 
-`NEEDS_PLAN -> QUEUED -> RUNNING -> COMPLETED|FAILED|CANCELLED|INTERRUPTED`. Cancellation may first be `CANCELLING`. Task budget expiry is FAILED with a deadline error; transport loss is INTERRUPTED. Timeout/cancel preserves already-read partial output. Local Pause, Disconnect and standing-permission revocation cancel active task work and stop owned process jobs. Queries and cancellation remain available when control is paused; new work does not.
+Deterministic tasks use `NEEDS_PLAN -> QUEUED -> RUNNING -> COMPLETED|FAILED|CANCELLED|INTERRUPTED`. Agentic AUTONOMOUS tasks may additionally pass through `PLANNING` and `VERIFYING`, and bounded goal repairs return to `QUEUED/RUNNING` before another verification. Cancellation may first be `CANCELLING`. Task budget expiry is FAILED with a deadline error; transport loss is INTERRUPTED. Timeout/cancel preserves already-read partial output. Local Pause, Disconnect and standing-permission revocation cancel active task work and stop owned process jobs. Queries and cancellation remain available when control is paused; new work does not.
 
 Task files are stored in `%LOCALAPPDATA%/JarvisAgent/TaskRuns/<server-and-device-hash>/<owner-hash>/`. Storage uses UTF-8 JSON, flushed temporary files and atomic replacement, not the old in-memory class named SQLite. A per-device lease prevents concurrent writers. There is a cap of 128 records; archive terminal records locally when needed. Plans and outputs may contain private project data and are not encrypted by this task store. Do not upload the task directory or include it in release/source archives.
 

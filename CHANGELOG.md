@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.67 - 2026-09-17
+
+- Add vendor-neutral `IRemoteTaskAgenticCoordinator` support for goal-only `AUTONOMOUS` tasks: generated plans are persisted and revalidated, normal step execution/repair remains permission-gated, and final completion now requires an independent goal-verification pass when the agentic coordinator is active.
+- Allow failed goal verification to request at most two bounded repair rounds; append and validate those repair steps as part of the durable plan, execute them through the existing runner, and retain bounded goal-verifier artifacts.
+- Add `CodingPromptAssembler` with deterministic bounded layers for coding policy, rendered frontend/browser QA policy, resolved workspace, sorted tool capabilities, selected skills, outcomes and verification debt; inject these layers into agentic planning/goal contexts without choosing a model provider or granting permissions.
+- Add focused agentic/prompt regressions plus the Codex-parity design/implementation plan documents; bump package/assembly/file versions to 1.0.67 / 1.0.67.0.
+
 ## 1.0.66 - 2026-09-17
 
 - Publish human-readable MCP `title` plus matching `annotations.title` for every dynamic Jarvis action and all six `agent_task_*` tools, following the metadata pattern used by mature MCP servers such as Desktop Commander; dynamic titles split namespace/underscore and Pascal/camel-case identifier boundaries.

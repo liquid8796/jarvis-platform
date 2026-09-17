@@ -14,6 +14,7 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
     private readonly Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> _invoke;
     private readonly Func<string, AgentExecutionContext, Task> _cancelJob;
     private readonly IRemoteTaskAdaptiveCoordinator? _adaptive;
+    private readonly IRemoteTaskAgenticCoordinator? _agentic;
     private readonly Dictionary<string, Active> _active = new(StringComparer.Ordinal);
     private readonly HashSet<string> _storageFaults = new(StringComparer.Ordinal);
     private bool _disposed;
@@ -21,7 +22,7 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
     public RemoteTaskHost(string root, WorkspaceDirectories folders, DynamicToolRegistry registry,
         Func<bool> armed, Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> invoke,
         Func<string, AgentExecutionContext, Task> cancelJob, IRemoteTaskAdaptiveCoordinator? adaptive = null, Func<RemoteTaskRequest, AgentExecutionContext?>? resolveSession = null, AgentExecutionSettings? settings = null)
-    { _store = new(root); _folders = folders; _registry = registry; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; _adaptive = adaptive; _resolveSession = resolveSession; if (settings is not null) ConfigureExecutionSettings(settings); }
+    { _store = new(root); _folders = folders; _registry = registry; _armed = armed; _invoke = invoke; _cancelJob = cancelJob; _adaptive = adaptive; _agentic = adaptive as IRemoteTaskAgenticCoordinator; _resolveSession = resolveSession; if (settings is not null) ConfigureExecutionSettings(settings); }
 
     public Task<RemoteTaskReply> HandleAsync(string operation, RemoteTaskRequest request, CancellationToken sessionToken)
     {
@@ -66,11 +67,12 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                         lineage = RemoteTaskDelegation.Child(parent, request.Plan, project);
                     }
                     ValidateTools(request.Plan);
+                    var agentPlansGoal = request.Plan.Steps.Count == 0 && request.Plan.ExecutionMode == "AUTONOMOUS" && _agentic is not null;
                     if (_store.AtCapacity) return Task.FromResult(RemoteTaskReply.Failure("busy", "Local task history is full (128). Archive terminal task files locally before creating more."));
-                    if (request.Plan.Steps.Count > 0 && _active.Count >= (long)_settings.MaxDurableTasks + _settings.MaxQueuedCalls) return Busy();
+                    if ((request.Plan.Steps.Count > 0 || agentPlansGoal) && _active.Count >= (long)_settings.MaxDurableTasks + _settings.MaxQueuedCalls) return Busy();
                     var now = DateTimeOffset.UtcNow;
                     var snapshot = new RemoteTaskSnapshot(id, request.Plan.Goal, project,
-                        request.Plan.Steps.Count == 0 ? "NEEDS_PLAN" : "QUEUED", null, 0, request.Plan.Steps.Count, now, now,
+                        request.Plan.Steps.Count == 0 && !agentPlansGoal ? "NEEDS_PLAN" : "QUEUED", null, 0, request.Plan.Steps.Count, now, now,
                         ParentTaskId: lineage.ParentTaskId, RootTaskId: lineage.RootTaskId, Depth: lineage.Depth);
                     stored = new(1, request.OwnerId, createDigest, request.Plan.Steps.Count == 0 ? null : planDigest,
                         Clone(request.Plan), snapshot, [])
@@ -80,7 +82,7 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                         WorkspaceDirectories = (caller?.AdditionalDirectories ?? _folders.Additional).ToArray()
                     };
                     _store.Save(stored); // Acknowledge only after durable storage.
-                    if (stored.Plan.Steps.Count > 0) Start(stored, sessionToken, caller?.SessionCancellation ?? default);
+                    if (stored.Plan.Steps.Count > 0 || agentPlansGoal) Start(stored, sessionToken, caller?.SessionCancellation ?? default);
                     return Task.FromResult(new RemoteTaskReply(Task: snapshot));
                 }
                 if (stored is null) return Task.FromResult(RemoteTaskReply.Failure("not_found", "Task not found on this device for this owner."));
@@ -183,96 +185,18 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
         try
         {
             using var slot = await _taskSlots.AcquireAsync(task.OwnerId + "|" + (task.OwnerSessionId ?? task.Snapshot.TaskId), active.Stop.Token);
-            foreach (var originalStep in task.Plan.Steps)
+            task = await EnsureAgenticPlanAsync(task, active).ConfigureAwait(false);
+            if (task.Plan.Steps.Count == 0)
             {
-                var step = originalStep;
-                var repairs = 0;
-                while (true)
-                {
-                    active.Stop.Token.ThrowIfCancellationRequested();
-                    RequireArmed();
-                    task = Save(task with { Snapshot = task.Snapshot with { Status = "RUNNING", CurrentStep = step.Id, UpdatedAt = DateTimeOffset.UtcNow } });
-                    var succeeded = false;
-                    var cancelledOrTimedOut = false;
-                    RemoteTaskArtifact? failureArtifact = null;
-
-                    for (var attempt = 1; attempt <= step.MaxAttempts; attempt++)
-                    {
-                        using var stepStop = CancellationTokenSource.CreateLinkedTokenSource(active.Stop.Token);
-                        stepStop.CancelAfter(TimeSpan.FromSeconds(step.TimeoutSeconds));
-                        var context = active.Context with
-                        {
-                            CallId = task.Snapshot.TaskId + ":" + step.Id + ":r" + repairs + ":" + attempt,
-                            SessionCancellation = active.Stop.Token
-                        };
-                        RemoteStepResult result;
-                        try
-                        {
-                            if (step.ToolId is "process.start" or "process.spawn")
-                                result = await RemoteProcessRunner.RunAsync(step, context, _invoke, _cancelJob, stepStop.Token);
-                            else
-                            {
-                                var reply = await _invoke(step.ToolId, step.Arguments, context, stepStop.Token);
-                                result = new(!reply.IsError, reply.Text, Error: reply.IsError ? reply.Text : null);
-                            }
-                            if (result.Output.Length > RemoteTaskRules.OutputLimit)
-                                result = result with { Output = result.Output[^RemoteTaskRules.OutputLimit..], Truncated = true };
-                            if (stepStop.IsCancellationRequested)
-                                result = result with { Success = false, Error = result.Error ?? "Step cancelled or deadline exceeded; partial output retained." };
-                            if (result.Success && !string.IsNullOrEmpty(step.ExpectedText) && !result.Output.Contains(step.ExpectedText, StringComparison.Ordinal))
-                                result = result with { Success = false, Error = "Expected text was not found in the bounded step output." };
-                        }
-                        catch (Exception ex)
-                        {
-                            result = new(false, "", Error: ex is OperationCanceledException
-                                ? "Step cancelled or deadline exceeded; mutating actions were not replayed."
-                                : ex is ArgumentException or UnauthorizedAccessException or InvalidOperationException ? ex.Message : "Step failed: " + ex.GetType().Name);
-                        }
-
-                        cancelledOrTimedOut = stepStop.IsCancellationRequested;
-                        var output = result.Output ?? "";
-                        var artifactAttempt = repairs * 3 + attempt;
-                        var artifact = new RemoteTaskArtifact(task.Artifacts.Count, step.Id, step.Stage, step.ToolId, artifactAttempt,
-                            result.Success, output.Length <= RemoteTaskRules.OutputLimit ? output : output[^RemoteTaskRules.OutputLimit..],
-                            result.Truncated || output.Length > RemoteTaskRules.OutputLimit, result.ExitCode, DateTimeOffset.UtcNow,
-                            result.Error is { Length: > 2000 } e ? e[..2000] : result.Error);
-                        task = Save(task with { Artifacts = task.Artifacts.Append(artifact).ToArray() });
-                        active.Stop.Token.ThrowIfCancellationRequested();
-                        if (result.Success)
-                        {
-                            task = Save(task with { Snapshot = task.Snapshot with { CompletedSteps = task.Snapshot.CompletedSteps + 1, UpdatedAt = DateTimeOffset.UtcNow } });
-                            succeeded = true;
-                            break;
-                        }
-
-                        failureArtifact = artifact;
-                        if (cancelledOrTimedOut) break;
-                        if (attempt < step.MaxAttempts)
-                            await Task.Delay(200 * attempt, active.Stop.Token);
-                    }
-
-                    if (succeeded) break;
-
-                    if (failureArtifact is not null && RemoteTaskAdaptiveRules.CanRepair(
-                            task.Plan.ExecutionMode, repairs, cancelledOrTimedOut, _adaptive is not null))
-                    {
-                        var replacement = await _adaptive!.RepairAsync(task.Plan, step, failureArtifact, repairs + 1, active.Stop.Token);
-                        if (replacement is not null)
-                        {
-                            RemoteTaskAdaptiveRules.ValidateReplacement(step, replacement);
-                            var repairPlan = task.Plan with { Steps = [replacement] };
-                            RemoteTaskRules.Validate(repairPlan);
-                            ValidateTools(repairPlan);
-                            step = replacement;
-                            repairs++;
-                            continue;
-                        }
-                    }
-
-                    Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", Error = failureArtifact?.Error, UpdatedAt = DateTimeOffset.UtcNow } });
-                    return;
-                }
+                Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", Error = "Task has no executable plan.", UpdatedAt = DateTimeOffset.UtcNow } });
+                return;
             }
+            var execution = await ExecuteStepsAsync(task, active, task.Plan.Steps).ConfigureAwait(false);
+            task = execution.Task;
+            if (!execution.Success) return;
+            var goal = await VerifyAgenticGoalAsync(task, active).ConfigureAwait(false);
+            task = goal.Task;
+            if (!goal.Success) return;
             lock (_sync)
             {
                 active.Stop.Token.ThrowIfCancellationRequested();

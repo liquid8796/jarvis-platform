@@ -1,6 +1,6 @@
-# Jarvis Control - 1.0.65
+# Jarvis Control - 1.0.67
 
-**Version 1.0.65 preserves Jarvis MCP continuity across consecutive chat prompts even when the host does not replay a prior application-session handle.** Ordinary tools and `agent_task_*` calls now support sessionless execution scoped to the authenticated owner and enrolled agent, while explicit sessions remain available for isolated workspace, mailbox, browser and lifecycle state. See [AGENT.md](docs/AGENT.md), [API.md](docs/API.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
+**Version 1.0.67 adds a goal-owned autonomous coding harness while preserving the deterministic task path.** An injected `IRemoteTaskAgenticCoordinator` can plan a goal-only `AUTONOMOUS` task, repair failed logical work, and independently verify the final goal before `COMPLETED`; planner and repair output are revalidated against the installed tool registry and existing permission/session gates. A bounded `CodingPromptAssembler` supplies stable coding, frontend/browser, workspace, tool, outcome and verification-debt context without selecting a model provider or embedding credentials. See [AGENT.md](docs/AGENT.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
 
 A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; the browser extension remains **1.2.0**.
 
@@ -119,7 +119,7 @@ Packaging supports win-x64 runtime assets for Agent delivery.
 
 ## Task Gateway (1.0.48)
 
-The MCP server now routes durable client-planned tasks to the local agent over the existing authenticated WebSocket. HTTP lifecycle APIs and six device-bound MCP task tools support goal creation, explicit plan submission, status, paged output artifacts, cancellation and installed-tool schema discovery. Goal-only input returns `NEEDS_PLAN`: no model planner is silently assumed.
+The MCP server routes durable tasks to the local agent over the existing authenticated WebSocket. HTTP lifecycle APIs and six device-bound MCP task tools support goal creation, explicit plan submission, status, paged output artifacts, cancellation and installed-tool schema discovery. Goal-only NORMAL/READ_ONLY input still returns `NEEDS_PLAN`; goal-only `AUTONOMOUS` input can be planned locally only when the host explicitly injects an `IRemoteTaskAgenticCoordinator`, so no model provider or extra permission is silently assumed.
 
 Agent execution reuses local permissions, waits for process exit codes, retains bounded output and stores snapshots outside the repository. Reconnect/restart does not replay uncertain actions. Both the server and agent need this release for task-v1; older agents still support ordinary tools. Detailed usage and boundaries: [Task Gateway](docs/AGENT-TASK-GATEWAY.md). Build with `.\scripts\Build.ps1 -Component All -ServerRuntime linux-arm64 -Offline` when dependencies and runtime packs are cached. Executed release evidence is recorded in [Build status](docs/BUILD-STATUS.md).
 
@@ -139,7 +139,13 @@ Wire calls may carry optional `threadId` and `turnId` correlation, and local run
 
 Agent Core now includes `AdaptiveAgentExecutionLoop` with validated dependency DAGs, async execution/verification and bounded replacement of only the failed logical action. Verified predecessors are not replayed by the adaptive loop. `AgentConnection` can optionally inject an `IRemoteTaskAdaptiveCoordinator`; Task Gateway uses it only for `AUTONOMOUS` tasks and never after cancellation/timeout.
 
-The default hosts do not configure a model planner, so goal-only tasks still return `NEEDS_PLAN` and NORMAL/READ_ONLY plans retain the 1.0.48 deterministic semantics. Every adaptive replacement is revalidated against the installed local tool schema and then traverses the same Arm/Pause, exact-permission and approval path.
+The default hosts still do not silently configure a paid/model planner; NORMAL/READ_ONLY plans retain the 1.0.48 deterministic semantics. Every adaptive or agentic replacement is revalidated against the installed local tool schema and then traverses the same Arm/Pause, exact-permission and approval path.
+
+## Goal-Owned Coding Harness (1.0.67)
+
+`IRemoteTaskAgenticCoordinator` extends the adaptive coordinator with initial planning and final goal verification. A goal-only `AUTONOMOUS` task is queued only when this coordinator is explicitly present; its generated plan is persisted before execution, must retain goal/mode/timeout/project, and is validated against normal stage/schema/tool limits. Successful tool exit codes no longer imply autonomous completion: the coordinator receives bounded execution evidence and must pass goal verification. It may request up to two bounded repair rounds, which are appended to the persisted plan and executed through the same guarded path.
+
+`CodingPromptAssembler` provides deterministic prompt layers for injected coordinators: coding policy, rendered frontend/browser policy, resolved workspace, sorted tool capability metadata, optional skill instructions, execution outcomes and verification debt. Prompt material is bounded, vendor-neutral and never acts as a permission grant or a model-provider configuration.
 
 ## Restricted Tool Code Mode and Plugins (1.0.52)
 
