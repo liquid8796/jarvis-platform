@@ -1,3 +1,4 @@
+using Jarvis.Agent.Core.Autonomous.Verification;
 using Jarvis.Agent.Core.Prompting;
 using Jarvis.Protocol;
 
@@ -145,29 +146,50 @@ internal sealed partial class RemoteTaskHost
     {
         if (_agentic is null || task.Plan.ExecutionMode != "AUTONOMOUS") return (task, true);
 
+        var frontendRequirement = FrontendChangeClassifier.Classify(task.Plan.Goal, task.Plan.Steps);
+        var frontendEvidence = new List<FrontendEvidence>();
         for (var repairRound = 0; ; repairRound++)
         {
             active.Stop.Token.ThrowIfCancellationRequested();
             RequireArmed();
             task = Save(task with { Snapshot = task.Snapshot with { Status = "VERIFYING", CurrentStep = "goal.verify", UpdatedAt = DateTimeOffset.UtcNow } });
             var outcomes = task.Artifacts.Select(ArtifactSummary).ToArray();
+            var verificationDebt = FrontendVerificationGate.DescribeDebt(frontendRequirement, frontendEvidence);
             var promptLayers = new CodingPromptAssembler().Assemble(new CodingPromptRequest(
-                task.Plan.Goal, task.Snapshot.Project, _registry.Snapshot.Descriptors, OutcomeSummaries: outcomes));
+                task.Plan.Goal, task.Snapshot.Project, _registry.Snapshot.Descriptors,
+                OutcomeSummaries: outcomes, VerificationDebt: verificationDebt));
             var verification = await _agentic.VerifyGoalAsync(
-                new RemoteTaskGoalContext(task.Plan, task.Snapshot.Project, task.Artifacts) { PromptLayers = promptLayers },
+                new RemoteTaskGoalContext(task.Plan, task.Snapshot.Project, task.Artifacts)
+                {
+                    PromptLayers = promptLayers,
+                    FrontendRequirement = frontendRequirement,
+                    FrontendEvidence = frontendEvidence.ToArray()
+                },
                 active.Stop.Token).ConfigureAwait(false);
-            var detail = ClipGoalText(verification.Success ? "Goal verification passed." : verification.Error ?? "Goal verification failed.", RemoteTaskRules.OutputLimit);
+            if (verification.FrontendEvidence is { Count: > 0 } reportedEvidence)
+                frontendEvidence.AddRange(reportedEvidence);
+
+            var frontendResult = FrontendVerificationGate.Evaluate(frontendRequirement, frontendEvidence);
+            var goalPassed = verification.Success && frontendResult.Passed;
+            var errors = new List<string>();
+            if (!verification.Success) errors.Add(verification.Error ?? "Goal verification failed.");
+            if (!frontendResult.Passed) errors.Add(frontendResult.DescribeFailure());
+            var goalError = errors.Count == 0 ? null : string.Join(" ", errors);
+            var summary = ToProtocolVerificationSummary(frontendRequirement, frontendResult);
+            task = Save(task with { Snapshot = task.Snapshot with { Verification = summary, UpdatedAt = DateTimeOffset.UtcNow } });
+
+            var detail = ClipGoalText(goalPassed ? "Goal verification passed." : goalError ?? "Goal verification failed.", RemoteTaskRules.OutputLimit);
             var artifact = new RemoteTaskArtifact(task.Artifacts.Count, "goal.verify", "VERIFY", "agent.goal_verifier", repairRound + 1,
-                verification.Success, detail, false, null, DateTimeOffset.UtcNow,
-                verification.Success ? null : ClipGoalText(verification.Error ?? "Goal verification failed.", 2000));
+                goalPassed, detail, false, null, DateTimeOffset.UtcNow,
+                goalPassed ? null : ClipGoalText(goalError ?? "Goal verification failed.", 2000));
             task = Save(task with { Artifacts = task.Artifacts.Append(artifact).ToArray() });
-            if (verification.Success) return (task, true);
+            if (goalPassed) return (task, true);
 
             var repairSteps = verification.RepairSteps?.ToArray() ?? [];
             if (repairSteps.Length == 0 || repairRound >= RemoteTaskAdaptiveRules.MaxRepairs)
             {
                 task = Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", CurrentStep = null,
-                    Error = ClipGoalText(verification.Error ?? "Goal verification failed.", 2000), UpdatedAt = DateTimeOffset.UtcNow } });
+                    Error = ClipGoalText(goalError ?? "Goal verification failed.", 2000), UpdatedAt = DateTimeOffset.UtcNow } });
                 return (task, false);
             }
 
@@ -185,6 +207,15 @@ internal sealed partial class RemoteTaskHost
             if (!execution.Success) return (task, false);
         }
     }
+
+    private static RemoteTaskVerificationSummary ToProtocolVerificationSummary(
+        FrontendVerificationRequirement requirement, FrontendVerificationResult result) =>
+        new(requirement.IsFrontend, result.Passed,
+            requirement.IsFrontend ? (requirement.IsVisual ? "frontend-visual" : "frontend") : "goal",
+            result.Evidence.Select(item => new RemoteTaskEvidenceSummary(
+                item.Kind.ToString(), item.Success, item.Summary, item.Artifact)).ToArray(),
+            result.Missing.Select(item => item.ToString()).ToArray(),
+            result.Failed.Select(item => item.ToString()).ToArray());
 
     private static string ArtifactSummary(RemoteTaskArtifact artifact)
     {

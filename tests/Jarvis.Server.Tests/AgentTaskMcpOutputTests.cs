@@ -174,8 +174,13 @@ public sealed partial class AgentTaskMcpTests
         await using var peer = await TaskAgentPeer.ConnectAsync(app, admin);
         using var client = await GrantAsync(app, admin, peer.DeviceId);
         var listed = await RpcAsync(client, "tools/list", new { });
+        var verification = new RemoteTaskVerificationSummary(true, false, "frontend-visual",
+        [
+            new RemoteTaskEvidenceSummary("TargetIdentity", true, "URL/title matched"),
+            new RemoteTaskEvidenceSummary("Screenshot", true, "desktop screenshot", "desktop.png")
+        ], ["ResponsiveMobile"], ["Overflow"]);
         var task = new RemoteTaskSnapshot(Guid.NewGuid().ToString("N"), "fixture", "project", "FAILED", "verify", 0, 1,
-            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, "failed", RootTaskId: Guid.NewGuid().ToString("N"));
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, "failed", RootTaskId: Guid.NewGuid().ToString("N"), Verification: verification);
         var reply = WireJson.Element(new RemoteTaskReply(Task: task, Artifacts: [new(0, "verify", "VERIFY", "process.start", 5,
             false, "retained partial output", true, -1, DateTimeOffset.UtcNow, "nonzero exit")], NextOffset: 1));
         var schema = SchemaGuard.Compile(OutputSchema(listed, "agent_task_artifacts"));

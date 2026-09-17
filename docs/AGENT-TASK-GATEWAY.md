@@ -1,5 +1,13 @@
 # Agent Task Gateway (Approach A)
 
+## 1.0.68 rendered frontend verification
+
+Agentic autonomous tasks now classify frontend-affecting work from goal intent and step argument paths. Common rendered extensions such as `.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.sass`, `.less` and `.html` trigger a typed frontend verification requirement. Visual/layout intent or stylesheet changes add responsive desktop/mobile and overflow checks.
+
+The configured goal verifier can attach `FrontendEvidence` items for target identity, rendered DOM/accessibility state, framework-overlay absence, console health, screenshot capture, target interaction/post-state proof, desktop/mobile viewport checks and overflow/clipping. The latest evidence of each kind is authoritative. Missing or failed required kinds make the effective goal verdict fail even if the coordinator otherwise reports success; those kinds are fed into the next agentic prompt as verification debt when repair steps are available.
+
+`RemoteTaskSnapshot.verification` is an additive optional wire field containing `required`, `passed`, `type`, typed evidence, missing kinds and failed kinds. MCP task output schemas advertise the same strict nested shape while legacy/deterministic tasks may omit the field entirely. This preserves existing task JSON compatibility and lets clients display completion evidence without parsing retained tool text.
+
 ## 1.0.67 goal-owned autonomous execution
 
 Goal-only `AUTONOMOUS` tasks can now execute when the Windows/embedding host explicitly injects an `IRemoteTaskAgenticCoordinator`. `READ_ONLY` and `NORMAL` goal-only requests keep the existing `NEEDS_PLAN` behavior, and an autonomous request without an agentic coordinator also stays `NEEDS_PLAN`. Core does not select a model provider, store model credentials, or treat this coordinator as a permission grant.

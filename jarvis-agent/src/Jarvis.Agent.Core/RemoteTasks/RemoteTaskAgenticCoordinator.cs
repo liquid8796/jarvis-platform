@@ -1,3 +1,4 @@
+using Jarvis.Agent.Core.Autonomous.Verification;
 using Jarvis.Agent.Core.Prompting;
 using Jarvis.Protocol;
 
@@ -28,14 +29,19 @@ public sealed record RemoteTaskGoalContext(
     IReadOnlyList<RemoteTaskArtifact> Artifacts)
 {
     public IReadOnlyList<CodingPromptLayer> PromptLayers { get; init; } = [];
+    public FrontendVerificationRequirement FrontendRequirement { get; init; } = FrontendVerificationRequirement.None;
+    public IReadOnlyList<FrontendEvidence> FrontendEvidence { get; init; } = [];
 }
 
 public sealed record RemoteTaskGoalVerification(
     bool Success,
     string? Error = null,
-    IReadOnlyList<RemoteTaskStep>? RepairSteps = null)
+    IReadOnlyList<RemoteTaskStep>? RepairSteps = null,
+    IReadOnlyList<FrontendEvidence>? FrontendEvidence = null)
 {
-    public static RemoteTaskGoalVerification Passed() => new(true);
-    public static RemoteTaskGoalVerification Failed(string error, IReadOnlyList<RemoteTaskStep>? repairSteps = null) =>
-        new(false, error, repairSteps);
+    public static RemoteTaskGoalVerification Passed(IReadOnlyList<FrontendEvidence>? frontendEvidence = null) =>
+        new(true, FrontendEvidence: frontendEvidence);
+    public static RemoteTaskGoalVerification Failed(string error, IReadOnlyList<RemoteTaskStep>? repairSteps = null,
+        IReadOnlyList<FrontendEvidence>? frontendEvidence = null) =>
+        new(false, error, repairSteps, frontendEvidence);
 }

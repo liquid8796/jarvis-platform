@@ -28,10 +28,13 @@ public sealed record RemoteTaskPlan
 
 public sealed record RemoteTaskRequest(string OwnerId, string TaskId, RemoteTaskPlan? Plan = null,
     int Offset = 0, int Limit = 20, string? ParentTaskId = null, string? SessionId = null);
+public sealed record RemoteTaskEvidenceSummary(string Kind, bool Success, string Summary, string? Artifact = null);
+public sealed record RemoteTaskVerificationSummary(bool Required, bool Passed, string Type,
+    IReadOnlyList<RemoteTaskEvidenceSummary> Evidence, IReadOnlyList<string> Missing, IReadOnlyList<string> Failed);
 public sealed record RemoteTaskSnapshot(string TaskId, string Goal, string Project, string Status,
     string? CurrentStep, int CompletedSteps, int TotalSteps, DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt, string? Error = null, string? ParentTaskId = null,
-    string? RootTaskId = null, int Depth = 0);
+    string? RootTaskId = null, int Depth = 0, RemoteTaskVerificationSummary? Verification = null);
 public sealed record RemoteTaskArtifact(int Sequence, string StepId, string Stage, string ToolId,
     int Attempt, bool Success, string Output, bool Truncated, int? ExitCode, DateTimeOffset CreatedAt,
     string? Error = null);

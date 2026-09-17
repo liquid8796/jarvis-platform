@@ -1,6 +1,6 @@
-# Jarvis Control - 1.0.67
+# Jarvis Control - 1.0.68
 
-**Version 1.0.67 adds a goal-owned autonomous coding harness while preserving the deterministic task path.** An injected `IRemoteTaskAgenticCoordinator` can plan a goal-only `AUTONOMOUS` task, repair failed logical work, and independently verify the final goal before `COMPLETED`; planner and repair output are revalidated against the installed tool registry and existing permission/session gates. A bounded `CodingPromptAssembler` supplies stable coding, frontend/browser, workspace, tool, outcome and verification-debt context without selecting a model provider or embedding credentials. See [AGENT.md](docs/AGENT.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
+**Version 1.0.68 makes rendered frontend verification a completion requirement for autonomous coding tasks.** Frontend-affecting work is classified from goal and changed-path evidence, then must provide typed URL/title, rendered DOM/accessibility, framework-overlay, console-health, screenshot and interaction proof; visual/layout work additionally requires desktop, mobile and overflow evidence. Missing or failing evidence is fed back as verification debt and blocks `COMPLETED`. See [AGENT.md](docs/AGENT.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
 
 A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; the browser extension remains **1.2.0**.
 
@@ -146,6 +146,12 @@ The default hosts still do not silently configure a paid/model planner; NORMAL/R
 `IRemoteTaskAgenticCoordinator` extends the adaptive coordinator with initial planning and final goal verification. A goal-only `AUTONOMOUS` task is queued only when this coordinator is explicitly present; its generated plan is persisted before execution, must retain goal/mode/timeout/project, and is validated against normal stage/schema/tool limits. Successful tool exit codes no longer imply autonomous completion: the coordinator receives bounded execution evidence and must pass goal verification. It may request up to two bounded repair rounds, which are appended to the persisted plan and executed through the same guarded path.
 
 `CodingPromptAssembler` provides deterministic prompt layers for injected coordinators: coding policy, rendered frontend/browser policy, resolved workspace, sorted tool capability metadata, optional skill instructions, execution outcomes and verification debt. Prompt material is bounded, vendor-neutral and never acts as a permission grant or a model-provider configuration.
+
+## Rendered Frontend Verification (1.0.68)
+
+Autonomous frontend completion now fails closed through `FrontendVerificationGate`. `FrontendChangeClassifier` recognizes common rendered source extensions (`.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.sass`, `.less`, `.html`) plus frontend/visual intent in the goal. Base rendered proof requires target identity, rendered DOM/accessibility state, no framework overlay, console health, a screenshot and a target interaction with post-state evidence. Visual/layout work additionally requires desktop and mobile viewport checks plus overflow/clipping evidence.
+
+Evidence is typed, the latest evidence for a kind wins, and missing/failing kinds are projected back into the agentic prompt as `verification-debt` before another goal-repair round. `RemoteTaskSnapshot.verification` exposes the requirement type, pass state, retained evidence, missing kinds and failed kinds; the MCP output schema advertises this field as optional so deterministic/legacy task JSON remains compatible.
 
 ## Restricted Tool Code Mode and Plugins (1.0.52)
 

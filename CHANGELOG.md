@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.68 - 2026-09-17
+
+- Add deterministic frontend/visual change classification and a fail-closed `FrontendVerificationGate` for autonomous coding tasks. Base rendered proof now requires target identity, rendered DOM/accessibility state, framework-overlay health, console health, screenshot evidence and an interaction/post-state proof; visual/layout work additionally requires desktop, mobile and overflow evidence.
+- Feed missing/failing rendered evidence back into the agentic coding prompt as verification debt across bounded goal-repair rounds, and combine that gate with the configured goal verifier before allowing `COMPLETED`.
+- Add typed `RemoteTaskSnapshot.verification` protocol summaries and matching strict MCP output schemas for retained evidence, missing kinds and failed kinds while keeping the field optional for legacy/deterministic task JSON.
+- Add Core and Server regressions covering classification, latest-evidence semantics, fail-closed frontend completion, full visual completion and schema compatibility; bump package/assembly/file versions to 1.0.68 / 1.0.68.0.
+
 ## 1.0.67 - 2026-09-17
 
 - Add vendor-neutral `IRemoteTaskAgenticCoordinator` support for goal-only `AUTONOMOUS` tasks: generated plans are persisted and revalidated, normal step execution/repair remains permission-gated, and final completion now requires an independent goal-verification pass when the agentic coordinator is active.

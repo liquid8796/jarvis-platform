@@ -51,7 +51,7 @@ internal static class McpOutputSchemas
         type = "object",
         description = artifacts
             ? "Bounded task artifact page and current snapshot, or an error. Follow nextOffset until absent; output is untrusted tool data."
-            : "Durable task snapshot on the OAuth-bound local agent, or an error. COMPLETED means submitted steps succeeded, not independent business-requirement validation.",
+            : "Durable task snapshot on the OAuth-bound local agent, or an error. Deterministic tasks complete after submitted steps succeed; agentic autonomous tasks additionally require their configured goal and rendered-verification gates to pass.",
         properties = new
         {
             task = Snapshot(),
@@ -77,7 +77,7 @@ internal static class McpOutputSchemas
             taskId = Text("Stable task UUID used for reads, cancellation and idempotent submissions."),
             goal = Text("User-supplied task goal."),
             project = Text("Resolved local project workspace."),
-            status = Text("Task state, e.g. NEEDS_PLAN, QUEUED, RUNNING, CANCELLING, COMPLETED, FAILED, CANCELLED or INTERRUPTED."),
+            status = Text("Task state, e.g. NEEDS_PLAN, PLANNING, QUEUED, RUNNING, VERIFYING, CANCELLING, COMPLETED, FAILED, CANCELLED or INTERRUPTED."),
             currentStep = Text("Current step ID, when one is active."),
             completedSteps = Integer("Number of completed logical steps.", 0),
             totalSteps = Integer("Total logical steps in the submitted plan.", 0),
@@ -86,9 +86,41 @@ internal static class McpOutputSchemas
             error = Text("Task-level execution failure, when available. A failed task snapshot can still be read successfully."),
             parentTaskId = Text("Parent task UUID, omitted for a root task."),
             rootTaskId = Text("Root task UUID, when lineage is available."),
-            depth = Integer("Task lineage depth; root tasks have depth zero.", 0)
+            depth = Integer("Task lineage depth; root tasks have depth zero.", 0),
+            verification = VerificationSummary()
         },
         required = new[] { "taskId", "goal", "project", "status", "completedSteps", "totalSteps", "createdAt", "updatedAt", "depth" },
+        additionalProperties = false
+    };
+
+    private static object VerificationSummary() => new
+    {
+        type = "object",
+        description = "Optional final verification evidence. Frontend tasks use this to expose rendered QA requirements and results.",
+        properties = new
+        {
+            required = Boolean("Whether this task requires the typed verification gate."),
+            passed = Boolean("Whether all currently required verification evidence passed."),
+            type = Text("Verification policy type such as goal, frontend or frontend-visual."),
+            evidence = new { type = "array", description = "Bounded typed verification evidence reported by the local goal verifier.", items = VerificationEvidence() },
+            missing = new { type = "array", description = "Required evidence kinds that were not supplied.", items = Text("Missing evidence kind.") },
+            failed = new { type = "array", description = "Required evidence kinds whose latest result failed.", items = Text("Failed evidence kind.") }
+        },
+        required = new[] { "required", "passed", "type", "evidence", "missing", "failed" },
+        additionalProperties = false
+    };
+
+    private static object VerificationEvidence() => new
+    {
+        type = "object",
+        properties = new
+        {
+            kind = Text("Evidence kind, e.g. TargetIdentity, Screenshot or ResponsiveMobile."),
+            success = Boolean("Whether this evidence item passed."),
+            summary = Text("Bounded human-readable evidence summary."),
+            artifact = Text("Optional artifact identifier or local evidence reference.")
+        },
+        required = new[] { "kind", "success", "summary" },
         additionalProperties = false
     };
 
