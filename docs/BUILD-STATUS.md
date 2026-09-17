@@ -10,6 +10,14 @@
 - Self-contained Windows x64 Desktop/CLI and Linux ARM64 server publishes succeeded. The three shipping entry-point DLLs were independently checked for assembly/file **1.0.64.0**; `Verify-CurrentVersion.py` passed package **1.0.64**. Agent output validation, forbidden private-state/font scan, server `tar -tzf`, and Agent ZIP CRC all passed; ZIP contains **2574 entries**. Package SHA-256: Agent ZIP `CF5DB3B49E93C5415D7C218C37C700BB6A5A34DF452805F7C39C7A67DDB410C8`; server archive `89DBE1937D9AC897B3ED2A751A9C0373D9562DB772CDB94986A692D269D2A58C`.
 - Verification scope: local source/build/publish and isolated test servers, not production deployment. No live enrollment/profile change, Arm/Pause change, running Agent replacement, OCI service restart, browser-extension reload or actual ChatGPT/Claude catalog refresh was performed. Real chats on two client devices, physical desktop interaction and browser acceptance still follow ACCEPTANCE.md after deployment. Git publication is verified separately; a successful build does not prove a push or live upgrade.
 
+## 1.0.70 fidelity/benchmark status
+
+- Visual frontend verification requires `VisualFidelity` evidence for visual/layout work; a goal verifier can supply a bounded `VisualFidelityLedger`, and unresolved blocking mismatches fail completion.
+- Coding benchmark fixtures are stable in `CodingHarnessScenarios.All` and cover five frontend regression classes plus one backend regression class.
+- Engineering metrics are additive through `HarnessEvaluator.EvaluateEngineering(...)`: success, build/test/browser/console/interaction/visual pass rates, average corrective loops and average retained evidence count. Existing evaluator metrics are unchanged.
+- Fresh release verification: `dotnet test Jarvis.slnx -c Release --no-restore` passed **395/395**, **0 failed / 0 skipped**: Core **229**, Windows Agent **65**, Server **101**. Source control updates do not automatically restart a running desktop agent or MCP service.
+
+
 ## 1.0.63 persistent constrained-process approvals - executed verification (2026-09-17)
 
 - Added a permanent exact-tool approval path only for `process.start` and `process.spawn`: the local WPF prompt offers `Deny`, `Approve once`, and `Always approve`; the permanent choice is stored separately from ordinary Full permission and existing scoped capability leases, and the write must succeed before the active request is approved.

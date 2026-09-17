@@ -30,7 +30,8 @@ public sealed class FrontendTaskCompletionTests
             new FrontendEvidence(FrontendEvidenceKind.Overflow, true, "no clipping")
         }).ToArray();
 
-        var terminal = await RunAsync(evidence);
+        var fidelity = VisualFidelityLedger.Create([]);
+        var terminal = await RunAsync(evidence, fidelity);
 
         Assert.Equal("COMPLETED", terminal.Status);
         Assert.NotNull(terminal.Verification);
@@ -40,7 +41,7 @@ public sealed class FrontendTaskCompletionTests
         Assert.Empty(terminal.Verification.Failed);
     }
 
-    private static async Task<RemoteTaskSnapshot> RunAsync(IReadOnlyList<FrontendEvidence> evidence)
+    private static async Task<RemoteTaskSnapshot> RunAsync(IReadOnlyList<FrontendEvidence> evidence, VisualFidelityLedger? visualFidelity = null)
     {
         var root = Path.Combine(Path.GetTempPath(), "jarvis-frontend-gate-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -51,7 +52,7 @@ public sealed class FrontendTaskCompletionTests
             await using var host = new RemoteTaskHost(Path.Combine(root, "tasks"), new WorkspaceDirectories(workspace),
                 new DynamicToolRegistry([new InspectTool()]), () => true,
                 (_, _, _, _) => Task.FromResult(new ToolReply("UI_OK")), (_, _) => Task.CompletedTask,
-                new FrontendCoordinator(evidence));
+                new FrontendCoordinator(evidence, visualFidelity));
             var id = Guid.NewGuid().ToString();
             var created = await host.HandleAsync("create", new("owner", id, new RemoteTaskPlan
             {
@@ -71,7 +72,7 @@ public sealed class FrontendTaskCompletionTests
         finally { Directory.Delete(root, true); }
     }
 
-    private sealed class FrontendCoordinator(IReadOnlyList<FrontendEvidence> evidence) : IRemoteTaskAgenticCoordinator
+    private sealed class FrontendCoordinator(IReadOnlyList<FrontendEvidence> evidence, VisualFidelityLedger? visualFidelity) : IRemoteTaskAgenticCoordinator
     {
         public Task<RemoteTaskPlan> PlanAsync(RemoteTaskPlanningContext context, CancellationToken cancellationToken) =>
             Task.FromResult(context.Draft with
@@ -84,7 +85,7 @@ public sealed class FrontendTaskCompletionTests
             int repairNumber, CancellationToken cancellationToken) => Task.FromResult<RemoteTaskStep?>(null);
 
         public Task<RemoteTaskGoalVerification> VerifyGoalAsync(RemoteTaskGoalContext context, CancellationToken cancellationToken) =>
-            Task.FromResult(new RemoteTaskGoalVerification(true, FrontendEvidence: evidence));
+            Task.FromResult(new RemoteTaskGoalVerification(true, FrontendEvidence: evidence, VisualFidelity: visualFidelity));
     }
 
     private sealed class InspectTool : IAgentTool

@@ -1,4 +1,11 @@
-﻿# Changelog
+# Changelog
+
+## 1.0.70 - 2026-09-17
+
+- Add a bounded immutable `VisualFidelityLedger` covering layout, typography, color, iconography, overflow and interaction-state mismatches; visual/layout frontend completion now requires `VisualFidelity` evidence and unresolved blocking mismatches fail the normal verification gate.
+- Make visual fidelity a first-class agentic goal-verifier output so the host converts returned ledgers into typed frontend evidence and feeds unresolved fidelity debt through the existing repair loop.
+- Add six stable Codex-parity coding scenarios plus `EngineeringEvidence`, `CodingHarnessEvaluator` and additive `HarnessEvaluator.EvaluateEngineering(...)` metrics for build/test/browser/console/interaction/visual pass rates, corrective loops and evidence counts while preserving historical throughput metrics.
+- Add Core regressions for ledger resolution/bounds, visual completion blocking and coding benchmark aggregation; bump package/assembly/file versions to 1.0.70 / 1.0.70.0.
 
 ## 1.0.69 - 2026-09-17
 

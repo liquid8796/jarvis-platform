@@ -49,7 +49,7 @@ public sealed class DelegateHarnessScenario(string name, Func<CancellationToken,
 /// Offline deterministic scenario runner. It records bounded security, throughput and
 /// latency metrics; it does not grant permissions or execute tools by itself.
 /// </summary>
-public sealed class HarnessEvaluator
+public sealed partial class HarnessEvaluator
 {
     public async Task<HarnessEvaluationReport> RunAsync(IEnumerable<IAgentHarnessScenario> scenarios, CancellationToken cancellationToken = default)
     {

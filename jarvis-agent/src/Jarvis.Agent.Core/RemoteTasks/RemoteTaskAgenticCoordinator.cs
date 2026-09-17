@@ -50,11 +50,13 @@ public sealed record RemoteTaskGoalVerification(
     bool Success,
     string? Error = null,
     IReadOnlyList<RemoteTaskStep>? RepairSteps = null,
-    IReadOnlyList<FrontendEvidence>? FrontendEvidence = null)
+    IReadOnlyList<FrontendEvidence>? FrontendEvidence = null,
+    VisualFidelityLedger? VisualFidelity = null)
 {
-    public static RemoteTaskGoalVerification Passed(IReadOnlyList<FrontendEvidence>? frontendEvidence = null) =>
-        new(true, FrontendEvidence: frontendEvidence);
+    public static RemoteTaskGoalVerification Passed(IReadOnlyList<FrontendEvidence>? frontendEvidence = null,
+        VisualFidelityLedger? visualFidelity = null) =>
+        new(true, FrontendEvidence: frontendEvidence, VisualFidelity: visualFidelity);
     public static RemoteTaskGoalVerification Failed(string error, IReadOnlyList<RemoteTaskStep>? repairSteps = null,
-        IReadOnlyList<FrontendEvidence>? frontendEvidence = null) =>
-        new(false, error, repairSteps, frontendEvidence);
+        IReadOnlyList<FrontendEvidence>? frontendEvidence = null, VisualFidelityLedger? visualFidelity = null) =>
+        new(false, error, repairSteps, frontendEvidence, visualFidelity);
 }

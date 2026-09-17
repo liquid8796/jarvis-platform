@@ -175,6 +175,8 @@ internal sealed partial class RemoteTaskHost
             var verification = await _agentic.VerifyGoalAsync(goalContext, active.Stop.Token).ConfigureAwait(false);
             if (verification.FrontendEvidence is { Count: > 0 } reportedEvidence)
                 frontendEvidence.AddRange(reportedEvidence);
+            if (verification.VisualFidelity is { } fidelityLedger)
+                frontendEvidence.Add(fidelityLedger.ToEvidence());
 
             var frontendResult = FrontendVerificationGate.Evaluate(frontendRequirement, frontendEvidence);
             var goalPassed = verification.Success && frontendResult.Passed;

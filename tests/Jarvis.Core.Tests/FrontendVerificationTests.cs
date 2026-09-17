@@ -48,7 +48,8 @@ public sealed class FrontendVerificationTests
             new FrontendEvidence(FrontendEvidenceKind.ResponsiveDesktop, true, "desktop 1440x900"),
             new FrontendEvidence(FrontendEvidenceKind.ResponsiveMobile, false, "mobile clipped"),
             new FrontendEvidence(FrontendEvidenceKind.ResponsiveMobile, true, "mobile 390x844 fixed"),
-            new FrontendEvidence(FrontendEvidenceKind.Overflow, true, "no clipping")
+            new FrontendEvidence(FrontendEvidenceKind.Overflow, true, "no clipping"),
+            new FrontendEvidence(FrontendEvidenceKind.VisualFidelity, true, "reference fidelity matched")
         }).ToArray();
 
         var result = FrontendVerificationGate.Evaluate(requirement, evidence);

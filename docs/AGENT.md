@@ -1,4 +1,11 @@
-﻿# Jarvis Agent operator guide
+# Jarvis Agent operator guide
+
+## 1.0.70 visual fidelity and coding benchmarks
+
+Visual/layout autonomous tasks now require `VisualFidelity` evidence. The goal verifier can return a bounded `VisualFidelityLedger`; unresolved blocking mismatches in layout, typography, color, iconography, overflow or interaction-state categories are converted into failed evidence and feed normal verification debt. Resolved and non-blocking mismatches remain in the ledger for audit without preventing completion.
+
+The engineering harness now has a stable six-scenario coding suite covering modal repair, responsive clipping, API error states, stale loading states, reference-driven visual regression and backend regression. `EngineeringEvidence` records build, test, browser, console, interaction and visual proof together with corrective-loop/evidence counts. `HarnessEvaluator.EvaluateEngineering` exposes additive quality rates while the historical transport/tool throughput evaluator remains backward-compatible.
+
 
 ## 1.0.69 progressive skill context and browser observations
 

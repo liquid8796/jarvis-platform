@@ -13,7 +13,8 @@ public enum FrontendEvidenceKind
     Interaction,
     ResponsiveDesktop,
     ResponsiveMobile,
-    Overflow
+    Overflow,
+    VisualFidelity
 }
 
 public sealed record FrontendEvidence(
@@ -47,6 +48,7 @@ public sealed record FrontendVerificationRequirement(
             required.Add(FrontendEvidenceKind.ResponsiveDesktop);
             required.Add(FrontendEvidenceKind.ResponsiveMobile);
             required.Add(FrontendEvidenceKind.Overflow);
+            required.Add(FrontendEvidenceKind.VisualFidelity);
         }
         return new(true, isVisual, required);
     }
