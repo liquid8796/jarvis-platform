@@ -4,6 +4,8 @@
   <Folder Name="/Agent/">
     <Project Path="jarvis-agent/src/Jarvis.Agent.Core/Jarvis.Agent.Core.csproj" />
     <Project Path="jarvis-agent/src/Jarvis.Agent.Windows/Jarvis.Agent.Windows.csproj" />
+    <Project Path="jarvis-agent/src/Jarvis.Agent.BrowserHost/Jarvis.Agent.BrowserHost.csproj" />
+    <Project Path="jarvis-agent/src/Jarvis.Agent.BrowserService/Jarvis.Agent.BrowserService.csproj" />
     <Project Path="jarvis-agent/src/Jarvis.Agent.Cli/Jarvis.Agent.Cli.csproj" />
     <Project Path="jarvis-agent/src/Jarvis.Agent.Desktop/Jarvis.Agent.Desktop.csproj" />
   </Folder>

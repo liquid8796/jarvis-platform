@@ -52,7 +52,8 @@ public static class Program
         }
         if (command == "browser-install")
         {
-            Console.WriteLine("Load this unpacked extension in your browser's Extensions developer mode:\n" + BrowserIntegration.Install(Environment.ProcessPath!)); return 0;
+            var host = BrowserIntegration.ResolveCompanionExecutable(BrowserIntegration.BrowserHostExeName);
+            Console.WriteLine("Load this unpacked extension in your browser's Extensions developer mode:\n" + BrowserIntegration.Install(host)); return 0;
         }
         if (command == "list-tools")
         {

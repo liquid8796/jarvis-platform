@@ -104,10 +104,23 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
         {
             try
             {
-                var picker = new Microsoft.Win32.OpenFileDialog { Title = "Select published jarvis-agent.exe", Filter = "Jarvis Agent CLI|jarvis-agent.exe" };
-                if (picker.ShowDialog(owner) != true) return;
-                var folder = BrowserIntegration.Install(picker.FileName);
-                MessageBox.Show(owner, "Native host registered for this Windows user.\n\nIn Chrome or Edge: open Extensions, enable Developer mode, choose Load unpacked and select:\n\n" + folder,
+                string host;
+                try
+                {
+                    host = BrowserIntegration.ResolveCompanionExecutable(BrowserIntegration.BrowserHostExeName);
+                }
+                catch (System.IO.FileNotFoundException)
+                {
+                    var picker = new Microsoft.Win32.OpenFileDialog
+                    {
+                        Title = "Select published jarvis-browser-host.exe",
+                        Filter = "Jarvis Browser Host|jarvis-browser-host.exe"
+                    };
+                    if (picker.ShowDialog(owner) != true) return;
+                    host = picker.FileName;
+                }
+                var folder = BrowserIntegration.Install(host);
+                MessageBox.Show(owner, "Dedicated browser host registered for this Windows user.\n\nIn Chrome or Edge: open Extensions, enable Developer mode, choose Load unpacked and select:\n\n" + folder,
                     "Browser integration", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex) { Fail(ex); }

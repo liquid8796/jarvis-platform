@@ -26,6 +26,11 @@ public sealed class LegacyToolAdapter : IAgentTool
     {
         _tool = tool; _questions = questions; _artifacts = artifacts; _fileObservations = fileObservations;
         _privateRoot = privateRoot ?? AgentProfile.Root;
+        Descriptor = CreateDescriptor(tool, category);
+        _schema = SchemaGuard.Compile(Descriptor.InputSchema);
+    }
+    internal static ToolDescriptor CreateDescriptor(ITool tool, string category)
+    {
         var inputSchema = tool.InputSchema.DeepClone().AsObject();
         if (category is "filesystem" or "git" or "shell" or "browser")
         {
@@ -37,12 +42,24 @@ public sealed class LegacyToolAdapter : IAgentTool
                 ["description"] = "Optional starting directory, including paths outside selected project folders. Relative paths use this directory."
             };
         }
-        var schema = inputSchema.ToJsonString(); _schema = SchemaGuard.Compile(JsonSerializer.Deserialize<JsonElement>(schema));
-        Descriptor = new(category + "." + tool.Name, category + "__" + tool.Name, category,
+        if (category == "browser")
+        {
+            var properties = inputSchema["properties"] as JsonObject ?? new JsonObject();
+            if (inputSchema["properties"] is null) inputSchema["properties"] = properties;
+            properties["browserFamily"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["enum"] = new JsonArray("auto", "dev", "chrome", "edge", "extension"),
+                ["description"] = "Optional browser routing. auto sends localhost/127.0.0.1 targets to the isolated dev browser and other targets to the external extension browser."
+            };
+        }
+        var schema = JsonSerializer.Deserialize<JsonElement>(inputSchema.ToJsonString());
+        return new(category + "." + tool.Name, category + "__" + tool.Name, category,
             Describe(tool, category) + (category == "visualize" ? " Jarvis Agent renders locally; ChatGPT inline embedding and sendPrompt are not provided by this host." : ""),
-            JsonSerializer.Deserialize<JsonElement>(schema), tool.IsReadOnly,
+            schema, tool.IsReadOnly,
             category is "computer" or "browser" or "git" || (category == "visualize" && tool.Name == "show_widget"));
     }
+
     private static string Describe(ITool tool, string category)
     {
         var description = tool.Description;

@@ -1,8 +1,8 @@
-# Jarvis Control - 1.0.70
+# Jarvis Control - 1.0.71
 
-**Version 1.0.70 adds first-class visual-fidelity verification and repeatable coding-harness quality benchmarks.** Visual/layout completion now requires a bounded fidelity ledger with no unresolved blocking layout, typography, color, iconography, overflow or interaction-state mismatches. A fixed six-scenario coding suite records build/test/browser/console/interaction/visual evidence plus corrective-loop and evidence counts, and `HarnessEvaluator` exposes additive engineering metrics without changing historical throughput metrics. See [AGENT.md](docs/AGENT.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
+**Version 1.0.71 isolates browser automation behind dedicated runtime processes and makes rendered frontend verification deterministic in production.** The Agent keeps the existing flat MCP browser tool IDs as compatibility proxies, `jarvis-browser-service.exe` owns browser/session execution, and `jarvis-browser-host.exe` is the Chrome/Edge native-messaging relay. Localhost work routes to an isolated dev browser profile; external browser work routes to connected Chrome/Edge. Autonomous frontend tasks now collect rendered evidence themselves and fail closed when the target/browser/evidence is unavailable, even without an agentic goal verifier. See [architecture](docs/ARCHITECTURE.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
 
-A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; the browser extension remains **1.2.0**.
+A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; browser extension **1.3.0** adds protocol/capability negotiation required by the dedicated browser service.
 
 Jarvis Control là control plane cho MCP; Jarvis Agent là ứng dụng C# .NET 10 trên Windows 10/11, gồm WPF desktop và CLI. Tên web được chọn vì yêu cầu ban đầu chưa điền tên. Một repository chứa hai project sản phẩm và shared protocol; giữ nguyên các thư mục `shared` và `vendor` khi mở solution con.
 
@@ -36,7 +36,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.65/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.65/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime là điều kiện riêng cho visualize WPF. Browser integration cần CLI executable đã publish, kể cả khi dùng giao diện desktop.
+Build thành công sẽ tạo `artifacts/agent/1.0.71/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.71/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Mỗi output Agent còn có `jarvis-browser-service.exe` ở publish root để dùng chung self-contained runtime/dependencies với Agent, còn native-messaging host tối thiểu nằm tại `browser/jarvis-browser-host.exe`; giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime vẫn là điều kiện riêng cho visualize WPF.
 
 ## Chạy local
 
@@ -55,11 +55,11 @@ Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.65\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.65\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.65\cli\jarvis-agent.exe doctor --json
-.\artifacts\agent\1.0.65\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.65\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.71\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.71\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.71\cli\jarvis-agent.exe doctor --json
+.\artifacts\agent\1.0.71\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.71\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -76,9 +76,11 @@ Hướng dẫn chi tiết: [OAuth & MCP](docs/OAUTH-MCP.md), [agent](docs/AGENT.
 |---|---|
 | `jarvis-mcp-server/src/Jarvis.McpServer` | ASP.NET Core, Identity, OAuth, MCP adapter, routing, CRUD, web assets |
 | `jarvis-agent/src/Jarvis.Agent.Core` | Connection lifecycle, policy, process jobs; không phụ thuộc WPF |
-| `jarvis-agent/src/Jarvis.Agent.Windows` | Adapter tới tool baseline, browser native bridge, profile DPAPI |
+| `jarvis-agent/src/Jarvis.Agent.Windows` | Adapter tới tool baseline, browser proxy/service protocol, profile DPAPI |
+| `jarvis-agent/src/Jarvis.Agent.BrowserService` | Dedicated browser runtime, family routing, session/tab ownership và isolated dev browser |
+| `jarvis-agent/src/Jarvis.Agent.BrowserHost` | Minimal Chrome/Edge native-messaging relay process |
 | `jarvis-agent/src/Jarvis.Agent.Desktop` | WPF MVVM, tray, local prompts, WebView2 artifacts |
-| `jarvis-agent/src/Jarvis.Agent.Cli` | Interactive terminal host và browser native messaging host |
+| `jarvis-agent/src/Jarvis.Agent.Cli` | Interactive terminal host và browser-install command |
 | `shared/Jarvis.Protocol` | Envelope, bounded transport, schema validation, workspace guard |
 | `vendor/jarvis-code` | Source baseline được cung cấp, dùng qua ProjectReference |
 | `tests`, `.github/workflows` | C# test source/CI và kiểm thử UI với API giả lập |
@@ -105,7 +107,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.65**, assembly/file **1.0.65.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.71**, assembly/file **1.0.71.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 
@@ -158,6 +160,14 @@ Evidence is typed, the latest evidence for a kind wins, and missing/failing kind
 `PluginSkillLoader` turns validated plugin skill roots into bounded coding context without executing plugin entry files. Discovery reads only bounded front matter metadata, rejects reparse-point traversal and paths outside declared roots, isolates oversized/invalid skills as diagnostics, and exposes compact `plugin/name: description` metadata to agentic planning/verification. Full UTF-8 Markdown instructions are loaded only through explicit `LoadSelectedSkills(...)` selection and are revalidated against the current enabled plugin catalog at load time.
 
 Each per-session browser suite now owns a `BrowserObservationTracker`. Element refs produced by `browser.read_page` or `browser.find` belong to the current observation generation. Material navigation, form input, clicks/typing/scrolling, JavaScript, uploads, tab/browser switches and viewport resize invalidate that generation. A later ref-bearing call must use a ref from a fresh observation; stale refs fail locally before the raw Chrome tool runs. Failed mutations do not invalidate the prior generation.
+
+## Browser Runtime Isolation and Deterministic FE Verification (1.0.71)
+
+Browser automation is now a process boundary rather than an in-process `BrowserBridge`. Existing `browser.*` MCP IDs remain stable in `ToolInventory`, but their Windows adapters proxy versioned requests to `jarvis-browser-service.exe`; browser-native stdio is handled only by the small `jarvis-browser-host.exe`. The service owns browser connections, application-session/tab state, observation state and per-family execution. Published Desktop and CLI packages keep the service in the publish root so it shares the validated Agent runtime/dependencies, while the independently self-contained native host lives under `browser/`. Desktop Browser integration now registers that packaged host automatically; dev outputs without it prompt specifically for `jarvis-browser-host.exe`.
+
+`browserFamily` accepts `auto`, `dev`, `chrome`, `edge` or `extension`. `auto` routes loopback URLs to `dev`, which starts Chrome/Edge with a Jarvis-owned isolated profile and the packaged extension, while non-loopback calls select a ready external browser. The extension 1.3.0 handshake advertises browser/native-host protocol versions, capabilities and a persistent extension instance ID; incompatible extensions stay non-ready instead of receiving calls.
+
+For `AUTONOMOUS` frontend work, completion no longer depends on the model remembering to test. Core locates the rendered loopback target and gathers target identity, rendered DOM, framework-overlay health, console health, screenshot and post-interaction state; visual work also checks 1440×900, 390×844, horizontal overflow and structural visual fidelity. The normal `FrontendVerificationGate` runs even when no `IRemoteTaskAgenticCoordinator` is configured. Missing browser/target/evidence fails closed. Explicit Figma/pixel-perfect/reference-image goals still require semantic comparison evidence rather than being auto-passed by the structural baseline.
 
 ## Visual Fidelity and Coding Quality Benchmarks (1.0.70)
 

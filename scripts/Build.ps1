@@ -43,9 +43,24 @@ try {
     if([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT){throw 'Build the Windows desktop package on Windows with .NET desktop targeting packs.'}
     $agentOutput=Join-Path $root "artifacts/agent/$version"
     foreach($target in @(@('Jarvis.Agent.Desktop','desktop'),@('Jarvis.Agent.Cli','cli'))){
-      Run-Dotnet (@('publish',"jarvis-agent/src/$($target[0])",'-c','Release','-r','win-x64','--self-contained','true','-p:PublishSingleFile=false','-o',"$agentOutput/$($target[1])")+$restorePublish)
+      $targetOutput = "$agentOutput/$($target[1])"
+      if(Test-Path -LiteralPath $targetOutput){ Remove-Item -LiteralPath $targetOutput -Recurse -Force }
+      Run-Dotnet (@('publish',"jarvis-agent/src/$($target[0])",'-c','Release','-r','win-x64','--self-contained','true','-p:PublishSingleFile=false','-o',$targetOutput)+$restorePublish)
+      # The browser service shares the main Agent self-contained runtime/dependency root.
+      # Build it self-contained without publish to avoid republishing the referenced WPF executable project.
+      Run-Dotnet (@('build','jarvis-agent/src/Jarvis.Agent.BrowserService','-c','Release','-r','win-x64','--self-contained','true')+$restore)
+      $serviceBuild = Join-Path $root 'jarvis-agent/src/Jarvis.Agent.BrowserService/bin/Release/net10.0-windows/win-x64'
+      foreach($file in @('jarvis-browser-service.exe','jarvis-browser-service.dll','jarvis-browser-service.deps.json','jarvis-browser-service.runtimeconfig.json')){
+        Copy-Item -LiteralPath (Join-Path $serviceBuild $file) -Destination (Join-Path $targetOutput $file) -Force
+      }
+      $servicePdb = Join-Path $serviceBuild 'jarvis-browser-service.pdb'
+      if(Test-Path -LiteralPath $servicePdb){ Copy-Item -LiteralPath $servicePdb -Destination $targetOutput -Force }
+
+      # Chrome/Edge launches the native-messaging host directly, so keep it independently self-contained.
+      $browserOutput = Join-Path $targetOutput 'browser'
+      Run-Dotnet (@('publish','jarvis-agent/src/Jarvis.Agent.BrowserHost','-c','Release','-r','win-x64','--self-contained','true','-p:PublishSingleFile=false','-o',$browserOutput)+$restorePublish)
       $componentName = if ($target[1] -eq 'desktop') { 'Desktop' } else { 'Cli' }
-      & (Join-Path $PSScriptRoot 'Verify-AgentOutput.ps1') -OutputDirectory "$agentOutput/$($target[1])" -Component $componentName -PublishedWinX64
+      & (Join-Path $PSScriptRoot 'Verify-AgentOutput.ps1') -OutputDirectory $targetOutput -Component $componentName -PublishedWinX64
     }
         # Ship both real entry points, not standalone baseline host artifacts or secrets.
     # Required framework assemblies are not private configuration files.

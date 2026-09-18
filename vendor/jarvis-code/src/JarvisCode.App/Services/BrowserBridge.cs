@@ -58,7 +58,9 @@ public static class NativeMessageCodec
 }
 
 /// <summary>What the browsers panel and the list/select tools show per connection.</summary>
-public sealed record BrowserConnectionInfo(string Id, string Name, bool Ready, bool Active);
+public sealed record BrowserConnectionInfo(string Id, string Name, bool Ready, bool Active,
+    int BrowserProtocolVersion = 0, string BrowserFamily = "extension", IReadOnlyList<string>? Capabilities = null,
+    string? ExtensionInstanceId = null);
 
 /// <summary>
 /// The app side of the Jarvis Browser connection: a named-pipe server the
@@ -71,6 +73,8 @@ public sealed record BrowserConnectionInfo(string Id, string Name, bool Ready, b
 public sealed class BrowserBridge : IDisposable
 {
     public const string PipeName = "JarvisCode-browser";
+    public const int RequiredBrowserProtocolVersion = 2;
+    public const int RequiredNativeHostProtocolVersion = 2;
 
     private sealed class Connection
     {
@@ -79,6 +83,11 @@ public sealed class BrowserBridge : IDisposable
         public required StreamWriter Writer { get; init; }
         public bool Ready { get; set; }
         public bool ApplicationSessions { get; set; }
+        public int BrowserProtocolVersion { get; set; }
+        public int NativeHostProtocolVersion { get; set; }
+        public string BrowserFamily { get; set; } = "extension";
+        public string[] Capabilities { get; set; } = [];
+        public string? ExtensionInstanceId { get; set; }
 
         public string Describe() => Name.Length > 0 ? $"{Id} ({Name})" : Id;
     }
@@ -177,7 +186,8 @@ public sealed class BrowserBridge : IDisposable
             lock (_connections)
             {
                 return [.. _connections.Select(c =>
-                    new BrowserConnectionInfo(c.Id, c.Name, c.Ready, c.Id == Active()?.Id))];
+                    new BrowserConnectionInfo(c.Id, c.Name, c.Ready, c.Id == Active()?.Id,
+                    c.BrowserProtocolVersion, c.BrowserFamily, c.Capabilities, c.ExtensionInstanceId))];
             }
         }
     }
@@ -358,8 +368,16 @@ public sealed class BrowserBridge : IDisposable
 
         if (message["event"]?.GetValue<string>() == "ready")
         {
-            connection.Ready = true;
+            connection.BrowserProtocolVersion = message["browserProtocolVersion"]?.GetValue<int>() ?? 0;
+            connection.NativeHostProtocolVersion = message["nativeHostProtocolVersion"]?.GetValue<int>() ?? 0;
             connection.ApplicationSessions = message["applicationSessions"]?.GetValue<bool>() == true;
+            connection.BrowserFamily = message["browserFamily"]?.GetValue<string>() ?? "extension";
+            connection.ExtensionInstanceId = message["extensionInstanceId"]?.GetValue<string>();
+            connection.Capabilities = message["capabilities"] is JsonArray capabilities
+                ? capabilities.Select(item => item?.GetValue<string>()).Where(item => !string.IsNullOrWhiteSpace(item)).Cast<string>().ToArray()
+                : [];
+            connection.Ready = connection.BrowserProtocolVersion >= RequiredBrowserProtocolVersion &&
+                connection.NativeHostProtocolVersion >= RequiredNativeHostProtocolVersion;
             if (message["browser"]?.GetValue<string>() is { Length: > 0 } name)
             {
                 connection.Name = name;
@@ -442,6 +460,9 @@ public sealed class BrowserBridge : IDisposable
             throw new InvalidOperationException(
                 "Jarvis Browser is not connected. Install the extension (Customize → Connectors) and make sure the browser is running.");
         }
+        if (!connection.Ready)
+            throw new InvalidOperationException(
+                $"Update and reload the Jarvis browser extension. Browser protocol {RequiredBrowserProtocolVersion}+ and native-host protocol {RequiredNativeHostProtocolVersion}+ are required.");
         var applicationSession = _applicationSession.Value;
         if (applicationSession is not null && !connection.ApplicationSessions)
             throw new InvalidOperationException("Update and reload the Jarvis browser extension before using isolated application sessions.");

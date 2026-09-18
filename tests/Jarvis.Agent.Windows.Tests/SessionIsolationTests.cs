@@ -104,11 +104,50 @@ public sealed class SessionIsolationTests : IDisposable
     [Fact]
     public async Task Sessionless_browser_tools_do_not_require_an_explicit_session()
     {
-        using var bridge = new JarvisCode.App.Services.BrowserBridge("jarvis-sessionless-browser-" + Guid.NewGuid().ToString("N"));
-        var tools = new SessionBrowserToolSet(bridge, new Questions(), new Artifacts(), _root, new ComputerStateTracker());
+        using var runtime = new BrowserRuntimeStub();
+        var tools = new SessionBrowserToolSet(runtime, new ComputerStateTracker());
         var tool = tools.Tools.Single(t => t.Descriptor.Id == "browser.list_connected_browsers");
         var reply = await tool.ExecuteAsync(WireJson.Element(new { }), SessionlessContext(), default);
         Assert.False(reply.IsError, reply.Text);
+        Assert.Equal("extension", runtime.Requests.Single().Context.BrowserFamily);
+    }
+
+    [Fact]
+    public async Task Browser_auto_routing_sends_localhost_to_isolated_dev_family()
+    {
+        using var runtime = new BrowserRuntimeStub();
+        var tools = new SessionBrowserToolSet(runtime, new ComputerStateTracker());
+        var navigate = tools.Tools.Single(t => t.Descriptor.Id == "browser.navigate");
+        await navigate.ExecuteAsync(WireJson.Element(new { url = "http://localhost:5173/" }), SessionlessContext(), default);
+        Assert.Equal("dev", runtime.Requests.Single().Context.BrowserFamily);
+    }
+
+    [Fact]
+    public async Task Browser_runtime_roundtrip_allows_discovery_without_connected_browser()
+    {
+        var servicePipe = "jarvis-browser-service-test-" + Guid.NewGuid().ToString("N");
+        var extensionPipe = "jarvis-browser-extension-test-" + Guid.NewGuid().ToString("N");
+        using var server = new BrowserServiceServer(servicePipe, extensionPipe, _root);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var serverTask = server.RunAsync(stop.Token);
+        using var client = new BrowserRuntimeClient(servicePipe);
+        try
+        {
+            var reply = await client.ExecuteAsync(new BrowserRuntimeRequest(
+                "browser.list_connected_browsers",
+                WireJson.Element(new { }),
+                new BrowserRuntimeContext("rpc-call", null, "rpc-scope", _root, [], true, "extension")),
+                stop.Token);
+            Assert.False(reply.IsError, reply.Text);
+            Assert.NotNull(client.Handshake);
+            Assert.Equal(1, client.Handshake!.ProtocolVersion);
+            Assert.Contains("tool-proxy-v1", client.Handshake.Capabilities);
+        }
+        finally
+        {
+            stop.Cancel();
+            try { await serverTask; } catch (OperationCanceledException) { }
+        }
     }
 
     [Fact]
@@ -157,6 +196,21 @@ public sealed class SessionIsolationTests : IDisposable
     private sealed class Artifacts : IArtifactSink
     {
         public Task ShowAsync(WidgetArtifact artifact, CancellationToken ct) => Task.CompletedTask;
+    }
+    private sealed class BrowserRuntimeStub : IBrowserRuntimeClient
+    {
+        public List<BrowserRuntimeRequest> Requests { get; } = [];
+        public event Action<string>? ApplicationStopRequested { add { } remove { } }
+        public BrowserRuntimeHandshake? Handshake { get; } = new(1, "test",
+            ["tool-proxy-v1", "browser-family-routing-v1"], ["dev", "extension"]);
+        public bool IsReady => true;
+        public Task<ToolReply> ExecuteAsync(BrowserRuntimeRequest request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Task.FromResult(new ToolReply("ok"));
+        }
+        public Task EndApplicationSessionAsync(string sessionId, bool close, CancellationToken cancellationToken) => Task.CompletedTask;
+        public void Dispose() { }
     }
     private sealed class Observer : IComputerObservationProvider
     {

@@ -1,6 +1,16 @@
-# Architecture decisions · 1.0.60
+# Architecture decisions · 1.0.71
 
-## 1.0.65 prompt-continuity architecture (current)
+## 1.0.71 browser runtime isolation and rendered-verification architecture (current)
+
+Browser execution is now outside the Desktop/CLI Agent process. `ToolInventory` publishes the existing `browser.*` descriptors and `SessionBrowserToolSet` remains the compatibility adapter, but execution crosses `JarvisAgent-browser-service-v1` to `jarvis-browser-service.exe`. That service owns `BrowserBridge`, browser connection selection, application-session/tab ownership, browser observation state and per-family tool suites. Chrome/Edge native messaging is a second boundary: the browser starts the minimal `jarvis-browser-host.exe`, which relays framed native-messaging bytes to `JarvisAgent-browser-extension-v2`. A browser crash/host restart therefore does not embed browser runtime state back into the Agent process.
+
+Browser requests carry an explicit runtime context: call ID, optional application-session ID, isolation scope, workspace roots, local permission result and browser family. `auto` routes loopback targets to `dev`; `dev` launches Chrome/Edge with a Jarvis-owned profile plus only the unpacked Jarvis extension. `chrome`/`edge` require a matching ready external browser; `extension` selects a ready non-dev external connection and cannot inherit a previously selected dev browser. Existing tool IDs and argument schemas remain backward compatible except for the optional `browserFamily` routing field.
+
+The extension/runtime contract is versioned independently from MCP. Extension 1.3.0 sends browser protocol 2, native-host protocol 2, capability names, browser family and a persistent extension instance ID. `BrowserBridge` marks older peers non-ready; the Agent↔service pipe has its own protocol-1 handshake and capability set. Packaging keeps `jarvis-browser-service.exe` in each Desktop/CLI publish root so it shares the Agent's already-validated self-contained runtime and dependency set, while the independently self-contained native host lives under `browser/jarvis-browser-host.exe`; package verification requires both boundaries.
+
+Rendered frontend verification is now deterministic Core behavior for `AUTONOMOUS` frontend tasks, not merely prompt policy. The host discovers a loopback rendered target from the goal/steps/artifacts and invokes the normal guarded browser tools using `browserFamily=dev` to collect target identity, accessibility DOM, framework-overlay status, console errors, screenshot and a browser input/post-state observation. Visual work additionally checks desktop/mobile viewport sizes, horizontal overflow and a structural visual-fidelity baseline. `FrontendVerificationGate` runs even when `_agentic` is null, so missing browser readiness, target identity or evidence prevents `COMPLETED`. If a goal explicitly asks for Figma/pixel-perfect/reference-image parity, structural checks intentionally do not manufacture semantic reference-comparison evidence; an agentic verifier must still supply that proof.
+
+## 1.0.65 prompt-continuity architecture (historical release contract)
 
 MCP transport remains stateless, and ordinary calls no longer depend on an opaque application-session handle surviving in model context. `McpGateway` validates an explicit handle when present; otherwise ordinary tools and `agent_task_*` receive a fresh `call_<random>` execution ID. The agent never persists that call ID as a chat session. Stateful local components that need cross-call continuity derive a stable `anon_<hash>` isolation scope from authenticated owner + enrolled device; explicit `js_...` application sessions continue to use their own session ID and protected metadata/workspace/mailbox boundaries.
 

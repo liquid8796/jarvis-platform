@@ -9,7 +9,7 @@ using JarvisCode.Core.Tools.BuiltIn;
 namespace Jarvis.Agent.Windows;
 public sealed class ToolInventory : IDisposable
 {
-    private readonly BrowserBridge _browser;
+    private readonly IBrowserRuntimeClient _browser;
     private readonly SessionFileObservations _fileObservations = new();
     private readonly SessionBrowserToolSet _browserTools;
     private readonly PerSessionToolSet _computerTools;
@@ -17,7 +17,8 @@ public sealed class ToolInventory : IDisposable
     private readonly TeachController? _teach;
     private readonly ComputerStateTracker _computerStates = new();
     public IReadOnlyList<IAgentTool> Tools { get; }
-    public ToolInventory(IUserQuestions questions, IArtifactSink artifacts, Func<Window?>? mainWindow = null, string? settingsRoot = null)
+    public ToolInventory(IUserQuestions questions, IArtifactSink artifacts, Func<Window?>? mainWindow = null, string? settingsRoot = null,
+        IBrowserRuntimeClient? browserRuntime = null)
     {
         var root = settingsRoot ?? AgentProfile.Root;
         var settings = new UiSettingsStore(Path.Combine(root, "computer-settings.json"));
@@ -27,7 +28,7 @@ public sealed class ToolInventory : IDisposable
         // Do not let computer-use request permission to operate this agent's own approval/settings windows.
         foreach (var name in new[] { "Jarvis Agent", "Jarvis.Agent.Desktop", "jarvis-agent" })
             if (!settings.Current.ComputerUseDeniedApps.Contains(name)) settings.Current.ComputerUseDeniedApps.Add(name);
-        _browser = new BrowserBridge(BrowserIntegration.PipeName);
+        _browser = browserRuntime ?? new BrowserRuntimeClient();
         _browser.ApplicationStopRequested += id => BrowserSessionStopRequested?.Invoke(id);
         if (mainWindow is not null) _teach = new TeachController(mainWindow, () => settings.Current);
         var tools = new List<IAgentTool>();
@@ -39,7 +40,7 @@ public sealed class ToolInventory : IDisposable
             .Select(tool => (IAgentTool)new StatefulComputerToolAdapter(tool, _computerStates, observer)).ToArray());
         tools.AddRange(_computerTools.Tools);
         tools.Add(new ComputerStateTool(_computerStates, observer));
-        _browserTools = new SessionBrowserToolSet(_browser, questions, artifacts, root, _computerStates);
+        _browserTools = new SessionBrowserToolSet(_browser, _computerStates);
         tools.AddRange(_browserTools.Tools);
         Add("visualize", VisualizeTools.Create());
         Add("filesystem", [new ReadFileTool(), new ReadDocumentTool(), new WriteFileTool(), new EditFileTool(),

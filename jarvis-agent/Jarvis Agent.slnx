@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="src/Jarvis.Agent.Core/Jarvis.Agent.Core.csproj" />
   <Project Path="src/Jarvis.Agent.Windows/Jarvis.Agent.Windows.csproj" />
+  <Project Path="src/Jarvis.Agent.BrowserHost/Jarvis.Agent.BrowserHost.csproj" />
+  <Project Path="src/Jarvis.Agent.BrowserService/Jarvis.Agent.BrowserService.csproj" />
   <Project Path="src/Jarvis.Agent.Cli/Jarvis.Agent.Cli.csproj" />
   <Project Path="src/Jarvis.Agent.Desktop/Jarvis.Agent.Desktop.csproj" />
   <Project Path="../shared/Jarvis.Protocol/Jarvis.Protocol.csproj" />

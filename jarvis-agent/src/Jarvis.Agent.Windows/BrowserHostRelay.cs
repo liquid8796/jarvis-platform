@@ -18,7 +18,7 @@ public static class BrowserHostRelay
     {
         using var stdin = Console.OpenStandardInput();
         using var stdout = Console.OpenStandardOutput();
-        RunCore(stdin, stdout, BrowserIntegration.PipeName);
+        RunCore(stdin, stdout, BrowserIntegration.ExtensionPipeName);
     }
 
     internal static void RunCore(Stream stdin, Stream stdout, string pipeName)

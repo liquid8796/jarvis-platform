@@ -17,6 +17,7 @@ $required = @('JarvisCode.App.dll','JarvisCode.Core.dll','JarvisCode.Host.dll',
 if ($Component -ne 'Windows') {
     $entryPoint = if ($Component -eq 'Desktop') { 'Jarvis.Agent.Desktop' } else { 'jarvis-agent' }
     $required += @("$entryPoint.exe", "$entryPoint.dll", "$entryPoint.deps.json", "$entryPoint.runtimeconfig.json")
+    $required += @('browser/jarvis-browser-host.exe','jarvis-browser-service.exe','jarvis-browser-service.dll','jarvis-browser-service.deps.json','jarvis-browser-service.runtimeconfig.json')
 }
 if ($RequireSymbols) { $required += 'JarvisCode.App.pdb' }
 # The official ConPTY host is architecture-specific, not OpenConsole.exe at the root.

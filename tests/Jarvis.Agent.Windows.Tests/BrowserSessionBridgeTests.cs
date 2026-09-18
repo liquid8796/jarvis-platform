@@ -87,7 +87,10 @@ public sealed class BrowserSessionBridgeTests
             {
                 try
                 {
-                    await _writer.WriteLineAsync(new JsonObject { ["event"] = "ready", ["browser"] = name, ["applicationSessions"] = sessionAware }.ToJsonString());
+                    await _writer.WriteLineAsync(new JsonObject { ["event"] = "ready", ["browser"] = name,
+                        ["browserFamily"] = "extension", ["browserProtocolVersion"] = 2, ["nativeHostProtocolVersion"] = 2,
+                        ["capabilities"] = new JsonArray("application-sessions-v1", "tab-ownership-v1"),
+                        ["extensionInstanceId"] = Guid.NewGuid().ToString("N"), ["applicationSessions"] = sessionAware }.ToJsonString());
                     while (await _reader.ReadLineAsync() is { } line)
                     {
                         var request = JsonNode.Parse(line)!.AsObject(); Interlocked.Increment(ref RequestCount);

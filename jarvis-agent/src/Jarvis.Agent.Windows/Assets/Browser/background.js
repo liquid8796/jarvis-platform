@@ -6,8 +6,24 @@
 // Chrome DevTools Protocol via chrome.debugger, attached lazily per tab.
 
 const HOST = "com.jarvis.agent.browser";
+const NATIVE_HOST_PROTOCOL_VERSION = 2;
+const BROWSER_PROTOCOL_VERSION = 2;
+const EXTENSION_INSTANCE_STORAGE = "jarvis.extensionInstanceId.v1";
+const EXTENSION_CAPABILITIES = ["application-sessions-v1", "tab-ownership-v1", "cdp-v1", "browser-family-v1"];
 let port = null;
 let reconnectDelay = 1000;
+let extensionInstancePromise = null;
+
+async function extensionInstanceId() {
+  extensionInstancePromise ??= (async () => {
+    const saved = (await chrome.storage.local.get(EXTENSION_INSTANCE_STORAGE))[EXTENSION_INSTANCE_STORAGE];
+    if (typeof saved === "string" && saved.length > 0) return saved;
+    const created = crypto.randomUUID();
+    await chrome.storage.local.set({ [EXTENSION_INSTANCE_STORAGE]: created });
+    return created;
+  })();
+  return extensionInstancePromise;
+}
 
 function connect() {
   try {
@@ -24,7 +40,17 @@ function connect() {
     clearIndicators("off").catch(() => {});
     schedule();
   });
-  post({ event: "ready", version: chrome.runtime.getManifest().version, browser: browserName(), applicationSessions: true });
+  extensionInstanceId().then(instanceId => post({
+    event: "ready",
+    version: chrome.runtime.getManifest().version,
+    browser: browserName(),
+    browserFamily: "extension",
+    nativeHostProtocolVersion: NATIVE_HOST_PROTOCOL_VERSION,
+    browserProtocolVersion: BROWSER_PROTOCOL_VERSION,
+    capabilities: EXTENSION_CAPABILITIES,
+    extensionInstanceId: instanceId,
+    applicationSessions: true
+  })).catch(() => port?.disconnect());
 }
 
 // Which Chromium this is, so the app can tell several connected browsers apart.
