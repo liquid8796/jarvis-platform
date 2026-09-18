@@ -1,6 +1,10 @@
-# Architecture decisions · 1.0.71
+# Architecture decisions · 1.0.73
 
-## 1.0.71 browser runtime isolation and rendered-verification architecture (current)
+## 1.0.73 native-host lifecycle hardening (current)
+
+The native-messaging relay is intentionally process-ephemeral: either Chrome stdin ending or the browser-service pipe ending terminates the relay. The extension-to-service pump therefore runs independently from the service-to-extension pump and the host waits for whichever side closes first. A browser-service restart can no longer leave the host blocked indefinitely on idle Chrome stdin; process exit closes the native port so extension 1.3.0 reconnects through its normal backoff to the new service instance.
+
+## 1.0.71 browser runtime isolation and rendered-verification architecture
 
 Browser execution is now outside the Desktop/CLI Agent process. `ToolInventory` publishes the existing `browser.*` descriptors and `SessionBrowserToolSet` remains the compatibility adapter, but execution crosses `JarvisAgent-browser-service-v1` to `jarvis-browser-service.exe`. That service owns `BrowserBridge`, browser connection selection, application-session/tab ownership, browser observation state and per-family tool suites. Chrome/Edge native messaging is a second boundary: the browser starts the minimal `jarvis-browser-host.exe`, which relays framed native-messaging bytes to `JarvisAgent-browser-extension-v2`. A browser crash/host restart therefore does not embed browser runtime state back into the Agent process.
 

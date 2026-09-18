@@ -6,4 +6,7 @@
     <AssemblyName>jarvis-browser-host</AssemblyName>
     <RootNamespace>Jarvis.Agent.BrowserHost</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jarvis.Agent.Windows.Tests" />
+  </ItemGroup>
 </Project>

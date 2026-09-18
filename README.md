@@ -1,4 +1,4 @@
-# Jarvis Control - 1.0.72
+# Jarvis Control - 1.0.73
 
 **Version 1.0.72 makes session identity easier to inspect and reuse: every Sessions row now shows both the session name and raw session ID as mouse-selectable, copyable text without adding redundant keyboard tab stops.** The Agent keeps the existing flat MCP browser tool IDs as compatibility proxies, `jarvis-browser-service.exe` owns browser/session execution, and `jarvis-browser-host.exe` is the Chrome/Edge native-messaging relay. Localhost work routes to an isolated dev browser profile; external browser work routes to connected Chrome/Edge. Autonomous frontend tasks now collect rendered evidence themselves and fail closed when the target/browser/evidence is unavailable, even without an agentic goal verifier. See [architecture](docs/ARCHITECTURE.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
 
@@ -160,6 +160,10 @@ Evidence is typed, the latest evidence for a kind wins, and missing/failing kind
 `PluginSkillLoader` turns validated plugin skill roots into bounded coding context without executing plugin entry files. Discovery reads only bounded front matter metadata, rejects reparse-point traversal and paths outside declared roots, isolates oversized/invalid skills as diagnostics, and exposes compact `plugin/name: description` metadata to agentic planning/verification. Full UTF-8 Markdown instructions are loaded only through explicit `LoadSelectedSkills(...)` selection and are revalidated against the current enabled plugin catalog at load time.
 
 Each per-session browser suite now owns a `BrowserObservationTracker`. Element refs produced by `browser.read_page` or `browser.find` belong to the current observation generation. Material navigation, form input, clicks/typing/scrolling, JavaScript, uploads, tab/browser switches and viewport resize invalidate that generation. A later ref-bearing call must use a ref from a fresh observation; stale refs fail locally before the raw Chrome tool runs. Failed mutations do not invalidate the prior generation.
+
+## Browser Native Host Reconnect Hardening (1.0.73)
+
+The dedicated native-messaging relay now treats either side closing as terminal. In particular, if `jarvis-browser-service.exe` restarts while Chrome is otherwise idle, `jarvis-browser-host.exe` no longer remains blocked forever waiting for the next Chrome stdin frame. The host exits promptly, Chrome observes the native-port disconnect, and extension 1.3.0 follows its existing reconnect backoff to attach to the replacement service. This prevents a stale host from leaving `browser.list_connected_browsers` empty after an Agent/browser-service restart.
 
 ## Browser Runtime Isolation and Deterministic FE Verification (1.0.71)
 

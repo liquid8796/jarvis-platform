@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.73 - 2026-09-18
+
+- Fix the dedicated Chrome/Edge native-messaging host lifecycle so a browser-service pipe disconnect wins over an idle blocking Chrome stdin read; the host now exits promptly and lets the extension reconnect to the replacement browser service.
+- Add a regression that holds Chrome input idle, drops the browser-service pipe and requires the relay to terminate without waiting for another browser frame.
+- Bump package/assembly/file versions to 1.0.73 / 1.0.73.0. Browser extension protocol/version remains 1.3.0.
+
 ## 1.0.72 - 2026-09-18
 
 - Show the raw `js_...` session ID directly under each session name in the Agent Sessions list so operators do not need to expand details to identify a chat.

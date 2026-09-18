@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.73 browser native-host reconnect hardening - executed release verification (2026-09-18)
+
+- Live diagnosis reproduced an orphaned native host: `jarvis-browser-host.exe` had started before the replacement `jarvis-browser-service.exe` and remained blocked on idle Chrome stdin after the old service pipe disappeared. Restarting only the native host caused Chrome to spawn a fresh host immediately and restored `[b3] Chrome`, confirming the extension installation and native-messaging registration were valid.
+- The dedicated host now runs the Chrome-to-service and service-to-Chrome pumps independently and terminates when either side closes. Shutdown explicitly tolerates reader/writer disposal after the pipe is gone. A regression keeps Chrome input blocked, drops the service pipe and requires the host relay to finish without waiting for another browser frame.
+- The focused lifecycle regression passed **1/1** and the complete Windows Agent suite passed **68/68**. `python scripts/Verify-CurrentVersion.py` passed package **1.0.73** and assembly/file **1.0.73.0**.
+- `scripts/Build.ps1 -Component Agent` completed **exit 0**. The maintained .NET suites passed **399/399**, **0 failed / 0 skipped**: Core **230**, Windows Agent **68**, Server **101**. Desktop and CLI publish validators both reported **PASS** for `artifacts/agent/1.0.73`.
+- Live browser-control acceptance on the currently installed Agent succeeded after the stale-host restart: the extension connection remained visible as `[b3] Chrome`, a session-owned tab navigated to `https://example.com`, returned the expected `Example Domain` page text, and the test tabs were closed. This live recovery verifies the diagnosed failure mode; the installed Agent binary was not replaced with the newly built 1.0.73 artifact during this verification.
+
 ## 1.0.72 selectable session identity - executed release verification (2026-09-18)
 
 - The Agent **Sessions** list now surfaces the raw `js_...` session ID directly below each session name. Name and ID are read-only selectable WPF text fields with an I-beam cursor and ordinary copy behavior, while `KeyboardNavigation.IsTabStop=False` avoids adding two redundant tab stops per row.

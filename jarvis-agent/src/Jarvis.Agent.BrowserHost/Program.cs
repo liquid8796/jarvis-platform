@@ -26,14 +26,14 @@ public static class Program
         }
     }
 
-    private static void Relay(Stream stdin, Stream stdout)
+    internal static void Relay(Stream stdin, Stream stdout, string pipeName = ExtensionPipeName)
     {
-        using var pipe = new NamedPipeClientStream(".", ExtensionPipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
         try { pipe.Connect(timeout: 800); }
         catch (Exception ex) when (ex is TimeoutException or IOException) { return; }
 
-        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
-        using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
+        var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+        var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
         using var stop = new CancellationTokenSource();
         var stdoutLock = new object();
 
@@ -59,25 +59,36 @@ public static class Program
             finally { stop.Cancel(); }
         });
 
+        var extensionToPipe = Task.Run(() =>
+        {
+            try
+            {
+                var prefix = new byte[4];
+                while (!stop.IsCancellationRequested)
+                {
+                    if (!ReadExact(stdin, prefix)) break;
+                    var length = BinaryPrimitives.ReadInt32LittleEndian(prefix);
+                    if (length <= 0 || length > MaxFrameBytes) break;
+                    var payload = new byte[length];
+                    if (!ReadExact(stdin, payload)) break;
+                    writer.WriteLine(Encoding.UTF8.GetString(payload));
+                }
+            }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
+            finally { stop.Cancel(); }
+        });
+
         try
         {
-            var prefix = new byte[4];
-            while (!stop.IsCancellationRequested)
-            {
-                if (!ReadExact(stdin, prefix)) break;
-                var length = BinaryPrimitives.ReadInt32LittleEndian(prefix);
-                if (length <= 0 || length > MaxFrameBytes) break;
-                var payload = new byte[length];
-                if (!ReadExact(stdin, payload)) break;
-                writer.WriteLine(Encoding.UTF8.GetString(payload));
-            }
+            Task.WaitAny(pipeToExtension, extensionToPipe);
         }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
         finally
         {
             stop.Cancel();
             try { pipe.Dispose(); } catch { }
-            try { pipeToExtension.Wait(TimeSpan.FromSeconds(1)); } catch { }
+            try { Task.WaitAll([pipeToExtension, extensionToPipe], TimeSpan.FromMilliseconds(250)); } catch { }
+            try { reader.Dispose(); } catch { }
+            try { writer.Dispose(); } catch { }
         }
     }
 
