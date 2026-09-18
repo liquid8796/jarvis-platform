@@ -43,6 +43,18 @@ class SessionUiAssets(unittest.TestCase):
         self.assertIn('VirtualizingPanel.VirtualizationMode="Recycling"', text)
         self.assertIn('RowDefinition Height="260"', text)
 
+    def test_session_rows_show_selectable_name_and_id(self):
+        sessions = (UI / 'Views/SessionsView.xaml').read_text(encoding='utf-8')
+        controls = (UI / 'Themes/SessionControls.xaml').read_text(encoding='utf-8')
+        self.assertIn('Text="{Binding Label, Mode=OneWay}"', sessions)
+        self.assertIn('Text="{Binding SessionId, Mode=OneWay}"', sessions)
+        self.assertGreaterEqual(sessions.count('Style="{StaticResource SessionSelectableText}"'), 2)
+        self.assertIn('x:Key="SessionSelectableText"', controls)
+        self.assertIn('Property="IsReadOnly" Value="True"', controls)
+        self.assertIn('Property="IsReadOnlyCaretVisible" Value="True"', controls)
+        self.assertIn('Property="KeyboardNavigation.IsTabStop" Value="False"', controls)
+        self.assertIn('Property="Cursor" Value="IBeam"', controls)
+
     def test_new_controls_have_keyboard_focus_style(self):
         source = (UI / 'Themes/SessionControls.xaml').read_text(encoding='utf-8')
         self.assertIn('x:Key="SessionFocus"', source)

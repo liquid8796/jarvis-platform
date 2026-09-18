@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.72 - 2026-09-18
+
+- Show the raw `js_...` session ID directly under each session name in the Agent Sessions list so operators do not need to expand details to identify a chat.
+- Render session names and IDs as read-only selectable text with an I-beam cursor, mouse text selection and normal copy behavior while keeping them out of the keyboard tab order.
+- Add static XAML and rendered WPF smoke coverage for visible/selectable session identity text; update operator documentation and bump package/assembly/file versions to 1.0.72 / 1.0.72.0.
+
 ## 1.0.71 - 2026-09-18
 
 - Move browser execution out of the Agent process: keep the existing flat `browser.*` MCP surface as a proxy, add dedicated `jarvis-browser-service.exe` runtime ownership and a minimal `jarvis-browser-host.exe` Chrome/Edge native-messaging relay, and package/verify both companions for Desktop and CLI.

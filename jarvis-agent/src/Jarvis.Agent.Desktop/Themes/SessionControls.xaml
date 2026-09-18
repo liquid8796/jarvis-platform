@@ -3,6 +3,12 @@
   <Style x:Key="SessionRow" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"><Setter Property="FocusVisualStyle" Value="{StaticResource SessionFocus}"/></Style>
   <Style x:Key="SessionBody" TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource Text}"/><Setter Property="FontSize" Value="13"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
   <Style x:Key="SessionHint" TargetType="TextBlock" BasedOn="{StaticResource SessionBody}"><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter Property="FontSize" Value="12"/></Style>
+  <Style x:Key="SessionSelectableText" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Setter Property="IsReadOnly" Value="True"/><Setter Property="IsReadOnlyCaretVisible" Value="True"/><Setter Property="KeyboardNavigation.IsTabStop" Value="False"/>
+    <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="0"/>
+    <Setter Property="Foreground" Value="{DynamicResource Text}"/><Setter Property="CaretBrush" Value="{DynamicResource Text}"/><Setter Property="SelectionBrush" Value="{DynamicResource Accent}"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Cursor" Value="IBeam"/><Setter Property="FocusVisualStyle" Value="{StaticResource SessionFocus}"/>
+  </Style>
   <Style x:Key="SessionError" TargetType="TextBlock" BasedOn="{StaticResource SessionBody}">
     <Setter Property="Foreground" Value="{DynamicResource Danger}"/><Setter Property="Margin" Value="0,8,0,0"/>
     <Setter Property="AutomationProperties.LiveSetting" Value="Polite"/>

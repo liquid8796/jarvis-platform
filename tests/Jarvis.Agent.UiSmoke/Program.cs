@@ -177,6 +177,15 @@ internal static class Program
             var sessionsView = (FrameworkElement)Descendants(window).Single(v => v.GetType().Name == "SessionsView");
             sessionsView.DataContext = previewModel;
             Capture("agent-sessions-minimum.png");
+            var selectableSessionText = Descendants(sessionsView).OfType<TextBox>().Where(box => box.IsReadOnly).ToArray();
+            var selectableLabel = selectableSessionText.FirstOrDefault(box => box.Text == "Build and review");
+            var selectableId = selectableSessionText.FirstOrDefault(box => box.Text.StartsWith("js_", StringComparison.Ordinal));
+            if (selectableLabel is null || selectableId is null) throw new InvalidOperationException("Session rows must expose selectable name and ID text.");
+            if (KeyboardNavigation.GetIsTabStop(selectableLabel) || KeyboardNavigation.GetIsTabStop(selectableId))
+                throw new InvalidOperationException("Selectable session identity text must not add redundant tab stops.");
+            selectableLabel.SelectAll(); selectableId.SelectAll();
+            if (selectableLabel.SelectedText != selectableLabel.Text || selectableId.SelectedText != selectableId.Text)
+                throw new InvalidOperationException("Session identity text could not be selected for copy.");
             var details = Descendants(sessionsView).OfType<Expander>().Single(); details.IsExpanded = true;
             Capture("agent-sessions-minimum-details.png");
             window.Width=1160; window.Height=820; Capture("agent-sessions.png");
@@ -240,7 +249,7 @@ internal static class Program
                 selectAllIncludesFilteredOut = true, draftDoesNotApplyBeforeSave = true,
                 resetRestoresSaved = true, clearAllRevokes = true, isolatedPermissionSettingsOnly = true,
                 executionLimitsRendered = true, invalidLimitsBlocked = true, executionLimitsReload = true,
-                optionalWorkspaceCleared = true, sessionMetadataRendered = true, emptyAndFilteredStates = true,
+                optionalWorkspaceCleared = true, sessionMetadataRendered = true, sessionIdentitySelectable = true, emptyAndFilteredStates = true,
                 minimumWindowSizeRendered = true, bindingErrors = bindingErrors.Messages.Count,
                 profileSaved = false, connectionStarted = false, controlArmed = false };
             var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });

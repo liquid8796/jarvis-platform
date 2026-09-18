@@ -1,5 +1,9 @@
 # Jarvis Agent operator guide
 
+## 1.0.72 selectable session identity
+
+The **Sessions** list now shows the raw session ID directly beneath every session name. Both values use read-only selectable text: drag across the name or `js_...` ID with the mouse, then use `Ctrl+C` or the standard context-menu copy command. These identity fields intentionally stay out of the keyboard tab sequence so repeated rows do not create noisy navigation; the surrounding session row remains the selection target for Stop work, Close session and expanded details.
+
 ## 1.0.70 visual fidelity and coding benchmarks
 
 Visual/layout autonomous tasks now require `VisualFidelity` evidence. The goal verifier can return a bounded `VisualFidelityLedger`; unresolved blocking mismatches in layout, typography, color, iconography, overflow or interaction-state categories are converted into failed evidence and feed normal verification debt. Resolved and non-blocking mismatches remain in the ledger for audit without preventing completion.

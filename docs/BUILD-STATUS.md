@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.72 selectable session identity - executed release verification (2026-09-18)
+
+- The Agent **Sessions** list now surfaces the raw `js_...` session ID directly below each session name. Name and ID are read-only selectable WPF text fields with an I-beam cursor and ordinary copy behavior, while `KeyboardNavigation.IsTabStop=False` avoids adding two redundant tab stops per row.
+- Static UI checks passed **5/5** via `python tests/test_session_ui_assets.py`, including the new selectable-name/ID assertions. `python scripts/Verify-CurrentVersion.py` passed package **1.0.72** and assembly/file **1.0.72.0**.
+- `scripts/Build.ps1 -Component Agent` completed **exit 0**. The maintained .NET suites passed **398/398**, **0 failed / 0 skipped**: Core **230**, Windows Agent **67**, Server **101**. Desktop and CLI publish validators both reported **PASS** for the 1.0.72 artifacts.
+- Fresh WPF smoke against `artifacts/agent/1.0.72/desktop` completed **exit 0** with assembly **1.0.72.0**, `sessionIdentitySelectable=true`, minimum-window/session rendering enabled and **0 binding errors**. Its isolated report/screenshots are under `artifacts/ui-smoke-1.0.72-session-list`.
+- Verification scope is local source/build/publish only. No running Agent was replaced, no live MCP service was restarted, and no local profile, permission, Arm/Pause or production browser registration was changed.
+
 ## 1.0.71 browser runtime isolation / deterministic frontend verification - executed release verification (2026-09-18)
 
 - Browser execution is isolated from Desktop/CLI: flat `browser.*` MCP IDs remain compatibility proxies, `jarvis-browser-service.exe` owns BrowserBridge/session/tab/family execution, and the minimal `jarvis-browser-host.exe` is the Chrome/Edge native-messaging relay. Loopback targets route to an isolated Jarvis dev-browser profile; external calls explicitly select a non-dev connected browser.
