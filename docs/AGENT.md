@@ -1,5 +1,11 @@
 # Jarvis Agent operator guide
 
+## 1.0.77 multi-session actions
+
+The **Sessions** list now has a checkbox on every open session so several chats can be selected at once. **Select all** checks every currently visible open session (respecting the search filter); **Clear** resets the bulk selection. Closed sessions remain visible when **Show closed sessions** is enabled but cannot be checked for mutation.
+
+Use **Stop selected** to cancel accepted work/resources only for the checked sessions while leaving their handles resumable. Use **Close selected** for terminal closure of all checked session handles; one confirmation covers the whole batch. Filtering a checked session out of the visible list clears its bulk selection so a hidden row is never mutated accidentally. The existing single-row **Stop work** / **Close session** controls remain available, and global **Pause** is still the separate all-session stop.
+
 ## 1.0.72 selectable session identity
 
 The **Sessions** list now shows the raw session ID directly beneath every session name. Both values use read-only selectable text: drag across the name or `js_...` ID with the mouse, then use `Ctrl+C` or the standard context-menu copy command. These identity fields intentionally stay out of the keyboard tab sequence so repeated rows do not create noisy navigation; the surrounding session row remains the selection target for Stop work, Close session and expanded details.

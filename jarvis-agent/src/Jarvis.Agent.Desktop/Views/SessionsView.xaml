@@ -19,19 +19,32 @@
         <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCommand}" Style="{StaticResource SessionButton}" ToolTip="Refresh sessions. F5"/>
       </Grid>
       <CheckBox Content="Show closed sessions" IsChecked="{Binding ShowClosed}" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/>
+      <Grid Margin="0,10,0,0">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <WrapPanel VerticalAlignment="Center">
+          <Button Content="Select all" Command="{Binding SelectAllCommand}" Style="{StaticResource SessionButton}" Padding="10,7" Margin="0,0,8,0" ToolTip="Select every visible open session"/>
+          <Button Content="Clear" Command="{Binding ClearSelectionCommand}" Style="{StaticResource SessionButton}" Padding="10,7" Margin="0,0,10,0" ToolTip="Clear the multi-session selection"/>
+          <TextBlock Text="{Binding BulkSelectionSummary}" Style="{StaticResource SessionHint}" VerticalAlignment="Center"/>
+        </WrapPanel>
+        <WrapPanel Grid.Column="1">
+          <Button Content="Stop selected" Command="{Binding StopSelectedSessionsCommand}" Style="{StaticResource SessionButton}" Padding="10,7" Margin="0,0,8,0"/>
+          <Button Content="Close selected" Command="{Binding CloseSelectedSessionsCommand}" Style="{StaticResource SessionButton}" Foreground="{DynamicResource Danger}" Padding="10,7" ToolTip="Permanently close the selected session handles"/>
+        </WrapPanel>
+      </Grid>
     </StackPanel>
     <Grid Grid.Row="2" MinHeight="110">
       <ListBox ItemContainerStyle="{StaticResource SessionRow}" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" AutomationProperties.Name="Session activity list">
         <ListBox.ItemTemplate><DataTemplate>
           <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="16,14">
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="105"/></Grid.ColumnDefinitions>
-              <StackPanel Margin="0,0,12,0">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/><ColumnDefinition Width="105"/></Grid.ColumnDefinitions>
+              <CheckBox IsChecked="{Binding IsBulkSelected, Mode=TwoWay}" IsEnabled="{Binding CanBulkSelect}" VerticalAlignment="Top" Margin="0,3,10,0" AutomationProperties.Name="Select session for bulk action" ToolTip="Select this session for Stop selected or Close selected"/>
+              <StackPanel Grid.Column="1" Margin="0,0,12,0">
                 <TextBox Text="{Binding Label, Mode=OneWay}" Style="{StaticResource SessionSelectableText}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.Name="Session name" AutomationProperties.HelpText="Selectable text. Drag with the mouse, then copy." ToolTip="Drag to select the session name; Ctrl+C or right-click to copy."/>
                 <TextBox Text="{Binding SessionId, Mode=OneWay}" Style="{StaticResource SessionSelectableText}" Foreground="{DynamicResource Muted}" FontFamily="Consolas" FontSize="12" Margin="0,4,0,0" AutomationProperties.Name="Session ID" AutomationProperties.HelpText="Selectable text. Drag with the mouse, then copy." ToolTip="Drag to select the session ID; Ctrl+C or right-click to copy."/>
                 <TextBlock Text="{Binding Workspace}" Foreground="{DynamicResource Muted}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workspace}" Margin="0,6,0,0"/>
                 <TextBlock Text="{Binding WorkSummary}" Style="{StaticResource SessionHint}" Margin="0,7,0,0"/>
               </StackPanel>
-              <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+              <StackPanel Grid.Column="2" HorizontalAlignment="Right">
                 <Border BorderBrush="{DynamicResource Accent}" BorderThickness="1" CornerRadius="6" Padding="10,5"><TextBlock Text="{Binding Status}" Foreground="{DynamicResource Text}" FontSize="12" FontWeight="SemiBold"/></Border>
                 <TextBlock Text="{Binding Unread, StringFormat={}{0} unread events}" Style="{StaticResource SessionHint}" Margin="0,10,0,0" TextAlignment="Right"/>
               </StackPanel>
@@ -67,7 +80,7 @@
     <StackPanel Grid.Row="4" Margin="0,12,0,0">
       <TextBlock Text="{Binding ActionMessage}" Style="{StaticResource SessionHint}" AutomationProperties.LiveSetting="Polite"/>
       <TextBlock Text="{Binding Error}" Style="{StaticResource SessionError}"/>
-      <TextBlock Text="Stop work cancels only the selected session. Close is permanent for its handle. To stop every session, use the separate Pause control." Style="{StaticResource SessionHint}" Margin="0,8,0,0"/>
+      <TextBlock Text="Stop work affects only the selected or checked sessions. Select all checks every currently visible open session. Close is permanent for each handle. To stop every session globally, use the separate Pause control." Style="{StaticResource SessionHint}" Margin="0,8,0,0" TextWrapping="Wrap"/>
     </StackPanel>
   </Grid>
   </ScrollViewer>

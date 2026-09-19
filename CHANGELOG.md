@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.77 - 2026-09-19
+
+- Add checkbox-based multi-selection to the Agent Sessions list, including Select all/Clear controls for the currently visible open sessions.
+- Add bulk Stop selected and Close selected actions. Bulk close uses one confirmation dialog for the checked sessions, preserves the existing terminal-handle semantics, and never pauses unselected sessions.
+- Add regression coverage for bulk targeting, closed-session exclusion and filter-driven selection cleanup. Bump package/assembly/file versions to 1.0.77 / 1.0.77.0; browser extension protocol/version remains 1.3.0.
+
 ## 1.0.76 - 2026-09-19
 
 - Extend cancellation-bound execution-resource cleanup to `computer` calls as well as browser calls. A cancelled `computer.request_access` or other desktop-scoped computer operation now releases its call-owned `desktop` lease immediately while local permission/grant UI or driver teardown finishes unwinding, preventing later browser QA from hanging behind stale desktop ownership.

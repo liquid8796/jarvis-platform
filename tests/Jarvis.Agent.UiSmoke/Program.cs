@@ -177,6 +177,16 @@ internal static class Program
             var sessionsView = (FrameworkElement)Descendants(window).Single(v => v.GetType().Name == "SessionsView");
             sessionsView.DataContext = previewModel;
             Capture("agent-sessions-minimum.png");
+            var bulkChecks = Descendants(sessionsView).OfType<CheckBox>()
+                .Where(box => Equals(box.ToolTip, "Select this session for Stop selected or Close selected")).ToArray();
+            if (bulkChecks.Length != 3) throw new InvalidOperationException("Session rows must expose one bulk-selection checkbox each.");
+            Execute(previewModel, "SelectAllCommand"); window.UpdateLayout();
+            if ((int)Property(previewModel, "BulkSelectedCount") != 3 || bulkChecks.Any(box => box.IsChecked != true))
+                throw new InvalidOperationException("Select all did not check every visible open session.");
+            Capture("agent-sessions-bulk-selected.png");
+            Execute(previewModel, "ClearSelectionCommand"); window.UpdateLayout();
+            if ((int)Property(previewModel, "BulkSelectedCount") != 0 || bulkChecks.Any(box => box.IsChecked == true))
+                throw new InvalidOperationException("Clear selection did not reset the bulk selection.");
             var selectableSessionText = Descendants(sessionsView).OfType<TextBox>().Where(box => box.IsReadOnly).ToArray();
             var selectableLabel = selectableSessionText.FirstOrDefault(box => box.Text == "Build and review");
             var selectableId = selectableSessionText.FirstOrDefault(box => box.Text.StartsWith("js_", StringComparison.Ordinal));

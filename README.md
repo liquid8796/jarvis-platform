@@ -1,6 +1,6 @@
-# Jarvis Control - 1.0.76
+# Jarvis Control - 1.0.77
 
-**Version 1.0.76 fixes two long-running-session failure modes: cancelled computer-use/permission calls now release their shared desktop lease as soon as the call is cancelled, and explicit application-session handles no longer terminate solely because the former 30-day wall-clock lifetime elapsed.** OAuth, enrolled-device checks, explicit session close, Arm/Pause, per-call deadlines and local approvals remain independent boundaries. The 1.0.75 browser companion build closure remains unchanged. See [architecture](docs/ARCHITECTURE.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
+**Version 1.0.77 adds multi-session selection to the Agent Sessions UI: check individual open sessions or Select all visible rows, then Stop selected or Close selected in one operation.** Bulk close keeps the existing terminal-handle semantics and uses one confirmation for the batch; closed history is not presented as physical deletion. The 1.0.76 cancellation and durable-session-handle fixes remain unchanged. See [architecture](docs/ARCHITECTURE.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
 
 A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; browser extension **1.3.0** adds protocol/capability negotiation required by the dedicated browser service.
 
@@ -36,7 +36,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.76/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.76/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Mỗi output Agent còn có `jarvis-browser-service.exe` ở root để dùng chung runtime/dependencies với Agent, còn native-messaging host nằm tại `browser/jarvis-browser-host.exe`; giữ cả thư mục output, không copy riêng executable. Từ 1.0.75, `dotnet build` trực tiếp `Jarvis.Agent.Desktop` hoặc `Jarvis.Agent.Cli` cũng tạo đúng layout browser companion này, không chỉ `scripts/Build.ps1`. WebView2 Runtime vẫn là điều kiện riêng cho visualize WPF.
+Build thành công sẽ tạo `artifacts/agent/1.0.77/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.77/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Mỗi output Agent còn có `jarvis-browser-service.exe` ở root để dùng chung runtime/dependencies với Agent, còn native-messaging host nằm tại `browser/jarvis-browser-host.exe`; giữ cả thư mục output, không copy riêng executable. Từ 1.0.75, `dotnet build` trực tiếp `Jarvis.Agent.Desktop` hoặc `Jarvis.Agent.Cli` cũng tạo đúng layout browser companion này, không chỉ `scripts/Build.ps1`. WebView2 Runtime vẫn là điều kiện riêng cho visualize WPF.
 
 ## Chạy local
 
@@ -55,11 +55,11 @@ Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.76\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.76\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.76\cli\jarvis-agent.exe doctor --json
-.\artifacts\agent\1.0.76\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.76\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.77\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.77\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.77\cli\jarvis-agent.exe doctor --json
+.\artifacts\agent\1.0.77\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.77\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -107,7 +107,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.76**, assembly/file **1.0.76.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.77**, assembly/file **1.0.77.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 

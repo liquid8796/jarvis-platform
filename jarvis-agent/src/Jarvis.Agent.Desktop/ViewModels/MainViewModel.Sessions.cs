@@ -28,9 +28,17 @@ public sealed partial class MainViewModel
         Sessions = new(() => _runtime?.Connection.GetLocalSessionOverview() ?? [],
             () => _runtime?.Connection.IsConnected == true,
             (identity, close) => _runtime!.Connection.StopSession(identity, close),
-            row => MessageBox.Show(_owner,
-                $"Close {row.Label}?\n\nIts queued work and owned processes will be cancelled. Its session handle cannot resume after closing. Other sessions will not be paused.",
-                "Close this session", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
+            rows =>
+            {
+                var many = rows.Count > 1;
+                var target = many ? $"{rows.Count} selected sessions" : rows[0].Label;
+                var consequences = many
+                    ? "Their queued work and owned processes will be cancelled. Their session handles cannot resume after closing. Other sessions will not be paused."
+                    : "Its queued work and owned processes will be cancelled. Its session handle cannot resume after closing. Other sessions will not be paused.";
+                return MessageBox.Show(_owner, $"Close {target}?\n\n{consequences}",
+                    many ? "Close selected sessions" : "Close this session",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
+            });
         ClearWorkspaceCommand = new(() => { Workspace = ""; AdditionalDirectories.Clear(); SelectedDirectory = null; WorkspaceStatus = "No default workspace. Save or reconnect to apply this default to new sessions."; });
         SaveWorkspaceDefaultsCommand = new(() =>
         {
