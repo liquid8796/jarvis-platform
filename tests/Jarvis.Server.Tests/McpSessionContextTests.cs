@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Jarvis.Protocol;
+using Jarvis.McpServer.Transport;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace Jarvis.Server.Tests;
@@ -23,6 +24,28 @@ public sealed class McpSessionContextTests
         var middle = handle.Length / 2;
         var tampered = handle[..middle] + (handle[middle] == 'a' ? 'b' : 'a') + handle[(middle + 1)..];
         Assert.Throws<AgentRequestException>(() => service.Resolve("owner-a", "device-a", tampered));
+    }
+
+    [Fact]
+    public void Legacy_expired_handle_does_not_end_an_open_application_session()
+    {
+        var provider = new EphemeralDataProtectionProvider();
+        var service = new McpSessionContext(provider);
+        var sessionId = AgentSessionRules.NewSessionId();
+        var legacy = JsonSerializer.Serialize(new
+        {
+            version = 1,
+            ownerId = "owner-a",
+            deviceId = "device-a",
+            sessionId,
+            expiresAt = DateTimeOffset.UtcNow.AddDays(-1)
+        }, WireJson.Options);
+        var handle = provider.CreateProtector("Jarvis.Mcp.ApplicationSession.v1").Protect(legacy);
+
+        Assert.Equal(sessionId, service.Resolve("owner-a", "device-a", handle));
+        var current = service.Issue("owner-a", "device-a");
+        Assert.Null(current.ExpiresAt);
+        Assert.Equal(current.SessionId, service.Resolve("owner-a", "device-a", current.SessionHandle));
     }
 
     [Fact]

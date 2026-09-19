@@ -44,6 +44,13 @@ public static class ToolExecutionResources
         "browser.tabs_close_mcp" or "browser.computer" or "browser.javascript_tool" or "browser.browser_batch" or
         "browser.form_input" or "browser.file_upload" or "browser.upload_image";
 
+    /// <summary>
+    /// Interactive browser/computer calls can outlive their remote deadline while UI/driver cancellation unwinds.
+    /// Their call-owned lease must therefore stop blocking shared desktop admission as soon as the call is cancelled.
+    /// </summary>
+    public static bool ReleaseCallLeaseOnCancellation(ToolDescriptor tool) =>
+        tool.Category is "browser" or "computer";
+
     public static string CanonicalPath(string path)
     {
         var full = Path.GetFullPath(path);

@@ -1,6 +1,7 @@
 using System.Reflection;
 using Jarvis.Agent.Core;
 using Jarvis.Agent.Core.Execution;
+using Jarvis.Protocol;
 
 namespace Jarvis.Core.Tests;
 
@@ -62,6 +63,28 @@ public sealed class ExecutionResourceTests
         oldSessionStop.Cancel();
         using var acquired = await newSession.WaitAsync(TimeSpan.FromSeconds(2));
         oldSession.Dispose();
+    }
+
+    [Fact]
+    public async Task Cancelled_computer_permission_call_releases_desktop_lease_while_prompt_unwinds()
+    {
+        using var coordinator = Create();
+        using var permissionStop = new CancellationTokenSource();
+        var requestAccess = new ToolDescriptor("computer.request_access", "computer__request_access", "computer", "",
+            WireJson.Element(new { type = "object" }), ReadOnly: true, Sensitive: true);
+        Assert.True(ToolExecutionResources.ReleaseCallLeaseOnCancellation(requestAccess));
+
+        var rawPermission = (IExecutionResourceLease)await Acquire(
+            coordinator, "old-session", "desktop", true, CancellationToken.None);
+        var permission = CancellationBoundResourceLease.Bind(rawPermission, permissionStop.Token);
+        var browser = Acquire(
+            coordinator, "new-session", ["browser|new-session", "desktop"], true, CancellationToken.None);
+
+        Assert.False(browser.IsCompleted);
+
+        permissionStop.Cancel();
+        using var acquired = await browser.WaitAsync(TimeSpan.FromSeconds(2));
+        permission.Dispose();
     }
 
     [Fact]

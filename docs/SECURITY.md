@@ -1,5 +1,9 @@
 # Security boundaries and threat model
 
+## 1.0.76 application-session handle lifetime
+
+Application-session handles no longer expire solely on a fixed wall-clock timer. They remain protected correlation capabilities bound to the authenticated owner and enrolled execution device, not authorization tokens: every call still requires live OAuth/device authorization, the Agent validates the `js_...` session and closed state again at dispatch, and explicit session close remains terminal. Legacy v1 embedded expiry timestamps are ignored only after those stronger checks; persisted Data Protection keys are still required to resume an existing handle after server restart.
+
 ## 1.0.65 sessionless security scope
 
 Ordinary calls without an explicit application session are still authenticated by the OAuth owner and enrolled agent. Local state that must survive later prompts in this mode is scoped to that owner+agent pair; use `session__open` when separate chats require stricter workspace, mailbox or browser isolation. Explicit session/workspace operations still require a validated handle.
@@ -8,7 +12,7 @@ A sessionless resource remains bound to owner+agent plus its opaque resource ID;
 
 ## 1.0.64 multi-session boundaries
 
-Application handles are protected with the server's existing persisted Data Protection key ring, bound to authenticated owner and enrolled execution device, expire after 30 days, and are never returned by list/metadata operations. They are not a replacement for OAuth, per-tool approval, persistent constrained-process grants, or Arm/Pause. Retain and protect the server data directory during upgrades. Never log or copy handles into inter-session messages.
+In the 1.0.64 contract, application handles were protected with the server's existing persisted Data Protection key ring, bound to authenticated owner and enrolled execution device, expired after 30 days, and were never returned by list/metadata operations. Version 1.0.76 supersedes only that fixed expiry. They are not a replacement for OAuth, per-tool approval, persistent constrained-process grants, or Arm/Pause. Retain and protect the server data directory during upgrades. Never log or copy handles into inter-session messages.
 
 The local session store validates owner/device/session and closed state again at dispatch. Queued calls keep immutable workspace snapshots. Per-session process/task ownership prevents a sibling from reading stdin/output or cancelling another chat's job by guessing an ID. The native bridge stamps session identity outside browser arguments; extension ownership checks include read/origin/close paths. Separate per-session browser origin gates and computer-service state do not weaken denied-app or OS/UIPI boundaries.
 

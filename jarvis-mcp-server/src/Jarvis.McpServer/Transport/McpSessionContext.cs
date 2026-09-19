@@ -12,7 +12,7 @@ namespace Jarvis.McpServer.Transport;
 /// </summary>
 public sealed class McpSessionContext
 {
-    public const int HandleLifetimeDays = 30;
+    private const int CurrentClaimsVersion = 2;
     private readonly IDataProtector _protector;
 
     public McpSessionContext(IDataProtectionProvider provider) =>
@@ -21,8 +21,8 @@ public sealed class McpSessionContext
     public IssuedMcpSession Issue(string ownerId, string deviceId)
     {
         ValidateOwner(ownerId, deviceId);
-        var claims = new SessionClaims(1, ownerId, deviceId, AgentSessionRules.NewSessionId(), DateTimeOffset.UtcNow.AddDays(HandleLifetimeDays));
-        return new(claims.SessionId, _protector.Protect(JsonSerializer.Serialize(claims, WireJson.Options)), claims.ExpiresAt);
+        var claims = new SessionClaims(CurrentClaimsVersion, ownerId, deviceId, AgentSessionRules.NewSessionId());
+        return new(claims.SessionId, _protector.Protect(JsonSerializer.Serialize(claims, WireJson.Options)), null);
     }
 
     public string Resolve(string ownerId, string deviceId, string? handle)
@@ -34,11 +34,9 @@ public sealed class McpSessionContext
         try
         {
             var claims = JsonSerializer.Deserialize<SessionClaims>(_protector.Unprotect(handle), WireJson.Options);
-            if (claims is null || claims.Version != 1 || !AgentSessionRules.IsSessionId(claims.SessionId) ||
+            if (claims is null || claims.Version is not (1 or CurrentClaimsVersion) || !AgentSessionRules.IsSessionId(claims.SessionId) ||
                 !StringComparer.Ordinal.Equals(claims.OwnerId, ownerId) || !StringComparer.Ordinal.Equals(claims.DeviceId, deviceId))
                 throw Invalid();
-            if (claims.ExpiresAt <= DateTimeOffset.UtcNow)
-                throw new AgentRequestException("SESSION_EXPIRED", "Open a new session. The previous handle has expired; no operation was dispatched.");
             return claims.SessionId;
         }
         catch (Exception ex) when (ex is CryptographicException or JsonException or FormatException or ArgumentException)
@@ -91,8 +89,8 @@ public sealed class McpSessionContext
             throw new AgentRequestException("SESSION_INVALID", "Authenticated owner and enrolled device are required.");
     }
     private static AgentRequestException Invalid() => new("SESSION_INVALID", "The session handle is invalid for this authenticated account and enrolled agent. No command was dispatched.");
-    private sealed record SessionClaims(int Version, string OwnerId, string DeviceId, string SessionId, DateTimeOffset ExpiresAt);
+    private sealed record SessionClaims(int Version, string OwnerId, string DeviceId, string SessionId, DateTimeOffset? ExpiresAt = null);
 }
 
-public sealed record IssuedMcpSession(string SessionId, string SessionHandle, DateTimeOffset ExpiresAt);
+public sealed record IssuedMcpSession(string SessionId, string SessionHandle, DateTimeOffset? ExpiresAt);
 public sealed record ExtractedMcpSession(JsonElement Arguments, string? SessionHandle);

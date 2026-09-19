@@ -1,5 +1,12 @@
 # Build / test status
 
+## 1.0.76 interactive cancellation/session lifetime - executed release verification (2026-09-19)
+
+- Reproduced the stale-resource path in source: `computer.request_access` is a `computer` tool and claims the shared `desktop`, but 1.0.74 cancellation-bound release applied only to `browser`. `computer` and `browser` calls now share the cancellation-bound call-lease policy, so cancellation releases the desktop claim while permission/grant UI or driver teardown finishes unwinding. The focused execution-resource group passed **7/7**, including the new computer-permission-to-browser handoff regression.
+- Removed the 30-day absolute application-session handle cutoff. New protected claims are version 2 with no expiry timestamp; legacy v1 handles remain owner/device-bound and are accepted past their historical timestamp, after which the Agent's durable session registry still decides whether the session is open or closed. The focused `McpSessionContextTests` group passed **3/3**.
+- `python scripts/Verify-CurrentVersion.py` passed package **1.0.76** and assembly/file **1.0.76.0**. Full Release solution verification passed **402/402**, **0 failed / 0 skipped**: Core **232**, Windows Agent **68**, Server **102**.
+- Verification changed source/build output only. The already-running Agent and production MCP server are not automatically upgraded by this commit; both sides must be deployed at 1.0.76 for the fixes to take effect.
+
 ## 1.0.75 browser companion build closure - executed release verification (2026-09-19)
 
 - Reproduced the packaging gap with a normal Release `dotnet build` of `Jarvis.Agent.Desktop`: the Agent output contained neither dedicated browser executable even though the official publish script knew how to package them. Desktop and CLI now build BrowserService and BrowserHost through non-assembly project references; a shared MSBuild target copies `jarvis-browser-service.*` into the Agent output root and `jarvis-browser-host.*` under `browser/`, then removes any transitive root-level native-host copy.

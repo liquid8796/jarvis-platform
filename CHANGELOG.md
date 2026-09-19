@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.76 - 2026-09-19
+
+- Extend cancellation-bound execution-resource cleanup to `computer` calls as well as browser calls. A cancelled `computer.request_access` or other desktop-scoped computer operation now releases its call-owned `desktop` lease immediately while local permission/grant UI or driver teardown finishes unwinding, preventing later browser QA from hanging behind stale desktop ownership.
+- Remove the absolute 30-day expiry from newly issued application-session handles. Session handles remain protected owner/device-bound correlation tokens, every call still requires live OAuth/device/local authorization, and explicit Agent session close remains terminal. Legacy v1 handles remain accepted after their historical expiry timestamp when the underlying Agent session is still open.
+- Add focused regressions for the cancelled computer-permission desktop lease and legacy expired-handle compatibility. Bump package/assembly/file versions to 1.0.76 / 1.0.76.0; browser extension protocol/version remains 1.3.0.
+
 ## 1.0.75 - 2026-09-19
 
 - Make normal `dotnet build` output for both Desktop and CLI include the dedicated browser runtime: the entry points build BrowserService and BrowserHost for ordering, copy `jarvis-browser-service.*` into the Agent root, and copy `jarvis-browser-host.*` under `browser/`.
