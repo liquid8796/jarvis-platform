@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.74 - 2026-09-19
+
+- Bind browser execution-resource leases to the lifetime of the call that acquired them. When an old session/call is stopped or cancelled, its browser/desktop lease is released promptly even if the underlying browser task is still unwinding, so another session is not stuck behind stale Chrome-channel ownership.
+- Scope the fail-safe to browser calls only; filesystem, shell and process leases keep their existing completion/retention semantics. Cancellation-triggered browser release is deferred out of the cancellation callback so a bulk stop/revocation can cancel sibling calls before resource waiters are pumped.
+- Add a regression that holds an old session's `browser|...` plus `desktop` claim without disposing it, cancels that call, and requires a new session to acquire the desktop/browser path immediately. Bump package/assembly/file versions to 1.0.74 / 1.0.74.0; browser extension protocol/version remains 1.3.0.
+
 ## 1.0.73 - 2026-09-18
 
 - Fix the dedicated Chrome/Edge native-messaging host lifecycle so a browser-service pipe disconnect wins over an idle blocking Chrome stdin read; the host now exits promptly and lets the extension reconnect to the replacement browser service.

@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.74 cancelled browser-resource reclamation - executed release verification (2026-09-19)
+
+- Diagnosis confirmed browser claims are session-scoped (`browser|<scope>`) but mutation tools also hold the shared `desktop`; if an old browser call is cancelled while its tool task is slow to unwind, the call-owned lease could keep a newer session queued behind that stale desktop claim.
+- Browser calls now wrap only their call-owned resource reference with call cancellation. Cancellation schedules release outside the token callback so multi-call stop/revocation can first cancel sibling calls; filesystem, shell and process lease semantics remain unchanged.
+- An initial generalized implementation exposed the existing permission-revocation queue regression: a waiting call could awaken during the cancellation sweep. The final browser-only deferred-release implementation passed the focused regression group **7/7**, including the new stale old-session browser+desktop lease case and the existing revocation case.
+- `python scripts/Verify-CurrentVersion.py` passed package **1.0.74** and assembly/file **1.0.74.0**. Full Release solution verification passed **400/400**, **0 failed / 0 skipped**: Core **231**, Windows Agent **68**, Server **101**.
+- Verification is source/build/test only. The currently running Agent/browser service was not replaced or restarted, so installed runtimes need the 1.0.74 update before live chats receive this fix.
+
 ## 1.0.73 browser native-host reconnect hardening - executed release verification (2026-09-18)
 
 - Live diagnosis reproduced an orphaned native host: `jarvis-browser-host.exe` had started before the replacement `jarvis-browser-service.exe` and remained blocked on idle Chrome stdin after the old service pipe disappeared. Restarting only the native host caused Chrome to spawn a fresh host immediately and restored `[b3] Chrome`, confirming the extension installation and native-messaging registration were valid.

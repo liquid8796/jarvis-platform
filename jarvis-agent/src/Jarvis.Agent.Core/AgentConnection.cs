@@ -370,6 +370,8 @@ public sealed partial class AgentConnection : IAsyncDisposable
                     {
                         var claims = ToolExecutionResources.For(tool.Descriptor, arguments, context);
                         resources = await _resources.AcquireAsync(SchedulingKey(context), claims.Resources, claims.Exclusive, waiting.Token);
+                        if (tool.Descriptor.Category == "browser" && resources is IExecutionResourceLease acquired)
+                            resources = CancellationBoundResourceLease.Bind(acquired, ct);
                     }
                     slot = await (control ? _controlExecution : _execution).AcquireAsync(SchedulingKey(context), waiting.Token);
                 }

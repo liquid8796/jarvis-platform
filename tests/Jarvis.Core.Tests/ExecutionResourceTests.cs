@@ -1,5 +1,6 @@
 using System.Reflection;
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Execution;
 
 namespace Jarvis.Core.Tests;
 
@@ -46,6 +47,24 @@ public sealed class ExecutionResourceTests
     }
 
     [Fact]
+    public async Task Cancelled_browser_call_releases_desktop_lease_even_if_old_session_never_disposes_it()
+    {
+        using var coordinator = Create();
+        using var oldSessionStop = new CancellationTokenSource();
+        var oldRaw = (IExecutionResourceLease)await Acquire(
+            coordinator, "old-session", ["browser|old-session", "desktop"], true, CancellationToken.None);
+        var oldSession = CancellationBoundResourceLease.Bind(oldRaw, oldSessionStop.Token);
+        var newSession = Acquire(
+            coordinator, "new-session", ["browser|new-session", "desktop"], true, CancellationToken.None);
+
+        Assert.False(newSession.IsCompleted);
+
+        oldSessionStop.Cancel();
+        using var acquired = await newSession.WaitAsync(TimeSpan.FromSeconds(2));
+        oldSession.Dispose();
+    }
+
+    [Fact]
     public async Task A_background_job_can_retain_resources_after_its_start_call_returns()
     {
         using var coordinator = Create();
@@ -80,5 +99,10 @@ public sealed class ExecutionResourceTests
         return (IDisposable)Activator.CreateInstance(type, 100)!;
     }
     private static Task<IDisposable> Acquire(object coordinator, string owner, string resource, bool exclusive, CancellationToken ct = default) =>
-        (Task<IDisposable>)coordinator.GetType().GetMethod("AcquireAsync")!.Invoke(coordinator, [owner, new[] { resource }, exclusive, ct])!;
+        Acquire(coordinator, owner, [resource], exclusive, ct);
+
+    private static Task<IDisposable> Acquire(object coordinator, string owner, string[] resources, bool exclusive,
+        CancellationToken cancellationToken) =>
+        (Task<IDisposable>)coordinator.GetType().GetMethod("AcquireAsync")!.Invoke(
+            coordinator, [owner, resources, exclusive, cancellationToken])!;
 }

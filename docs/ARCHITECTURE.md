@@ -1,6 +1,12 @@
-# Architecture decisions · 1.0.73
+# Architecture decisions · 1.0.74
 
-## 1.0.73 native-host lifecycle hardening (current)
+## 1.0.74 cancelled-call resource reclamation (current)
+
+Browser calls now wrap the coordinator lease in a call-cancellation-bound reference after resource admission. Stopping/cancelling a session, cancelling the call, or losing its owning connection therefore releases that call-owned browser lease promptly even when the underlying browser task is slow to unwind. Cancellation-triggered release is queued outside the token callback so a bulk stop/revocation can first cancel sibling calls rather than re-entrantly waking one while the cancellation sweep is still in progress. This is especially important for Chrome operations that claim both `browser|<isolation-scope>` and the shared `desktop`: a stale call from an old session can no longer keep a newer session queued after cancellation.
+
+The fail-safe is intentionally browser-only. Filesystem, shell and process resource lifetimes retain their prior semantics, including explicit `RetainResources()` references for long-running owned process jobs. Queue fairness and the existing per-session browser/runtime isolation remain unchanged.
+
+## 1.0.73 native-host lifecycle hardening
 
 The native-messaging relay is intentionally process-ephemeral: either Chrome stdin ending or the browser-service pipe ending terminates the relay. The extension-to-service pump therefore runs independently from the service-to-extension pump and the host waits for whichever side closes first. A browser-service restart can no longer leave the host blocked indefinitely on idle Chrome stdin; process exit closes the native port so extension 1.3.0 reconnects through its normal backoff to the new service instance.
 
