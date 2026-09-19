@@ -12,8 +12,8 @@ function browser() {
   const event = () => ({ listeners: [], addListener(fn) { this.listeners.push(fn); } });
   const chrome = {
     runtime: { onMessage: event(), getManifest: () => ({ version: 'test' }),
-      connectNative: () => ({ onMessage: event(), onDisconnect: event(), postMessage(m) { if (m.id) replies.set(m.id, m); } }) },
-    storage: { session: {
+      connectNative: () => ({ onMessage: event(), onDisconnect: event(), disconnect() {}, postMessage(m) { if (m.id) replies.set(m.id, m); } }) },
+    storage: { local: { async get() { return {}; }, async set() {} }, session: {
       async get(key) { return { [key]: structuredClone(storage[key]) }; },
       async set(value) { Object.assign(storage, structuredClone(value)); }
     } },
@@ -28,11 +28,14 @@ function browser() {
     tabGroups: { async get(id) { if (!groups.has(id)) throw Error('Missing group'); return groups.get(id); }, async update(id, o) { Object.assign(groups.get(id), o); } },
     windows: { async update() {} },
     debugger: { onEvent: event(), onDetach: event(), async attach() {}, async detach() {}, async sendCommand() { return {}; } },
-    scripting: { async executeScript() { return [{result: {text:'synthetic'}}]; } }
+    scripting: { async executeScript(options) {
+      assert.ok(!(options.args || []).some(value => value === undefined), 'Chrome scripting arguments cannot contain undefined');
+      return [{result: {text:'synthetic'}}];
+    } }
   };
   let context;
   function reload() {
-    context = vm.createContext({ chrome, navigator: {userAgent:'Chrome/test'}, console, URL,
+    context = vm.createContext({ chrome, navigator: {userAgent:'Chrome/test'}, console, URL, crypto: require('node:crypto').webcrypto, importScripts() {},
       setTimeout: () => 0, clearTimeout() {}, btoa: s => Buffer.from(s).toString('base64') });
     vm.runInContext(source, context);
   }
@@ -53,6 +56,11 @@ test('different sessions get different groups and metadata only for their own ta
   assert.notEqual(b.tabs.get(a.tabId).groupId, b.tabs.get(c.tabId).groupId);
   assert.deepEqual((await b.call(A,'tabs')).map(t=>t.id), [a.tabId]);
   assert.deepEqual((await b.call(B,'tabs')).map(t=>t.id), [c.tabId]);
+});
+test('a fresh accessibility observation serializes absent document identity as null',async()=>{
+  const b=browser(),tab=await b.call(A,'create_tab');
+  const result=await b.call(A,'a11y',{tabId:tab.tabId});
+  assert.ok(Array.isArray(result.frames));
 });
 test('foreign tab cannot be closed or inspected, including the origin preflight', async () => {
   const b=browser(), a=await b.call(A,'create_tab'); await b.call(B,'create_tab');

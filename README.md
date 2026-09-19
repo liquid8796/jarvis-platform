@@ -1,8 +1,8 @@
-# Jarvis Control - 1.0.77
+# Jarvis Control - 1.0.78
 
-**Version 1.0.77 adds multi-session selection to the Agent Sessions UI: check individual open sessions or Select all visible rows, then Stop selected or Close selected in one operation.** Bulk close keeps the existing terminal-handle semantics and uses one confirmation for the batch; closed history is not presented as physical deletion. The 1.0.76 cancellation and durable-session-handle fixes remain unchanged. See [architecture](docs/ARCHITECTURE.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
+**Version 1.0.78 adds measured frontend QA and a complete inspect/repair/review workflow through the existing MCP client.** Task completion now distinguishes execution from verified frontend behavior, binds screenshots to source revisions, and requires real target interactions and viewport evidence. See [Frontend QA](docs/FRONTEND-QA.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running Agent or production MCP service.
 
-A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; browser extension **1.3.0** adds protocol/capability negotiation required by the dedicated browser service.
+A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; browser extension **1.4.0** adds the structured QA capability required by this release.
 
 Jarvis Control là control plane cho MCP; Jarvis Agent là ứng dụng C# .NET 10 trên Windows 10/11, gồm WPF desktop và CLI. Tên web được chọn vì yêu cầu ban đầu chưa điền tên. Một repository chứa hai project sản phẩm và shared protocol; giữ nguyên các thư mục `shared` và `vendor` khi mở solution con.
 
@@ -36,7 +36,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.77/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.77/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Mỗi output Agent còn có `jarvis-browser-service.exe` ở root để dùng chung runtime/dependencies với Agent, còn native-messaging host nằm tại `browser/jarvis-browser-host.exe`; giữ cả thư mục output, không copy riêng executable. Từ 1.0.75, `dotnet build` trực tiếp `Jarvis.Agent.Desktop` hoặc `Jarvis.Agent.Cli` cũng tạo đúng layout browser companion này, không chỉ `scripts/Build.ps1`. WebView2 Runtime vẫn là điều kiện riêng cho visualize WPF.
+Build thành công sẽ tạo `artifacts/agent/1.0.78/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.78/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Mỗi output Agent còn có `jarvis-browser-service.exe` ở root để dùng chung runtime/dependencies với Agent, còn native-messaging host nằm tại `browser/jarvis-browser-host.exe`; giữ cả thư mục output, không copy riêng executable. Từ 1.0.75, `dotnet build` trực tiếp `Jarvis.Agent.Desktop` hoặc `Jarvis.Agent.Cli` cũng tạo đúng layout browser companion này, không chỉ `scripts/Build.ps1`. WebView2 Runtime vẫn là điều kiện riêng cho visualize WPF.
 
 ## Chạy local
 
@@ -55,11 +55,11 @@ Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.77\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.77\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.77\cli\jarvis-agent.exe doctor --json
-.\artifacts\agent\1.0.77\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.77\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.78\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.78\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.78\cli\jarvis-agent.exe doctor --json
+.\artifacts\agent\1.0.78\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.78\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -107,7 +107,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.77**, assembly/file **1.0.77.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.78**, assembly/file **1.0.78.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 
@@ -153,7 +153,7 @@ The default hosts still do not silently configure a paid/model planner; NORMAL/R
 
 Autonomous frontend completion now fails closed through `FrontendVerificationGate`. `FrontendChangeClassifier` recognizes common rendered source extensions (`.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.sass`, `.less`, `.html`) plus frontend/visual intent in the goal. Base rendered proof requires target identity, rendered DOM/accessibility state, no framework overlay, console health, a screenshot and a target interaction with post-state evidence. Visual/layout work additionally requires desktop and mobile viewport checks plus overflow/clipping evidence.
 
-Evidence is typed, the latest evidence for a kind wins, and missing/failing kinds are projected back into the agentic prompt as `verification-debt` before another goal-repair round. `RemoteTaskSnapshot.verification` exposes the requirement type, pass state, retained evidence, missing kinds and failed kinds; the MCP output schema advertises this field as optional so deterministic/legacy task JSON remains compatible.
+Version 1.0.68 introduced typed evidence and verification debt. The current 1.0.78 gate replaces last-evidence-wins with source/run/viewport-bound measured evidence; an assertion cannot erase a measured failure. Snapshots expose verification state, evidence, capture IDs, missing/failed kinds and the next action. See [Frontend QA](docs/FRONTEND-QA.md).
 
 ## Progressive Coding Skills and Browser State (1.0.69)
 
@@ -187,7 +187,7 @@ Browser automation is now a process boundary rather than an in-process `BrowserB
 
 `browserFamily` accepts `auto`, `dev`, `chrome`, `edge` or `extension`. `auto` routes loopback URLs to `dev`, which starts Chrome/Edge with a Jarvis-owned isolated profile and the packaged extension, while non-loopback calls select a ready external browser. The extension 1.3.0 handshake advertises browser/native-host protocol versions, capabilities and a persistent extension instance ID; incompatible extensions stay non-ready instead of receiving calls.
 
-For `AUTONOMOUS` frontend work, completion no longer depends on the model remembering to test. Core locates the rendered loopback target and gathers target identity, rendered DOM, framework-overlay health, console health, screenshot and post-interaction state; visual work also checks 1440×900, 390×844, horizontal overflow and structural visual fidelity. The normal `FrontendVerificationGate` runs even when no `IRemoteTaskAgenticCoordinator` is configured. Missing browser/target/evidence fails closed. Explicit Figma/pixel-perfect/reference-image goals still require semantic comparison evidence rather than being auto-passed by the structural baseline.
+Version 1.0.71 introduced deterministic browser collection without an injected coordinator. Version 1.0.78 replaces its inferred URL and structural visual baseline with an explicit scenario specification, actual target postconditions, per-viewport captures, console/network/overlay/bounds checks and delivered-image visual review. NORMAL and AUTONOMOUS frontend tasks use the same verification workflow; missing specifications/evidence remain pending rather than becoming verified completion.
 
 ## Visual Fidelity and Coding Quality Benchmarks (1.0.70)
 
@@ -252,4 +252,3 @@ Registry replacements now emit `catalog.changed`; the server validates and persi
 Agent Core now publishes `developer.symbol_search` and `developer.test` alongside `tool_program.run`. Symbol search is read-only, workspace-scoped and bounded; test execution is intentionally marked mutating+sensitive because `dotnet test` may build/write project artifacts, so it still requires the ordinary local policy path. The DAP launcher is a Core contract rather than a remotely exposed attach/injection tool: it starts one validated adapter executable, owns that process and can stop only that owned process.
 
 Run `powershell -ExecutionPolicy Bypass -File scripts/Run-HarnessEvaluation.ps1` to execute Harness V2. It runs named regression groups against the real Core/Windows/Server test projects, including shipping runtime bootstrap rather than Core seams alone, and writes schema-v2 JSON with targeted-test totals, throughput and p95 scenario duration to `artifacts/evaluation/harness-eval.json`. This benchmark is deterministic and requires no model/API credentials.
-

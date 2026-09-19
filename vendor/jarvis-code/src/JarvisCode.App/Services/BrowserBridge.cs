@@ -463,6 +463,8 @@ public sealed class BrowserBridge : IDisposable
         if (!connection.Ready)
             throw new InvalidOperationException(
                 $"Update and reload the Jarvis browser extension. Browser protocol {RequiredBrowserProtocolVersion}+ and native-host protocol {RequiredNativeHostProtocolVersion}+ are required.");
+        if (cmd == "qa" && !connection.Capabilities.Contains("structured-qa-v1", StringComparer.Ordinal))
+            throw new InvalidOperationException("Browser QA requires Jarvis Agent Browser 1.4.0+ (structured-qa-v1). Run browser-install, reload the extension, and retry.");
         var applicationSession = _applicationSession.Value;
         if (applicationSession is not null && !connection.ApplicationSessions)
             throw new InvalidOperationException("Update and reload the Jarvis browser extension before using isolated application sessions.");
@@ -505,7 +507,7 @@ public sealed class BrowserBridge : IDisposable
         }
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(25));
+        timeout.CancelAfter(TimeSpan.FromSeconds(cmd == "qa" ? 110 : 25));
         await using var registration = timeout.Token.Register(() =>
         {
             if (_pending.TryRemove(id, out var pending))

@@ -183,7 +183,7 @@ public sealed class BrowserServiceServer : IDisposable
         return _suites.GetOrAdd(key, _ => new Lazy<Suite>(() =>
         {
             var imageDirectory = Path.Combine(_root, "browser-images", SafeSegment(isolationScopeId), family.WireName());
-            var tools = JarvisBrowserTools.Create(_bridge, imageDirectory)
+            var tools = JarvisBrowserTools.Create(_bridge, imageDirectory, enableQa: true)
                 .ToDictionary(tool => tool.Name, tool => tool, StringComparer.Ordinal);
             return new Suite(tools);
         })).Value;

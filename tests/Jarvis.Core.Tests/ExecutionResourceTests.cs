@@ -8,6 +8,21 @@ namespace Jarvis.Core.Tests;
 public sealed class ExecutionResourceTests
 {
     [Fact]
+    public async Task Structured_qa_excludes_concurrent_desktop_input_from_other_sessions()
+    {
+        using var coordinator = Create();
+        var descriptor = new ToolDescriptor("browser.qa", "browser__qa", "browser", "QA",
+            WireJson.Element(new { type = "object" }), ReadOnly: false, Sensitive: true);
+        var claims = ToolExecutionResources.For(descriptor, WireJson.Element(new { }),
+            new AgentExecutionContext(Path.GetTempPath(), "qa-call", "qa-session"));
+        var qa = await Acquire(coordinator, "qa-session", claims.Resources.ToArray(), claims.Exclusive, CancellationToken.None);
+        var input = Acquire(coordinator, "other-session", "desktop", true);
+        Assert.False(input.IsCompleted);
+        qa.Dispose();
+        using var resumed = await input.WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
     public async Task Reads_share_a_path_but_writes_wait_and_other_paths_remain_available()
     {
         using var coordinator = Create();

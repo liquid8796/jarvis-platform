@@ -11,7 +11,7 @@ namespace JarvisCode.App.Services;
 /// keep them apart. The main frame (0) renders as the reference's plain
 /// "ref_12"; an iframe's reads "ref_f3r12".
 /// </summary>
-public readonly record struct ElementRef(int Value, int FrameId = 0)
+public readonly record struct ElementRef(int Value, int FrameId = 0, string? DocumentId = null)
 {
     private static readonly Regex FramePattern =
         new(@"^f(?<frame>\d+)r(?<ref>\d+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -33,16 +33,22 @@ public readonly record struct ElementRef(int Value, int FrameId = 0)
         {
             text = text[4..];
         }
+        string? documentId = null;
+        if (text.StartsWith("d", StringComparison.Ordinal) && text.IndexOf('_') is var separator && separator > 1)
+        {
+            documentId = text[1..separator];
+            text = text[(separator + 1)..];
+        }
 
         if (FramePattern.Match(text) is { Success: true } match)
         {
             return new ElementRef(
                 int.Parse(match.Groups["ref"].ValueSpan, CultureInfo.InvariantCulture),
-                int.Parse(match.Groups["frame"].ValueSpan, CultureInfo.InvariantCulture));
+                int.Parse(match.Groups["frame"].ValueSpan, CultureInfo.InvariantCulture), documentId);
         }
 
         return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
-            ? new ElementRef(parsed)
+            ? new ElementRef(parsed, 0, documentId)
             : null;
     }
 
@@ -50,13 +56,15 @@ public readonly record struct ElementRef(int Value, int FrameId = 0)
     public void ApplyTo(JsonObject args)
     {
         args["ref"] = Value;
+        if (DocumentId is not null) args["documentId"] = DocumentId;
         if (FrameId != 0)
         {
             args["frameId"] = FrameId;
         }
     }
 
-    public override string ToString() => FrameId == 0 ? $"ref_{Value}" : $"ref_f{FrameId}r{Value}";
+    public override string ToString() => "ref_" + (DocumentId is null ? "" : $"d{DocumentId}_") +
+        (FrameId == 0 ? $"{Value}" : $"f{FrameId}r{Value}");
 }
 
 /// <summary>
@@ -159,7 +167,7 @@ public static class JarvisBrowserFormat
 
         if (AsNumber(node["ref"]) is { } reference)
         {
-            line.Append(" [").Append(new ElementRef((int)reference, frameId)).Append(']');
+            line.Append(" [").Append(new ElementRef((int)reference, frameId, node["documentId"]?.GetValue<string>())).Append(']');
         }
 
         if (node["checked"] is not null)

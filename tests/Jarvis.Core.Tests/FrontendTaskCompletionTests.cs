@@ -13,7 +13,7 @@ public sealed class FrontendTaskCompletionTests
     {
         var terminal = await RunAsync([]);
 
-        Assert.Equal("FAILED", terminal.Status);
+        Assert.Equal("NEEDS_VERIFICATION", terminal.Status);
         Assert.NotNull(terminal.Verification);
         Assert.True(terminal.Verification.Required);
         Assert.False(terminal.Verification.Passed);
@@ -25,16 +25,16 @@ public sealed class FrontendTaskCompletionTests
     {
         var terminal = await RunWithoutAgenticAsync();
 
-        Assert.Equal("FAILED", terminal.Status);
+        Assert.Equal("NEEDS_VERIFICATION", terminal.Status);
         Assert.NotNull(terminal.Verification);
         Assert.True(terminal.Verification.Required);
         Assert.False(terminal.Verification.Passed);
-        Assert.Contains(nameof(FrontendEvidenceKind.TargetIdentity), terminal.Verification.Failed);
+        Assert.Equal("not_run", terminal.Verification.State);
         Assert.Contains(nameof(FrontendEvidenceKind.RenderedDom), terminal.Verification.Missing);
     }
 
     [Fact]
-    public async Task Autonomous_visual_frontend_task_completes_with_full_rendered_evidence()
+    public async Task Autonomous_visual_frontend_task_rejects_coordinator_booleans_and_empty_ledger()
     {
         var evidence = FrontendVerificationTests.BaseEvidence().Concat(new[]
         {
@@ -46,12 +46,11 @@ public sealed class FrontendTaskCompletionTests
         var fidelity = VisualFidelityLedger.Create([]);
         var terminal = await RunAsync(evidence, fidelity);
 
-        Assert.Equal("COMPLETED", terminal.Status);
+        Assert.Equal("NEEDS_VERIFICATION", terminal.Status);
         Assert.NotNull(terminal.Verification);
         Assert.True(terminal.Verification.Required);
-        Assert.True(terminal.Verification.Passed);
-        Assert.Empty(terminal.Verification.Missing);
-        Assert.Empty(terminal.Verification.Failed);
+        Assert.False(terminal.Verification.Passed);
+        Assert.Contains(nameof(FrontendEvidenceKind.Screenshot), terminal.Verification.Missing);
     }
 
     private static async Task<RemoteTaskSnapshot> RunWithoutAgenticAsync()
@@ -78,7 +77,7 @@ public sealed class FrontendTaskCompletionTests
             for (var attempt = 0; attempt < 80; attempt++)
             {
                 var reply = await host.HandleAsync("get", new("owner", id), CancellationToken.None);
-                if (reply.Task is { } task && RemoteTaskRules.IsTerminal(task.Status)) return task;
+                if (reply.Task is { } task && (RemoteTaskRules.IsTerminal(task.Status) || task.Status.StartsWith("NEEDS_", StringComparison.Ordinal))) return task;
                 await Task.Delay(25);
             }
             throw new TimeoutException("Frontend task did not reach a terminal state.");
@@ -109,7 +108,7 @@ public sealed class FrontendTaskCompletionTests
             for (var attempt = 0; attempt < 80; attempt++)
             {
                 var reply = await host.HandleAsync("get", new("owner", id), CancellationToken.None);
-                if (reply.Task is { } task && RemoteTaskRules.IsTerminal(task.Status)) return task;
+                if (reply.Task is { } task && (RemoteTaskRules.IsTerminal(task.Status) || task.Status.StartsWith("NEEDS_", StringComparison.Ordinal))) return task;
                 await Task.Delay(25);
             }
             throw new TimeoutException("Frontend task did not reach a terminal state.");

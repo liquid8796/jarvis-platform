@@ -1,5 +1,9 @@
 # API overview
 
+## Frontend QA workflow — 1.0.78
+
+Task plans optionally include a structured `verificationSpec`. New `agent_task_verify`, `agent_task_capture`, `agent_task_review`, `agent_task_repair` and `agent_task_complete` operations are routed through existing authenticated owner/device/session binding. Mutating workflow calls require an idempotency `attemptId`; capture accepts only a task-owned capture ID and returns native image content. Snapshot verification adds state, revision, run ID, capture metadata and next action. See [Frontend QA](FRONTEND-QA.md) for the schema, state transitions and image-review contract.
+
 ## Session lifetime and interactive cancellation — 1.0.76
 
 Explicit application-session handles no longer have an absolute 30-day expiry. A handle is a protected correlation token bound to the authenticated owner and selected enrolled device; it is not authorization by itself. Each call still requires live OAuth and device authorization, and the Agent still rejects closed/missing sessions. New handles omit `handleExpiresAt`; legacy v1 handles whose embedded timestamp has passed continue to resolve so an otherwise-open session can resume. Explicit session close remains terminal, while `session__stop_work` remains resumable.

@@ -2,6 +2,8 @@ using Jarvis.Agent.Core.Autonomous.Verification;
 using Jarvis.Agent.Core.Plugins;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
+using System.Buffers.Binary;
 using Jarvis.Agent.Core.Prompting;
 using Jarvis.Protocol;
 
@@ -58,6 +60,11 @@ internal sealed partial class RemoteTaskHost
     private async Task<(StoredRemoteTask Task, bool Success)> ExecuteStepsAsync(
         StoredRemoteTask task, Active active, IReadOnlyList<RemoteTaskStep> steps)
     {
+        if (task.SourceBaseline is null)
+        {
+            var baseline = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
+            task = Save(task with { SourceBaseline = baseline.Complete ? baseline.Files : new Dictionary<string, string>() });
+        }
         foreach (var originalStep in steps)
         {
             var step = originalStep;
@@ -152,80 +159,126 @@ internal sealed partial class RemoteTaskHost
 
     private async Task<(StoredRemoteTask Task, bool Success)> VerifyAgenticGoalAsync(StoredRemoteTask task, Active active)
     {
-        if (task.Plan.ExecutionMode != "AUTONOMOUS") return (task, true);
-
-        var frontendRequirement = FrontendChangeClassifier.Classify(task.Plan.Goal, task.Plan.Steps);
-        if (_agentic is null && !frontendRequirement.IsFrontend) return (task, true);
-
-        var frontendEvidence = new List<FrontendEvidence>();
         for (var repairRound = 0; ; repairRound++)
         {
             active.Stop.Token.ThrowIfCancellationRequested();
+            var source = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
+            var requirement = FrontendChangeClassifier.Classify(task.Plan.Goal, task.Plan.Steps,
+                source.ChangedSince(task.SourceBaseline).ToArray(), task.Plan.VerificationSpec, source.Files.Keys.ToArray());
+            var spec = task.Plan.VerificationSpec;
+            if (!requirement.IsFrontend && (_agentic is null || task.Plan.ExecutionMode != "AUTONOMOUS"))
+            {
+                var none = new RemoteTaskVerificationSummary(false, false, "none", [], [], [])
+                { State = "not_required", SourceRevision = source.Complete ? source.Revision : null };
+                return (Save(task with { Snapshot = task.Snapshot with { Verification = none } }), true);
+            }
+            if (task.Plan.ExecutionMode == "READ_ONLY")
+            {
+                var skipped = new RemoteTaskVerificationSummary(requirement.IsFrontend, false, "frontend", [], [], [])
+                { State = "not_run", NextAction = "Read-only execution did not perform browser QA. Create a NORMAL verification task to exercise the UI." };
+                return (Save(task with { Snapshot = task.Snapshot with { Verification = skipped } }), true);
+            }
+
             RequireArmed();
-            task = Save(task with { Snapshot = task.Snapshot with { Status = "VERIFYING", CurrentStep = "goal.verify", UpdatedAt = DateTimeOffset.UtcNow } });
-
-            if (frontendRequirement.IsFrontend)
-                frontendEvidence.AddRange(await CollectRenderedFrontendEvidenceAsync(task, active, frontendRequirement, repairRound).ConfigureAwait(false));
-
-            var outcomes = task.Artifacts.Select(ArtifactSummary).ToArray();
-            var verificationDebt = FrontendVerificationGate.DescribeDebt(frontendRequirement, frontendEvidence);
-            RemoteTaskGoalVerification verification;
-            if (_agentic is null)
-            {
-                verification = RemoteTaskGoalVerification.Passed();
-            }
-            else
-            {
-                var skillMetadata = _availableSkills.Select(skill => $"{skill.Id}: {skill.Description}").ToArray();
-                var promptLayers = new CodingPromptAssembler().Assemble(new CodingPromptRequest(
-                    task.Plan.Goal, task.Snapshot.Project, _registry.Snapshot.Descriptors,
-                    SkillMetadata: skillMetadata, OutcomeSummaries: outcomes, VerificationDebt: verificationDebt));
-                var goalContext = new RemoteTaskGoalContext(task.Plan, task.Snapshot.Project, task.Artifacts)
-                {
-                    PromptLayers = promptLayers,
-                    AvailableSkills = _availableSkills,
-                    FrontendRequirement = frontendRequirement,
-                    FrontendEvidence = frontendEvidence.ToArray()
-                }.WithSkillLoader(_skillLoader);
-                verification = await _agentic.VerifyGoalAsync(goalContext, active.Stop.Token).ConfigureAwait(false);
-                if (verification.FrontendEvidence is { Count: > 0 } reportedEvidence)
-                    frontendEvidence.AddRange(reportedEvidence);
-                if (verification.VisualFidelity is { } fidelityLedger)
-                    frontendEvidence.Add(fidelityLedger.ToEvidence());
-            }
-
-            var frontendResult = FrontendVerificationGate.Evaluate(frontendRequirement, frontendEvidence);
-            var goalPassed = verification.Success && frontendResult.Passed;
-            var errors = new List<string>();
-            if (!verification.Success) errors.Add(verification.Error ?? "Goal verification failed.");
-            if (!frontendResult.Passed) errors.Add(frontendResult.DescribeFailure());
-            var goalError = errors.Count == 0 ? null : string.Join(" ", errors);
-            var summary = ToProtocolVerificationSummary(frontendRequirement, frontendResult);
-            task = Save(task with { Snapshot = task.Snapshot with { Verification = summary, UpdatedAt = DateTimeOffset.UtcNow } });
-
-            var detail = ClipGoalText(goalPassed ? "Goal verification passed." : goalError ?? "Goal verification failed.", RemoteTaskRules.OutputLimit);
-            var artifact = new RemoteTaskArtifact(task.Artifacts.Count, "goal.verify", "VERIFY", "agent.goal_verifier", repairRound + 1,
-                goalPassed, detail, false, null, DateTimeOffset.UtcNow,
-                goalPassed ? null : ClipGoalText(goalError ?? "Goal verification failed.", 2000));
-            task = Save(task with { Artifacts = task.Artifacts.Append(artifact).ToArray() });
-            if (goalPassed) return (task, true);
-
-            var repairSteps = verification.RepairSteps?.ToArray() ?? [];
-            if (repairSteps.Length == 0 || repairRound >= RemoteTaskAdaptiveRules.MaxRepairs)
-            {
-                task = Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", CurrentStep = null,
-                    Error = ClipGoalText(goalError ?? "Goal verification failed.", 2000), UpdatedAt = DateTimeOffset.UtcNow } });
-                return (task, false);
-            }
-
-            var expanded = task.Plan with { Steps = task.Plan.Steps.Concat(repairSteps).ToArray() };
-            RemoteTaskRules.Validate(expanded);
-            ValidateTools(expanded);
+            var runId = Guid.NewGuid().ToString("N");
             task = Save(task with
             {
-                Plan = Clone(expanded),
-                PlanDigest = RemoteTaskStore.Digest(expanded),
-                Snapshot = task.Snapshot with { Status = "QUEUED", CurrentStep = null, TotalSteps = expanded.Steps.Count, UpdatedAt = DateTimeOffset.UtcNow }
+                QaRunId = runId, QaSourceRevision = source.Complete ? source.Revision : null,
+                FrontendEvidence = [], VisualReview = null, GoalVerificationPassed = false,
+                Snapshot = task.Snapshot with { Status = "VERIFYING", CurrentStep = "goal.verify", Error = null, UpdatedAt = DateTimeOffset.UtcNow }
+            });
+            if (requirement.IsFrontend && (spec is null || !source.Complete))
+            {
+                var reason = spec is null
+                    ? "Provide verificationSpec with the real target, readiness locator, target interaction/postcondition and viewport matrix."
+                    : source.Error ?? "A complete source revision is required.";
+                var summary = new RemoteTaskVerificationSummary(true, false, requirement.IsVisual ? "frontend-visual" : "frontend",
+                    [], requirement.Required.Select(k => k.ToString()).ToArray(), [])
+                { State = "not_run", SourceRevision = task.QaSourceRevision, VerificationRunId = runId, NextAction = reason };
+                return (Save(task with { Snapshot = task.Snapshot with { Status = "NEEDS_VERIFICATION", CurrentStep = null,
+                    Verification = summary, Error = reason, UpdatedAt = DateTimeOffset.UtcNow } }), false);
+            }
+
+            var evidence = requirement.IsFrontend
+                ? await CollectRenderedFrontendEvidenceAsync(task, active, spec!, runId, source.Revision).ConfigureAwait(false)
+                : new List<FrontendEvidence>();
+            var after = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
+            var sourceStable = after.Complete && source.Revision == after.Revision;
+            if (requirement.IsFrontend && !sourceStable)
+                evidence.Add(Measured(task, runId, source.Revision, spec!.Url, FrontendEvidenceKind.TargetIdentity,
+                    false, "Source changed during browser verification. Capture new evidence after the edit completes."));
+            task = Save(task with { FrontendEvidence = evidence });
+
+            var verification = RemoteTaskGoalVerification.Passed();
+            if (_agentic is not null && task.Plan.ExecutionMode == "AUTONOMOUS")
+            {
+                var debt = FrontendVerificationGate.DescribeDebt(requirement, evidence, spec, null, runId, source.Revision);
+                var promptLayers = new CodingPromptAssembler().Assemble(new CodingPromptRequest(task.Plan.Goal,
+                    task.Snapshot.Project, _registry.Snapshot.Descriptors,
+                    SkillMetadata: _availableSkills.Select(s => $"{s.Id}: {s.Description}").ToArray(),
+                    OutcomeSummaries: task.Artifacts.Select(ArtifactSummary).ToArray(), VerificationDebt: debt));
+                verification = await _agentic.VerifyGoalAsync(new RemoteTaskGoalContext(task.Plan, task.Snapshot.Project, task.Artifacts)
+                {
+                    PromptLayers = promptLayers, AvailableSkills = _availableSkills,
+                    FrontendRequirement = requirement, FrontendEvidence = evidence
+                }.WithSkillLoader(_skillLoader), active.Stop.Token).ConfigureAwait(false);
+                // Model assertions are planning/review input, never replacements for measured browser failures.
+                if (requirement.IsFrontend)
+                {
+                    var finalSource = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
+                    if (!finalSource.Complete || finalSource.Revision != source.Revision)
+                    {
+                        sourceStable = false;
+                        evidence.Add(Measured(task, runId, source.Revision, spec!.Url, FrontendEvidenceKind.TargetIdentity,
+                            false, "Source changed while the coordinator evaluated the goal. New browser evidence is required."));
+                    }
+                }
+            }
+
+            var result = FrontendVerificationGate.Evaluate(requirement, evidence, spec, null, runId, source.Revision);
+            var passed = verification.Success && result.Passed && (!requirement.IsFrontend || sourceStable);
+            var reviewOnly = !passed && verification.Success && sourceStable && result.Failed.Count == 0 &&
+                result.Missing.Count > 0 && result.Missing.All(k => k == FrontendEvidenceKind.VisualFidelity);
+            var nextState = passed ? "passed" : reviewOnly ? "needs_review" : !sourceStable ? "stale" : "failed";
+            var status = passed ? "COMPLETED" : !requirement.IsFrontend ? "FAILED" : reviewOnly ? "NEEDS_REVIEW" : !sourceStable ? "NEEDS_VERIFICATION" : "NEEDS_REPAIR";
+            var error = passed ? null : reviewOnly ? "Measured checks passed. Inspect every captured image and submit a bound visual review."
+                : verification.Error ?? result.DescribeFailure();
+            var summaryResult = ToProtocolVerificationSummary(requirement, result) with
+            {
+                State = nextState, SourceRevision = task.QaSourceRevision, VerificationRunId = runId,
+                Captures = evidence.Where(e => e.Capture is not null).Select(e => e.Capture!).DistinctBy(c => c.CaptureId).ToArray(),
+                NextAction = passed ? null : reviewOnly
+                    ? "Read each capture with agent_task_capture, submit agent_task_review, then agent_task_complete."
+                    : "Inspect failed evidence, submit bounded repair steps with agent_task_repair, or correct the spec and call agent_task_verify."
+            };
+            var artifact = new RemoteTaskArtifact(task.Artifacts.Count, "goal.verify", "VERIFY", "agent.goal_verifier",
+                repairRound + 1, passed, passed ? "Goal verification passed." : ClipGoalText(error ?? "Verification incomplete.", 4000),
+                false, null, DateTimeOffset.UtcNow, error);
+            task = Save(task with
+            {
+                GoalVerificationPassed = verification.Success,
+                Artifacts = task.Artifacts.Append(artifact).ToArray(),
+                Snapshot = task.Snapshot with { Verification = summaryResult, Status = status, CurrentStep = null,
+                    Error = error, UpdatedAt = DateTimeOffset.UtcNow }
+            });
+            if (passed) return (task, true);
+
+            var repairSteps = verification.RepairSteps?.ToArray() ?? [];
+            if (reviewOnly || repairSteps.Length == 0 || repairRound >= RemoteTaskAdaptiveRules.MaxRepairs)
+                return (task, false);
+            // Validate repairs as a fresh ordered sequence; completed stages are not replayed.
+            var repairPlan = task.Plan with { Steps = repairSteps };
+            RemoteTaskRules.Validate(repairPlan);
+            ValidateTools(repairPlan);
+            if (task.Plan.Steps.Count + repairSteps.Length > RemoteTaskRules.MaxSteps ||
+                task.Plan.Steps.Select(s => s.Id).Intersect(repairSteps.Select(s => s.Id), StringComparer.Ordinal).Any())
+                throw new ArgumentException("Repair steps require unique IDs within the bounded task.");
+            // Execution history is retained in artifacts; keep the current executable plan stage-valid.
+            task = Save(task with
+            {
+                Plan = Clone(repairPlan), PlanDigest = RemoteTaskStore.Digest(repairPlan),
+                FrontendEvidence = [], VisualReview = null, QaRunId = null, QaSourceRevision = null,
+                Snapshot = task.Snapshot with { Status = "QUEUED", TotalSteps = task.Snapshot.TotalSteps + repairSteps.Length, Verification = null }
             });
             var execution = await ExecuteStepsAsync(task, active, repairSteps).ConfigureAwait(false);
             task = execution.Task;
@@ -233,241 +286,161 @@ internal sealed partial class RemoteTaskHost
         }
     }
 
-    private async Task<IReadOnlyList<FrontendEvidence>> CollectRenderedFrontendEvidenceAsync(
-        StoredRemoteTask task, Active active, FrontendVerificationRequirement requirement, int verificationRound)
+    private async Task<List<FrontendEvidence>> CollectRenderedFrontendEvidenceAsync(StoredRemoteTask task, Active active,
+        FrontendQaSpec spec, string runId, string revision)
     {
         var evidence = new List<FrontendEvidence>();
-        var target = FindLocalFrontendTarget(task);
-        if (target is null)
+        if (!_registry.Snapshot.Tools.ContainsKey("browser.qa"))
         {
-            evidence.Add(new(FrontendEvidenceKind.TargetIdentity, false,
-                "No localhost/127.0.0.1 rendered target was found in the task goal, step arguments, or step output."));
+            evidence.Add(Measured(task, runId, revision, spec.Url, FrontendEvidenceKind.TargetIdentity, false,
+                "The installed browser runtime does not expose browser.qa. Update Agent, BrowserService and extension together."));
             return evidence;
         }
-
-        var available = _registry.Snapshot.Descriptors.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
-        var requiredTools = new[]
-        {
-            "browser.navigate", "browser.read_page", "browser.javascript_tool",
-            "browser.read_console_messages", "browser.computer", "browser.tabs_close_mcp"
-        };
-        if (requirement.IsVisual)
-            requiredTools = requiredTools.Concat(["browser.resize_window"]).ToArray();
-        var missingTools = requiredTools.Where(tool => !available.Contains(tool)).ToArray();
-        if (missingTools.Length > 0)
-        {
-            evidence.Add(new(FrontendEvidenceKind.TargetIdentity, false,
-                "Frontend browser unavailable: missing browser tools " + string.Join(", ", missingTools) + "."));
-            return evidence;
-        }
-
-        var callSequence = 0;
-        async Task<ToolReply> Call(string toolId, object arguments)
-        {
-            var context = active.Context with
-            {
-                CallId = $"{task.Snapshot.TaskId}:verify:{verificationRound}:{Interlocked.Increment(ref callSequence)}",
-                SessionCancellation = active.Stop.Token
-            };
-            try
-            {
-                return await _invoke(toolId, WireJson.Element(arguments), context, active.Stop.Token).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException or IOException or TimeoutException)
-            {
-                return ToolReply.Error("Frontend browser unavailable: " + ex.Message);
-            }
-        }
-
-        var navigate = await Call("browser.navigate", new { url = target, browserFamily = "dev" }).ConfigureAwait(false);
-        if (navigate.IsError)
-        {
-            evidence.Add(new(FrontendEvidenceKind.TargetIdentity, false, navigate.Text, target));
-            return evidence;
-        }
-
-        evidence.Add(new(FrontendEvidenceKind.TargetIdentity, true, "Rendered target opened in the isolated dev browser.", target));
-        var tabId = ParseTabId(navigate.Text);
-        if (tabId is null)
-        {
-            evidence.Add(new(FrontendEvidenceKind.RenderedDom, false,
-                "Browser navigation succeeded but no owned tab id was returned.", target));
-            return evidence;
-        }
-
+        ToolReply reply;
         try
         {
-            var dom = await Call("browser.read_page", new
-            {
-                tabId = tabId.Value, filter = "all", max_chars = 20000, browserFamily = "dev"
-            }).ConfigureAwait(false);
-            evidence.Add(new(FrontendEvidenceKind.RenderedDom,
-                !dom.IsError && !string.IsNullOrWhiteSpace(dom.Text),
-                dom.IsError ? dom.Text : "Rendered accessibility DOM was captured.",
-                ClipGoalText(dom.Text, 2000)));
-
-            var overlay = await Call("browser.javascript_tool", new
-            {
-                action = "javascript_exec",
-                tabId = tabId.Value,
-                browserFamily = "dev",
-                text = "JSON.stringify((()=>{const selectors=['nextjs-portal','vite-error-overlay','webpack-dev-server-client-overlay','react-error-overlay','[data-nextjs-dialog-overlay]','[data-vite-dev-id]'];const node=selectors.map(s=>document.querySelector(s)).find(Boolean);const body=(document.body?.innerText||'').slice(0,30000);const textError=/(Unhandled Runtime Error|Application error: a client-side exception|Failed to compile|Internal Server Error)/i.test(body);return {present:!!node||textError,marker:node?.tagName||null};})())"
-            }).ConfigureAwait(false);
-            var overlayOk = !overlay.IsError && overlay.Text.Contains("\"present\":false", StringComparison.OrdinalIgnoreCase);
-            evidence.Add(new(FrontendEvidenceKind.FrameworkOverlay, overlayOk,
-                overlayOk ? "No framework/runtime error overlay is present." : "Framework/runtime overlay check failed: " + ClipGoalText(overlay.Text, 1000)));
-
-            var console = await Call("browser.read_console_messages", new
-            {
-                tabId = tabId.Value, onlyErrors = true, pattern = "error|exception|unhandled|failed",
-                limit = 100, browserFamily = "dev"
-            }).ConfigureAwait(false);
-            if (!console.IsError && console.Text.Contains("capture just started", StringComparison.OrdinalIgnoreCase))
-            {
-                await Call("browser.navigate", new { url = target, tabId = tabId.Value, browserFamily = "dev" }).ConfigureAwait(false);
-                console = await Call("browser.read_console_messages", new
-                {
-                    tabId = tabId.Value, onlyErrors = true, pattern = "error|exception|unhandled|failed",
-                    limit = 100, browserFamily = "dev"
-                }).ConfigureAwait(false);
-            }
-            var consoleOk = !console.IsError && console.Text.Contains("No console errors recorded.", StringComparison.OrdinalIgnoreCase);
-            evidence.Add(new(FrontendEvidenceKind.ConsoleHealth, consoleOk,
-                consoleOk ? "No browser console errors were recorded after page load." : ClipGoalText(console.Text, 1200)));
-
-            var screenshot = await Call("browser.computer", new
-            {
-                action = "screenshot", tabId = tabId.Value, save_to_disk = true, scale = 0.75, browserFamily = "dev"
-            }).ConfigureAwait(false);
-            var screenshotOk = !screenshot.IsError && ((screenshot.Images?.Count ?? 0) > 0 ||
-                screenshot.Text.Contains("saved", StringComparison.OrdinalIgnoreCase) ||
-                screenshot.Text.Contains(".png", StringComparison.OrdinalIgnoreCase));
-            evidence.Add(new(FrontendEvidenceKind.Screenshot, screenshotOk,
-                screenshotOk ? "Fresh rendered screenshot captured from the dev browser." : ClipGoalText(screenshot.Text, 1200),
-                screenshotOk ? ClipGoalText(screenshot.Text, 2000) : null));
-
-            var interaction = await Call("browser.computer", new
-            {
-                action = "hover", coordinate = new[] { 8, 8 }, tabId = tabId.Value, browserFamily = "dev"
-            }).ConfigureAwait(false);
-            var postInteraction = interaction.IsError
-                ? ToolReply.Error(interaction.Text)
-                : await Call("browser.read_page", new
-                {
-                    tabId = tabId.Value, filter = "interactive", max_chars = 8000, browserFamily = "dev"
-                }).ConfigureAwait(false);
-            var interactionOk = !interaction.IsError && !postInteraction.IsError;
-            evidence.Add(new(FrontendEvidenceKind.Interaction, interactionOk,
-                interactionOk ? "A browser input interaction completed and fresh post-interaction DOM was observed."
-                    : ClipGoalText(interaction.IsError ? interaction.Text : postInteraction.Text, 1200)));
-
-            if (requirement.IsVisual)
-            {
-                var desktop = await Call("browser.resize_window", new
-                {
-                    tabId = tabId.Value, width = 1440, height = 900, browserFamily = "dev"
-                }).ConfigureAwait(false);
-                evidence.Add(new(FrontendEvidenceKind.ResponsiveDesktop, !desktop.IsError,
-                    desktop.IsError ? ClipGoalText(desktop.Text, 1000) : "Desktop viewport 1440x900 rendered successfully."));
-
-                var mobile = await Call("browser.resize_window", new
-                {
-                    tabId = tabId.Value, width = 390, height = 844, browserFamily = "dev"
-                }).ConfigureAwait(false);
-                evidence.Add(new(FrontendEvidenceKind.ResponsiveMobile, !mobile.IsError,
-                    mobile.IsError ? ClipGoalText(mobile.Text, 1000) : "Mobile viewport 390x844 rendered successfully."));
-
-                var overflow = await Call("browser.javascript_tool", new
-                {
-                    action = "javascript_exec",
-                    tabId = tabId.Value,
-                    browserFamily = "dev",
-                    text = "JSON.stringify((()=>{const e=document.documentElement;const b=document.body;const width=Math.max(e?.scrollWidth||0,b?.scrollWidth||0);const viewport=e?.clientWidth||window.innerWidth;return {horizontal:width>viewport+1,scrollWidth:width,viewport};})())"
-                }).ConfigureAwait(false);
-                var overflowOk = !overflow.IsError && overflow.Text.Contains("\"horizontal\":false", StringComparison.OrdinalIgnoreCase);
-                evidence.Add(new(FrontendEvidenceKind.Overflow, overflowOk,
-                    overflowOk ? "No horizontal overflow detected at the mobile viewport."
-                        : "Overflow verification failed: " + ClipGoalText(overflow.Text, 1000)));
-
-                var explicitReference = HasExplicitVisualReference(task.Plan.Goal);
-                var structuralFidelity = !desktop.IsError && !mobile.IsError && overflowOk && screenshotOk && overlayOk;
-                evidence.Add(new(FrontendEvidenceKind.VisualFidelity,
-                    structuralFidelity && !explicitReference,
-                    explicitReference
-                        ? "An explicit visual reference was requested; semantic reference comparison evidence is still required."
-                        : structuralFidelity
-                            ? "Structural visual baseline passed using fresh screenshot, desktop/mobile render, overlay and overflow evidence."
-                            : "Structural visual baseline failed; inspect responsive, screenshot, overlay and overflow evidence.",
-                    screenshotOk ? ClipGoalText(screenshot.Text, 2000) : null));
-
-                await Call("browser.resize_window", new
-                {
-                    tabId = tabId.Value, width = 1440, height = 900, browserFamily = "dev"
-                }).ConfigureAwait(false);
-            }
+            reply = await _invoke("browser.qa", WireJson.Element(new { spec, browserFamily = "dev" }),
+                active.Context with { CallId = task.Snapshot.TaskId + ":qa:" + runId, SessionCancellation = active.Stop.Token },
+                active.Stop.Token).ConfigureAwait(false);
         }
-        finally
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException or IOException or TimeoutException)
         {
-            await Call("browser.tabs_close_mcp", new { tabId = tabId.Value, browserFamily = "dev" }).ConfigureAwait(false);
+            evidence.Add(Measured(task, runId, revision, spec.Url, FrontendEvidenceKind.TargetIdentity, false,
+                "Browser QA unavailable: " + ClipGoalText(ex.Message, 1000)));
+            return evidence;
         }
+        try
+        {
+            using var parsed = JsonDocument.Parse(reply.Text);
+            var data = parsed.RootElement;
+            if (!data.TryGetProperty("schemaVersion", out var schema) || schema.GetInt32() != 1 ||
+                !data.TryGetProperty("snapshots", out var snapshots) || snapshots.ValueKind != JsonValueKind.Array)
+                throw new InvalidDataException("Browser QA returned an incompatible result.");
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var snapshot in snapshots.EnumerateArray())
+            {
+                var name = String(snapshot, "name");
+                var viewport = spec.Viewports.SingleOrDefault(v => v.Name == name);
+                if (viewport is null || !seen.Add(name)) throw new InvalidDataException("Unexpected or duplicate QA viewport.");
+                var url = String(snapshot, "url");
+                var captureTime = DateTimeOffset.UtcNow;
+                FrontendQaCapture? capture = null;
+                string? imageError = null;
+                try
+                {
+                    var path = String(snapshot, "artifactPath");
+                    var expectedHash = String(snapshot, "screenshotSha256");
+                    var actualHash = ValidatePngCapture(path);
+                    if (!actualHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("Screenshot hash does not match captured bytes.");
+                    capture = new FrontendQaCapture
+                    {
+                        CaptureId = runId + ":" + name, ArtifactPath = path, Sha256 = actualHash,
+                        Width = Int(snapshot, "observedWidth"), Height = Int(snapshot, "observedHeight"),
+                        SourceRevision = revision, VerificationRunId = runId, TargetUrl = url,
+                        ViewportId = name, CapturedAt = captureTime
+                    };
+                }
+                catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+                { imageError = ex.Message; }
 
+                void Add(FrontendEvidenceKind kind, bool pass, string summary) =>
+                    evidence.Add(Measured(task, runId, revision, url, kind, pass, summary, name, capture, captureTime));
+                Add(FrontendEvidenceKind.TargetIdentity, Bool(snapshot, "identityPassed"),
+                    Bool(snapshot, "identityPassed") ? "Expected route and readiness target were observed." : "Target identity or readiness failed.");
+                Add(FrontendEvidenceKind.RenderedDom, Bool(snapshot, "domPresent"),
+                    Bool(snapshot, "domPresent") ? "Nonempty rendered state captured after target interactions." : "Rendered state is absent.");
+                Add(FrontendEvidenceKind.Screenshot, capture is not null,
+                    capture is not null ? "PNG bytes, dimensions and SHA-256 verified." : "Screenshot invalid: " + imageError);
+                var dimensions = Int(snapshot, "observedWidth") == viewport.Width && Int(snapshot, "observedHeight") == viewport.Height;
+                Add(viewport.Width < 768 ? FrontendEvidenceKind.ResponsiveMobile : FrontendEvidenceKind.ResponsiveDesktop,
+                    dimensions && capture is not null && Bool(snapshot, "domPresent"),
+                    dimensions ? $"Rendered {viewport.Width}x{viewport.Height} with a separate capture." : "Observed viewport differs from requested dimensions.");
+                Add(FrontendEvidenceKind.FrameworkOverlay,
+                    snapshot.TryGetProperty("frameworkOverlay", out var overlay) && overlay.ValueKind == JsonValueKind.False,
+                    Bool(snapshot, "frameworkOverlay") ? "A visible framework error overlay was detected." : "Visible framework error overlay inspection completed.");
+                var consoleHealthy = EmptyArray(snapshot, "consoleErrors") && EmptyArray(snapshot, "consoleWarnings");
+                Add(FrontendEvidenceKind.ConsoleHealth, consoleHealthy,
+                    consoleHealthy ? "No console errors, warnings or uncaught exceptions during this scenario."
+                        : "Console errors: " + JsonSummary(snapshot, "consoleErrors") + "; warnings: " + JsonSummary(snapshot, "consoleWarnings"));
+                Add(FrontendEvidenceKind.NetworkHealth, EmptyArray(snapshot, "networkFailures"),
+                    EmptyArray(snapshot, "networkFailures") ? "No failed requests were recorded during this scenario."
+                        : "Network failures: " + JsonSummary(snapshot, "networkFailures"));
+                var stepsOk = snapshot.TryGetProperty("steps", out var steps) && steps.ValueKind == JsonValueKind.Array &&
+                    steps.GetArrayLength() == spec.Steps.Count && steps.EnumerateArray()
+                        .Select((step, index) => Bool(step, "passed") && Int(step, "index") == index && String(step, "action") == spec.Steps[index].Action).All(pass => pass);
+                Add(FrontendEvidenceKind.Interaction, stepsOk,
+                    stepsOk ? "Every target action and expected postcondition passed for this viewport." : "Target action/postcondition failed: " + JsonSummary(snapshot, "steps"));
+                var overflowOk = snapshot.TryGetProperty("overflow", out var overflow) && overflow.ValueKind == JsonValueKind.Object &&
+                    overflow.TryGetProperty("horizontal", out var horizontal) && horizontal.ValueKind == JsonValueKind.False &&
+                    overflow.TryGetProperty("clipped", out var clipped) &&
+                    (clipped.ValueKind == JsonValueKind.False || clipped.ValueKind == JsonValueKind.Array && clipped.GetArrayLength() == 0);
+                Add(FrontendEvidenceKind.Overflow, overflowOk,
+                    overflowOk ? "No horizontal overflow or clipped target was observed." : "Layout bounds failed: " + JsonSummary(snapshot, "overflow"));
+            }
+            if (seen.Count != spec.Viewports.Count)
+                evidence.Add(Measured(task, runId, revision, spec.Url, FrontendEvidenceKind.Screenshot, false,
+                    "Browser QA did not return every requested viewport."));
+            if (reply.IsError || !Bool(data, "passed") || !Bool(data, "cleanedUp") || !EmptyArray(data, "errors"))
+                evidence.Add(Measured(task, runId, revision, spec.Url, FrontendEvidenceKind.Interaction, false,
+                    "Browser QA did not complete successfully: " + JsonSummary(data, "errors")));
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidDataException or InvalidOperationException or FormatException)
+        {
+            evidence.Add(Measured(task, runId, revision, spec.Url, FrontendEvidenceKind.TargetIdentity, false,
+                "Invalid browser QA result: " + ClipGoalText(ex.Message, 1000)));
+        }
         return evidence;
     }
 
-    private static readonly Regex LocalFrontendUrl = new(
-        @"(?<url>(?:https?://)?(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{2,5})?(?:/[^\s""'<>]*)?)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-
-    private static string? FindLocalFrontendTarget(StoredRemoteTask task)
+    private static FrontendEvidence Measured(StoredRemoteTask task, string runId, string revision, string url,
+        FrontendEvidenceKind kind, bool success, string summary, string? viewport = null,
+        FrontendQaCapture? capture = null, DateTimeOffset? timestamp = null)
     {
-        IEnumerable<string> Candidates()
-        {
-            yield return task.Plan.Goal;
-            foreach (var step in task.Plan.Steps) yield return step.Arguments.GetRawText();
-            foreach (var artifact in task.Artifacts)
+        var observedAt = timestamp ?? DateTimeOffset.UtcNow;
+        return new(kind, success, ClipGoalText(summary, 2000), capture?.ArtifactPath,
+            new FrontendQaProvenance
             {
-                yield return artifact.Output;
-                if (!string.IsNullOrWhiteSpace(artifact.Error)) yield return artifact.Error!;
-            }
-        }
-
-        foreach (var candidate in Candidates())
-        {
-            var match = LocalFrontendUrl.Match(candidate ?? string.Empty);
-            if (!match.Success) continue;
-            var target = match.Groups["url"].Value.TrimEnd('.', ',', ';', ')', ']', '}');
-            if (!target.Contains("://", StringComparison.Ordinal)) target = "http://" + target;
-            if (Uri.TryCreate(target, UriKind.Absolute, out var uri) && uri.IsLoopback)
-                return uri.ToString();
-        }
-        return null;
+                TaskId = task.Snapshot.TaskId, SourceRevision = revision, VerificationRunId = runId,
+                TargetUrl = url, ObservationId = capture?.CaptureId ?? runId + ":" + (viewport ?? "run"),
+                CapturedAt = observedAt, Producer = "collector", ViewportId = viewport
+            }, capture);
     }
 
-    private static int? ParseTabId(string text)
+    internal static string ValidatePngCapture(string path)
     {
-        var match = Regex.Match(text ?? string.Empty, @"(?:\btab\s+|\[)(?<id>\d+)(?:\]|\b)",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        return match.Success && int.TryParse(match.Groups["id"].Value, out var id) ? id : null;
+        if (!Path.IsPathFullyQualified(path)) throw new InvalidDataException("Capture path is not absolute.");
+        var info = new FileInfo(path);
+        if (!info.Exists || info.Length is < 24 or > 4 * 1024 * 1024 || info.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            throw new InvalidDataException("Capture is missing, linked or exceeds the image size limit.");
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        Span<byte> header = stackalloc byte[24];
+        stream.ReadExactly(header);
+        ReadOnlySpan<byte> png = [137, 80, 78, 71, 13, 10, 26, 10];
+        if (!header[..8].SequenceEqual(png) || !header[12..16].SequenceEqual("IHDR"u8) ||
+            BinaryPrimitives.ReadInt32BigEndian(header[16..20]) <= 0 || BinaryPrimitives.ReadInt32BigEndian(header[20..24]) <= 0)
+            throw new InvalidDataException("Capture does not contain a valid PNG header.");
+        stream.Position = 0;
+        return Convert.ToHexString(SHA256.HashData(stream));
     }
 
-    private static bool HasExplicitVisualReference(string goal)
-    {
-        var text = " " + (goal ?? string.Empty).ToLowerInvariant() + " ";
-        return text.Contains(" figma ", StringComparison.Ordinal) ||
-               text.Contains(" pixel-perfect ", StringComparison.Ordinal) ||
-               text.Contains(" pixel perfect ", StringComparison.Ordinal) ||
-               text.Contains(" reference image ", StringComparison.Ordinal) ||
-               text.Contains(" design reference ", StringComparison.Ordinal) ||
-               text.Contains(" match the screenshot ", StringComparison.Ordinal) ||
-               text.Contains(" match this screenshot ", StringComparison.Ordinal);
-    }
+    private static string String(JsonElement data, string name) =>
+        data.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : "";
+    private static int Int(JsonElement data, string name) =>
+        data.TryGetProperty(name, out var value) && value.TryGetInt32(out var number) ? number : -1;
+    private static bool Bool(JsonElement data, string name) =>
+        data.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
+    private static bool EmptyArray(JsonElement data, string name) =>
+        data.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Array && value.GetArrayLength() == 0;
+    private static string JsonSummary(JsonElement data, string name) =>
+        data.TryGetProperty(name, out var value) ? ClipGoalText(value.GetRawText(), 1200) : "(missing)";
 
     private static RemoteTaskVerificationSummary ToProtocolVerificationSummary(
         FrontendVerificationRequirement requirement, FrontendVerificationResult result) =>
         new(requirement.IsFrontend, result.Passed,
             requirement.IsFrontend ? (requirement.IsVisual ? "frontend-visual" : "frontend") : "goal",
             result.Evidence.Select(item => new RemoteTaskEvidenceSummary(
-                item.Kind.ToString(), item.Success, item.Summary, item.Artifact)).ToArray(),
+                item.Kind.ToString(), item.Success, item.Summary, item.Artifact, item.Provenance, item.Capture)).ToArray(),
             result.Missing.Select(item => item.ToString()).ToArray(),
             result.Failed.Select(item => item.ToString()).ToArray());
 

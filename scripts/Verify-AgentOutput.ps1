@@ -16,6 +16,7 @@ $forbidden = @('JarvisCode.App.exe','JarvisCode.App.deps.json','JarvisCode.App.r
                'jarvis-browser-host.runtimeconfig.json','jarvis-browser-host.pdb')
 $required = @('JarvisCode.App.dll','JarvisCode.Core.dll','JarvisCode.Host.dll',
               'JarvisCode.Providers.dll','Jarvis.Agent.Windows.dll','Jarvis.Agent.Core.dll','Jarvis.Protocol.dll')
+$required += @('Assets/Browser/manifest.json', 'Assets/Browser/background.js', 'Assets/Browser/qa.js')
 if ($Component -ne 'Windows') {
     $entryPoint = if ($Component -eq 'Desktop') { 'Jarvis.Agent.Desktop' } else { 'jarvis-agent' }
     $required += @("$entryPoint.exe", "$entryPoint.dll", "$entryPoint.deps.json", "$entryPoint.runtimeconfig.json")

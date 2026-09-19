@@ -95,5 +95,9 @@ public sealed class CodingPromptAssembler
 
     private static string FrontendPolicy() =>
         "For rendered frontend changes, build is not rendered proof. Start or reuse the app, confirm target URL/title, inspect rendered DOM/accessibility state, check framework error overlays and console errors/warnings, capture a screenshot, and exercise at least one target interaction with post-state evidence. " +
-        "For visual or layout work, verify practical desktop and mobile viewports and check clipping/overflow before final handoff.";
+        "Provide an explicit verificationSpec: target URL, readiness locator, practical desktop/mobile viewports, and meaningful ordered actions with expected postconditions. " +
+        "Use agent_task_verify to collect measured evidence without replaying edits; inspect failures and submit only new bounded repair steps with agent_task_repair. " +
+        "For visual or layout work, retrieve each current screenshot through agent_task_capture, inspect its actual image and supplied reference, then submit a visual review bound to the current run, source revision and screenshot hashes. " +
+        "Document layout, typography, color, iconography, clipping/overflow and interaction state for every viewport. A screenshot capture or empty mismatch list is not proof of visual quality. " +
+        "Source changes invalidate prior evidence. Finish with agent_task_complete only after the task is READY_TO_COMPLETE; never describe a not_run, stale or blocked QA state as verified.";
 }

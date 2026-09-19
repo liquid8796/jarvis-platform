@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Jarvis browser QA fixture</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style data-vite-dev-id="/fixture.css">
+body{font:16px system-ui;margin:24px;max-width:760px}button,input{font:inherit;padding:10px;margin:6px}
+#clip-container{width:200px;overflow:hidden;background:#eee}#clipped{margin-left:180px;width:180px}
+#obstructed-area{position:relative;width:230px;height:65px}#cover{position:absolute;inset:0;background:#ddd}
+@media(min-width:600px){#clip-container{width:500px}}
+</style></head><body>
+<h1 data-testid="fixture-title">Jarvis browser QA fixture</h1>
+<button id="save" data-testid="save">Save</button><output id="saved" role="status">Unsaved</output>
+<button id="broken" data-testid="broken">Broken Save</button><output id="broken-status">Unsaved</output>
+<button id="console-boom">Log boom</button><button id="request-failure">Request failure</button>
+<div id="clip-container"><button id="clipped">Mobile clipped CTA</button></div>
+<div id="obstructed-area"><button id="obstructed">Covered action</button><div id="cover">Blocking overlay</div></div>
+<button id="disabled" disabled>Disabled action</button>
+<div id="late-host"></div><div id="shadow-host"></div>
+<div id="frame-wrap" style="position:relative;width:300px;height:150px"><iframe id="cross-frame" name="qa-frame" title="Frame fixture"></iframe><div id="frame-cover" style="position:absolute;inset:0;background:#ddd">Parent frame overlay</div></div>
+<div style="height:1000px"></div><p id="page-bottom">Full page capture bottom</p>
+<script>
+const fixtureCase=new URLSearchParams(location.search).get('case')||'healthy';
+for(const [id,enabled] of [['clip-container',fixtureCase==='clipping'],['obstructed-area',fixtureCase==='obstructed'],['disabled',fixtureCase==='disabled'],['frame-wrap',['iframe','cross-frame','hidden-frame'].includes(fixtureCase)],['frame-cover',fixtureCase==='cross-frame'],['shadow-host',fixtureCase==='shadow']])document.getElementById(id).hidden=!enabled;
+if(fixtureCase==='hidden-frame')document.getElementById('frame-wrap').style.display='none';
+document.querySelector('#save').onclick=()=>{document.querySelector('#saved').textContent='Saved';};
+document.querySelector('#console-boom').onclick=()=>console.error('boom');
+document.querySelector('#request-failure').onclick=()=>fetch('/api/failure').then(r=>r.text());
+setTimeout(()=>{const b=document.createElement('button');b.id='late';b.textContent='Late hydration';b.onclick=()=>b.textContent='Hydrated';document.querySelector('#late-host').append(b);},700);
+const shadow=document.querySelector('#shadow-host').attachShadow({mode:'open'});
+shadow.innerHTML='<button data-testid="shadow-action">Shadow action</button><output id="shadow-result">Before</output>';
+shadow.querySelector('button').onclick=()=>shadow.querySelector('output').textContent='Shadow done';
+document.querySelector('#cross-frame').src=fixtureCase==='cross-frame'?location.href.replace('127.0.0.1','localhost').replace(/\/fixture.*$/,'/frame'):'/frame';
+</script></body></html>

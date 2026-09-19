@@ -10,6 +10,19 @@ namespace Jarvis.Agent.Windows.Tests;
 public sealed class BrowserSessionBridgeTests
 {
     [Fact]
+    public async Task Structured_qa_requires_an_explicit_extension_capability_before_dispatch()
+    {
+        var pipe = "jarvis-qa-capability-" + Guid.NewGuid().ToString("N");
+        using var bridge = new BrowserBridge(pipe);
+        await using var browser = await FakeBrowser.Connect(pipe, "Old Browser");
+        await Ready(bridge, 1);
+        using var session = bridge.EnterApplicationSession(AgentSessionRules.NewSessionId());
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            bridge.RequestAsync("qa", new JsonObject(), CancellationToken.None));
+        Assert.Contains("structured-qa-v1", error.Message);
+        Assert.Equal(0, browser.RequestCount);
+    }
+    [Fact]
     public async Task Browser_selection_and_native_envelopes_are_scoped_per_application_session()
     {
         var pipe = "jarvis-session-test-" + Guid.NewGuid().ToString("N");

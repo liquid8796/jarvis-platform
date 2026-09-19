@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Jarvis Agent Browser",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Connect an explicitly authorized browser to Jarvis Agent. Separate integration from Jarvis Code.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsBcfNZF2xaW60yTv2QtGvTBHryUlafFYMm631HWmP+0edNJ4jaX16301Rod+agpO1qCRrD+G1u+AEdb8l8KOki7Nyf0SNyukaQw5NkrdtjjEEPL4NupNeggkmZxYSpxShSRPhIuPVkRGfVsGTJgVsbM0Hu/bTOfzgR9+2orR9/vZwm9Y/nUCT5p21s7L58hH25xGgogtDtg/KA9ksZIbV36PMguW+0k5JpCUQU+1AkHwFgfh1Yn0I9vczwI2dJspraJkJNs/KTiCHVhcsq5ljycijTZuuFjNSexLz6Bjse988e+ZbvCAeFFLRgw1JDzHAzWty9fot7LAR+jkta4txQIDAQAB",
   "background": {

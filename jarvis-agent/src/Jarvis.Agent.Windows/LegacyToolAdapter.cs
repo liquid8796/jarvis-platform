@@ -32,6 +32,8 @@ public sealed class LegacyToolAdapter : IAgentTool
     internal static ToolDescriptor CreateDescriptor(ITool tool, string category)
     {
         var inputSchema = tool.InputSchema.DeepClone().AsObject();
+        if (category == "browser" && tool.Name == "qa")
+            ((JsonObject)inputSchema["properties"]!)["spec"] = JsonSerializer.SerializeToNode(FrontendQaSchemas.Spec(), WireJson.Options);
         if (category is "filesystem" or "git" or "shell" or "browser")
         {
             var properties = inputSchema["properties"] as JsonObject ?? new JsonObject();

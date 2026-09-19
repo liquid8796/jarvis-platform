@@ -72,7 +72,7 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
     }
     public AgentTaskInput Input(RemoteTaskPlan plan, string? taskId = null) => new()
     { DeviceId = DeviceId, TaskId = taskId, Goal = plan.Goal, Project = plan.Project,
-        ExecutionMode = plan.ExecutionMode, TimeoutSeconds = plan.TimeoutSeconds, Steps = plan.Steps };
+        ExecutionMode = plan.ExecutionMode, TimeoutSeconds = plan.TimeoutSeconds, Steps = plan.Steps, VerificationSpec = plan.VerificationSpec };
     public async Task<RemoteTaskSnapshot> CreateAsync(HttpClient client, RemoteTaskPlan plan, string? id = null)
     {
         var response = await client.PostAsJsonAsync("/api/agent/tasks", Input(plan, id));

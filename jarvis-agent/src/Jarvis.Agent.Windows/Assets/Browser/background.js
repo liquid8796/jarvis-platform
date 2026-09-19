@@ -6,10 +6,11 @@
 // Chrome DevTools Protocol via chrome.debugger, attached lazily per tab.
 
 const HOST = "com.jarvis.agent.browser";
+importScripts('qa.js');
 const NATIVE_HOST_PROTOCOL_VERSION = 2;
 const BROWSER_PROTOCOL_VERSION = 2;
 const EXTENSION_INSTANCE_STORAGE = "jarvis.extensionInstanceId.v1";
-const EXTENSION_CAPABILITIES = ["application-sessions-v1", "tab-ownership-v1", "cdp-v1", "browser-family-v1"];
+const EXTENSION_CAPABILITIES = ["application-sessions-v1", "tab-ownership-v1", "cdp-v1", "browser-family-v1", "structured-qa-v1"];
 let port = null;
 let reconnectDelay = 1000;
 let extensionInstancePromise = null;
@@ -199,7 +200,7 @@ async function ensureAttached(tabId) {
   const existing = attached.get(tabId);
   if (existing) return existing;
   await chrome.debugger.attach({ tabId }, "1.3");
-  const state = { console: [], network: new Map(), netOrder: [], startedAt: Date.now() };
+  const state = { console: [], network: new Map(), netOrder: [], consoleDropped: 0, networkDropped: 0, startedAt: Date.now() };
   attached.set(tabId, state);
   await debuggerSend(tabId, "Runtime.enable");
   await debuggerSend(tabId, "Log.enable");
@@ -215,7 +216,7 @@ async function tryAttach(tabId) {
 
 function pushConsole(state, entry) {
   state.console.push(entry);
-  if (state.console.length > CONSOLE_CAP) state.console.shift();
+  if (state.console.length > CONSOLE_CAP) { state.console.shift(); state.consoleDropped++; }
 }
 
 function remoteToText(o) {
@@ -280,6 +281,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
         state.netOrder.push(params.requestId);
         if (state.netOrder.length > NETWORK_CAP) {
           state.network.delete(state.netOrder.shift());
+          state.networkDropped++;
         }
       }
       state.network.set(params.requestId, entry);
@@ -318,7 +320,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
 
     case "Page.frameNavigated":
       // Main-frame navigation: fresh page, fresh logs (DevTools default).
-      if (params.frame && !params.frame.parentId) {
+      if (params.frame && !params.frame.parentId && !state.preserveLogs) {
         state.console = [];
         state.network.clear();
         state.netOrder = [];
@@ -353,8 +355,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // ---- in-page helpers (serialized into the tab; no closures) ----------------
 
 /** Builds the accessibility-tree node list and assigns persistent ref ids. */
-function pageA11y(filter, rootRef, maxNodes) {
-  const g = globalThis.__jarvisA11y || (globalThis.__jarvisA11y = { n: 0, byRef: new Map(), byEl: new WeakMap() });
+function pageA11y(filter, rootRef, maxNodes, documentId) {
+  const g = globalThis.__jarvisA11y || (globalThis.__jarvisA11y = { documentId: [...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join(''), n: 0, byRef: new Map(), byEl: new WeakMap(), signatures: new Map() });
+  if (documentId && g.documentId !== documentId) throw new Error('Stale document reference; read the page again.');
 
   const interactiveRoles = new Set(["button", "link", "checkbox", "radio", "tab", "menuitem",
     "combobox", "option", "switch", "slider", "textbox", "searchbox", "menuitemcheckbox", "menuitemradio"]);
@@ -447,6 +450,7 @@ function pageA11y(filter, rootRef, maxNodes) {
       g.byEl.set(el, ref);
       g.byRef.set(ref, new WeakRef(el));
     }
+    g.signatures.set(ref, el.outerHTML);
     return ref;
   }
 
@@ -455,6 +459,7 @@ function pageA11y(filter, rootRef, maxNodes) {
     const held = g.byRef.get(rootRef);
     const el = held && held.deref();
     if (!el || !el.isConnected) throw new Error(`ref_${rootRef} is stale — call browser_read_page again.`);
+    if (g.signatures && g.signatures.get(rootRef) !== el.outerHTML) throw new Error('Element changed since observation; read the page again.');
     root = el;
   }
   if (!root) return { url: location.href, title: document.title, nodes: [], truncated: false };
@@ -487,6 +492,7 @@ function pageA11y(filter, rootRef, maxNodes) {
       }
       if (isInteractive) {
         node.ref = refFor(el);
+        node.documentId = g.documentId;
         if (el.tagName === "INPUT" && ((el.type || "").toLowerCase() === "checkbox" || (el.type || "").toLowerCase() === "radio")) {
           node.checked = !!el.checked;
         } else if (el.tagName === "SELECT" || el.tagName === "TEXTAREA" ||
@@ -504,6 +510,7 @@ function pageA11y(filter, rootRef, maxNodes) {
     for (const child of el.children) {
       walk(child, depth + (emitted ? 1 : 0));
     }
+    if (el.shadowRoot) for (const child of el.shadowRoot.children) walk(child, depth + (emitted ? 1 : 0));
   }
 
   walk(root, 0);
@@ -516,11 +523,13 @@ function pageA11y(filter, rootRef, maxNodes) {
  * (possible for same-origin chains; a cross-origin boundary throws with
  * guidance to click by coordinate from a screenshot instead).
  */
-function pageRefPoint(ref) {
+function pageRefPoint(ref, documentId) {
   const g = globalThis.__jarvisA11y;
+  if (documentId && g?.documentId !== documentId) throw new Error('Stale document reference; read the page again.');
   const held = g && g.byRef.get(ref);
   const el = held && held.deref();
   if (!el || !el.isConnected) throw new Error(`ref_${ref} is stale — call browser_read_page again.`);
+  if (g.signatures && g.signatures.get(ref) !== el.outerHTML) throw new Error('Element changed since observation; read the page again.');
   el.scrollIntoView({ block: "center", inline: "nearest" });
   const rect = el.getBoundingClientRect();
   let x = rect.left + rect.width / 2;
@@ -551,11 +560,13 @@ function pageRefPoint(ref) {
 }
 
 /** Marks the file input a ref points at so the DevTools protocol can find it. */
-function pageMarkForUpload(ref, token) {
+function pageMarkForUpload(ref, token, documentId) {
   const g = globalThis.__jarvisA11y;
+  if (documentId && g?.documentId !== documentId) throw new Error('Stale document reference; read the page again.');
   const held = g && g.byRef.get(ref);
   const el = held && held.deref();
   if (!el || !el.isConnected) throw new Error(`ref_${ref} is stale — call browser_read_page again.`);
+  if (g.signatures && g.signatures.get(ref) !== el.outerHTML) throw new Error('Element changed since observation; read the page again.');
   const input = el.tagName === "INPUT" && (el.type || "").toLowerCase() === "file"
     ? el
     : el.querySelector('input[type="file"]');
@@ -705,11 +716,13 @@ function pageIndicator(state) {
 }
 
 /** Sets a form element's value by ref (input/textarea/select/checkbox/contenteditable). */
-function pageFormInput(ref, value) {
+function pageFormInput(ref, value, documentId) {
   const g = globalThis.__jarvisA11y;
+  if (documentId && g?.documentId !== documentId) throw new Error('Stale document reference; read the page again.');
   const held = g && g.byRef.get(ref);
   const el = held && held.deref();
   if (!el || !el.isConnected) throw new Error(`ref_${ref} is stale — call browser_read_page again.`);
+  if (g.signatures && g.signatures.get(ref) !== el.outerHTML) throw new Error('Element changed since observation; read the page again.');
   el.scrollIntoView({ block: "center", inline: "nearest" });
   el.focus();
 
@@ -910,7 +923,7 @@ async function mouseClick(tabId, x, y, button, clickCount, modifiers) {
 }
 
 async function resolvePoint(tabId, args) {
-  if (args.ref) return await runInPage(tabId, pageRefPoint, [args.ref], args.frameId);
+  if (args.ref) return await runInPage(tabId, pageRefPoint, [args.ref, args.documentId ?? null], args.frameId);
   if (typeof args.x === "number" && typeof args.y === "number") return { x: args.x, y: args.y };
   throw new Error("Pass coordinate [x, y] or a ref from browser_read_page.");
 }
@@ -1014,7 +1027,7 @@ async function computer(args, session) {
 
     case "scroll_to": {
       if (!args.ref) throw new Error("scroll_to needs a ref.");
-      const point = await runInPage(tab.id, pageRefPoint, [args.ref], args.frameId);
+      const point = await runInPage(tab.id, pageRefPoint, [args.ref, args.documentId ?? null], args.frameId);
       return { scrolledTo: true, ...point };
     }
 
@@ -1064,12 +1077,12 @@ async function resize(args, session) {
   } else if (args.width && args.height) {
     const mobile = !!args.mobile;
     await debuggerSend(tab.id, "Emulation.setDeviceMetricsOverride",
-      { width: args.width, height: args.height, deviceScaleFactor: 0, mobile });
+      { width: args.width, height: args.height, deviceScaleFactor: args.deviceScaleFactor === 1 ? 1 : 0, mobile });
     await debuggerSend(tab.id, "Emulation.setTouchEmulationEnabled",
       { enabled: mobile, maxTouchPoints: mobile ? 5 : 1 });
     if (mobile) {
       await debuggerSend(tab.id, "Emulation.setUserAgentOverride", { userAgent: MOBILE_UA });
-    }
+    } else await debuggerSend(tab.id, "Emulation.setUserAgentOverride", { userAgent: "" });
     applied.push(`${args.width}x${args.height}${mobile ? " (mobile)" : ""}`);
   }
 
@@ -1086,6 +1099,8 @@ async function resize(args, session) {
 
 async function handle(cmd, args, session) {
   switch (cmd) {
+    case "qa":
+      return await runQa(args.spec, session);
     case "ping":
       return { pong: true };
 
@@ -1180,7 +1195,7 @@ async function handle(cmd, args, session) {
 
     case "a11y": {
       const tab = await targetTab(args, session);
-      const a11yArgs = [args.filter === "all" ? "all" : "interactive", args.rootRef || null, args.maxNodes || 1500];
+      const a11yArgs = [args.filter === "all" ? "all" : "interactive", args.rootRef || null, args.maxNodes || 1500, args.documentId ?? null];
       if (args.rootRef) {
         // A subtree focus targets the one frame its ref lives in.
         const result = await runInPage(tab.id, pageA11y, a11yArgs, args.frameId);
@@ -1206,7 +1221,7 @@ async function handle(cmd, args, session) {
       if (!args.ref) throw new Error("ref is required");
       const tab = await targetTab(args, session);
       showIndicator(tab.id, null);
-      return await runInPage(tab.id, pageFormInput, [args.ref, args.value], args.frameId);
+      return await runInPage(tab.id, pageFormInput, [args.ref, args.value, args.documentId ?? null], args.frameId);
     }
 
     case "file_upload": {
@@ -1215,7 +1230,7 @@ async function handle(cmd, args, session) {
       const tab = await targetTab(args, session);
       await ensureAttached(tab.id);
       const token = "jf" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
-      await runInPage(tab.id, pageMarkForUpload, [args.ref, token], args.frameId);
+      await runInPage(tab.id, pageMarkForUpload, [args.ref, token, args.documentId ?? null], args.frameId);
       try {
         showIndicator(tab.id, null);
         await debuggerSend(tab.id, "DOM.getDocument", { depth: 0 });

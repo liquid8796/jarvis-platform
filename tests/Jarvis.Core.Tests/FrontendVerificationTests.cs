@@ -40,7 +40,7 @@ public sealed class FrontendVerificationTests
     }
 
     [Fact]
-    public void Latest_evidence_wins_and_visual_gate_adds_desktop_mobile_and_overflow_checks()
+    public void Generic_success_assertions_and_empty_ledger_cannot_satisfy_rendered_verification()
     {
         var requirement = FrontendVerificationRequirement.ForFrontend(isVisual: true);
         var evidence = BaseEvidence().Concat(new[]
@@ -54,9 +54,36 @@ public sealed class FrontendVerificationTests
 
         var result = FrontendVerificationGate.Evaluate(requirement, evidence);
 
-        Assert.True(result.Passed);
-        Assert.Empty(result.Missing);
-        Assert.Empty(result.Failed);
+        Assert.False(result.Passed);
+        Assert.Contains(FrontendEvidenceKind.Screenshot, result.Missing);
+        Assert.Contains(FrontendEvidenceKind.VisualFidelity, result.Missing);
+        Assert.False(VisualFidelityLedger.Create([]).Evaluate().Passed);
+    }
+
+    [Fact]
+    public void Current_measured_failure_cannot_be_overwritten_by_later_success_or_old_revision()
+    {
+        var requirement = FrontendVerificationRequirement.ForFrontend(false);
+        var provenance = new FrontendQaProvenance { TaskId = Guid.NewGuid().ToString("N"), VerificationRunId = "run", SourceRevision = new string('A', 64),
+            TargetUrl = "http://localhost:4173/", ObservationId = "observation", Producer = "collector", CapturedAt = DateTimeOffset.UtcNow, ViewportId = "desktop" };
+        var evidence = new[]
+        {
+            new FrontendEvidence(FrontendEvidenceKind.ConsoleHealth, false, "A real browser error", Provenance: provenance),
+            new FrontendEvidence(FrontendEvidenceKind.ConsoleHealth, true, "No errors", Provenance: provenance),
+            new FrontendEvidence(FrontendEvidenceKind.Screenshot, true, "Old screenshot", Provenance: provenance with { SourceRevision = new string('B',64) })
+        };
+        var result = FrontendVerificationGate.Evaluate(requirement, evidence, currentRunId: "run", currentSourceRevision: provenance.SourceRevision);
+        Assert.Contains(FrontendEvidenceKind.ConsoleHealth, result.Failed);
+        Assert.Contains(FrontendEvidenceKind.Screenshot, result.Missing);
+    }
+
+    [Fact]
+    public void Classifier_observes_rendered_edits_but_does_not_treat_backend_typescript_as_frontend()
+    {
+        Assert.False(FrontendChangeClassifier.Classify("Repair database retry", [], ["src/store.ts"]).IsFrontend);
+        Assert.True(FrontendChangeClassifier.Classify("Repair behavior", [], ["src/app.ts"], projectFiles: ["index.html", "src/app.ts"]).IsFrontend);
+        Assert.True(FrontendChangeClassifier.Classify("Sửa màu giao diện", []).IsVisual);
+        Assert.True(FrontendChangeClassifier.Classify("Repair behavior", [], ["src/components/Button.tsx"]).IsFrontend);
     }
 
     public static FrontendEvidence[] BaseEvidence() =>
@@ -65,7 +92,9 @@ public sealed class FrontendVerificationTests
         new(FrontendEvidenceKind.RenderedDom, true, "rendered DOM present"),
         new(FrontendEvidenceKind.FrameworkOverlay, true, "no framework overlay"),
         new(FrontendEvidenceKind.ConsoleHealth, true, "no unexpected console errors/warnings"),
+        new(FrontendEvidenceKind.NetworkHealth, true, "no failed network responses"),
         new(FrontendEvidenceKind.Screenshot, true, "screenshot captured", "shot.png"),
-        new(FrontendEvidenceKind.Interaction, true, "primary interaction changed expected state")
+        new(FrontendEvidenceKind.Interaction, true, "primary interaction changed expected state"),
+        new(FrontendEvidenceKind.Overflow, true, "no clipping")
     ];
 }

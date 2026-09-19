@@ -40,7 +40,7 @@ internal static class McpOutputSchemas
 
     public static JsonElement ForTask(string operation) => operation switch
     {
-        "create" or "plan" or "get" or "cancel" => TaskReply,
+        "create" or "plan" or "get" or "cancel" or "verify" or "repair" or "review" or "complete" or "capture" => TaskReply,
         "artifacts" => ArtifactReply,
         "tools" => ToolListReply,
         _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown task operation.")
@@ -77,7 +77,7 @@ internal static class McpOutputSchemas
             taskId = Text("Stable task UUID used for reads, cancellation and idempotent submissions."),
             goal = Text("User-supplied task goal."),
             project = Text("Resolved local project workspace."),
-            status = Text("Task state, e.g. NEEDS_PLAN, PLANNING, QUEUED, RUNNING, VERIFYING, CANCELLING, COMPLETED, FAILED, CANCELLED or INTERRUPTED."),
+            status = Text("Task state, e.g. NEEDS_PLAN, PLANNING, QUEUED, RUNNING, VERIFYING, NEEDS_VERIFICATION, NEEDS_REPAIR, NEEDS_REVIEW, READY_TO_COMPLETE, CANCELLING, COMPLETED, FAILED, CANCELLED or INTERRUPTED."),
             currentStep = Text("Current step ID, when one is active."),
             completedSteps = Integer("Number of completed logical steps.", 0),
             totalSteps = Integer("Total logical steps in the submitted plan.", 0),
@@ -104,7 +104,12 @@ internal static class McpOutputSchemas
             type = Text("Verification policy type such as goal, frontend or frontend-visual."),
             evidence = new { type = "array", description = "Bounded typed verification evidence reported by the local goal verifier.", items = VerificationEvidence() },
             missing = new { type = "array", description = "Required evidence kinds that were not supplied.", items = Text("Missing evidence kind.") },
-            failed = new { type = "array", description = "Required evidence kinds whose latest result failed.", items = Text("Failed evidence kind.") }
+            failed = new { type = "array", description = "Required evidence kinds with a measured failure in the current run.", items = Text("Failed evidence kind.") },
+            state = Text("Explicit verification state: not_required, not_run, failed, needs_review, stale or passed."),
+            sourceRevision = FrontendQaSchemas.Hash(), verificationRunId = Text("Current verification run identity."),
+            captures = new { type = "array", description = "Current screenshots. Fetch each by captureId with agent_task_capture before visual review.", items = FrontendQaSchemas.Capture() },
+            visualReview = FrontendQaSchemas.Review(),
+            nextAction = Text("Required next workflow action, when unfinished.")
         },
         required = new[] { "required", "passed", "type", "evidence", "missing", "failed" },
         additionalProperties = false
@@ -118,7 +123,8 @@ internal static class McpOutputSchemas
             kind = Text("Evidence kind, e.g. TargetIdentity, Screenshot or ResponsiveMobile."),
             success = Boolean("Whether this evidence item passed."),
             summary = Text("Bounded human-readable evidence summary."),
-            artifact = Text("Optional artifact identifier or local evidence reference.")
+            artifact = Text("Optional artifact identifier or local evidence reference."),
+            provenance = FrontendQaSchemas.Provenance(), capture = FrontendQaSchemas.Capture()
         },
         required = new[] { "kind", "success", "summary" },
         additionalProperties = false

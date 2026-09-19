@@ -16,17 +16,21 @@ public sealed class AgentTaskService(AppDbContext db, IAgentTaskRouter router, I
         SendAsync(ownerId, deviceId, operation, taskId, plan, offset, limit, null, ct);
 
     public async Task<RemoteTaskReply> SendAsync(string ownerId, string deviceId, string operation, string? taskId,
-        RemoteTaskPlan? plan, int offset, int limit, string? parentTaskId, CancellationToken ct, string? sessionId = null)
+        RemoteTaskPlan? plan, int offset, int limit, string? parentTaskId, CancellationToken ct, string? sessionId = null,
+        string? attemptId = null, FrontendQaSpec? verificationSpec = null, FrontendQaVisualReview? visualReview = null, string? captureId = null)
     {
         var device = await OwnedAsync(ownerId, deviceId, ct);
         if (!RemoteTaskRules.Operations.Contains(operation)) throw new ArgumentException("Unknown task operation.");
         var id = taskId is null && operation == "create" ? Guid.NewGuid().ToString("N") : RemoteTaskRules.TaskId(taskId ?? "");
         if (offset < 0 || limit is < 1 or > 20) throw new ArgumentException("offset must be nonnegative; limit must be 1..20.");
-        if (operation is "create" or "plan")
+        if (operation is "verify" or "repair" or "review" or "complete") _ = RemoteTaskRules.TaskId(attemptId ?? "");
+        if (verificationSpec is not null) FrontendQaRules.Validate(verificationSpec);
+        if (visualReview is not null) FrontendQaRules.ValidateReview(visualReview);
+        if (operation is "create" or "plan" or "repair")
         {
             if (plan is null) throw new ArgumentException("Task plan metadata is required.");
             RemoteTaskRules.Validate(plan);
-            if (operation == "plan" && plan.Steps.Count == 0) throw new ArgumentException("The submitted plan must contain steps.");
+            if (operation is "plan" or "repair" && plan.Steps.Count == 0) throw new ArgumentException("The submitted plan must contain steps.");
             var installed = (JsonSerializer.Deserialize<ToolDescriptor[]>(device.CapabilitiesJson, WireJson.Options) ?? [])
                 .ToDictionary(t => t.Id, StringComparer.Ordinal);
             var enabled = (await db.Tools.AsNoTracking().Where(t => t.Enabled).Select(t => t.AgentToolId).ToListAsync(ct))
@@ -47,7 +51,8 @@ public sealed class AgentTaskService(AppDbContext db, IAgentTaskRouter router, I
         await audit.WriteAsync(new() { UserId = ownerId, DeviceId = deviceId, Action = "task." + operation,
             CorrelationId = id, Outcome = "requested" }, ct);
         RemoteTaskReply reply;
-        try { reply = await router.TaskAsync(ownerId, deviceId, operation, new(ownerId, id, plan, offset, limit, parentTaskId, sessionId), ct); }
+        try { reply = await router.TaskAsync(ownerId, deviceId, operation, new(ownerId, id, plan, offset, limit, parentTaskId, sessionId,
+            attemptId, verificationSpec, visualReview, captureId), ct); }
         catch (OperationCanceledException)
         { reply = RemoteTaskReply.Failure("timeout", "Task acknowledgement timed out. Query taskId=" + id + " before retrying; completion may be unknown."); }
         catch (Exception ex) when (ex is IOException or System.Net.WebSockets.WebSocketException)

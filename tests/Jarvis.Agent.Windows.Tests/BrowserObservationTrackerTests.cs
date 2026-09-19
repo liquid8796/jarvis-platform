@@ -5,6 +5,19 @@ namespace Jarvis.Agent.Windows.Tests;
 public sealed class BrowserObservationTrackerTests
 {
     [Fact]
+    public void Reference_observations_are_isolated_by_tab_and_tab_mutation_keeps_other_tabs_fresh()
+    {
+        var tracker = new BrowserObservationTracker();
+        tracker.AfterTool("browser.read_page", WireJson.Element(new { tabId = 1 }), "Save [ref_daaa_1]", true);
+        tracker.AfterTool("browser.read_page", WireJson.Element(new { tabId = 2 }), "Delete [ref_dbbb_1]", true);
+        Assert.Throws<InvalidOperationException>(() => tracker.BeforeTool("browser.computer",
+            WireJson.Element(new { tabId = 2, @ref = "ref_daaa_1", action = "left_click" })));
+        tracker.AfterTool("browser.navigate", WireJson.Element(new { tabId = 2 }), "ok", true);
+        tracker.BeforeTool("browser.computer", WireJson.Element(new { tabId = 1, @ref = "ref_daaa_1", action = "left_click" }));
+        Assert.Throws<InvalidOperationException>(() => tracker.BeforeTool("browser.computer",
+            WireJson.Element(new { tabId = 2, @ref = "ref_dbbb_1", action = "left_click" })));
+    }
+    [Fact]
     public void Fresh_read_page_refs_are_valid_until_a_material_mutation()
     {
         var tracker = new BrowserObservationTracker();

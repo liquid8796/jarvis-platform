@@ -82,11 +82,12 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                     }
                     ValidateTools(request.Plan);
                     var agentPlansGoal = request.Plan.Steps.Count == 0 && request.Plan.ExecutionMode == "AUTONOMOUS" && _agentic is not null;
+                    var verificationOnly = request.Plan.Steps.Count == 0 && request.Plan.ExecutionMode != "READ_ONLY" && request.Plan.VerificationSpec is not null;
                     if (_store.AtCapacity) return Task.FromResult(RemoteTaskReply.Failure("busy", "Local task history is full (128). Archive terminal task files locally before creating more."));
-                    if ((request.Plan.Steps.Count > 0 || agentPlansGoal) && _active.Count >= (long)_settings.MaxDurableTasks + _settings.MaxQueuedCalls) return Busy();
+                    if ((request.Plan.Steps.Count > 0 || agentPlansGoal || verificationOnly) && _active.Count >= (long)_settings.MaxDurableTasks + _settings.MaxQueuedCalls) return Busy();
                     var now = DateTimeOffset.UtcNow;
                     var snapshot = new RemoteTaskSnapshot(id, request.Plan.Goal, project,
-                        request.Plan.Steps.Count == 0 && !agentPlansGoal ? "NEEDS_PLAN" : "QUEUED", null, 0, request.Plan.Steps.Count, now, now,
+                        request.Plan.Steps.Count == 0 && !agentPlansGoal && !verificationOnly ? "NEEDS_PLAN" : "QUEUED", null, 0, request.Plan.Steps.Count, now, now,
                         ParentTaskId: lineage.ParentTaskId, RootTaskId: lineage.RootTaskId, Depth: lineage.Depth);
                     stored = new(1, request.OwnerId, createDigest, request.Plan.Steps.Count == 0 ? null : planDigest,
                         Clone(request.Plan), snapshot, [])
@@ -96,10 +97,12 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                         WorkspaceDirectories = (caller?.AdditionalDirectories ?? _folders.Additional).ToArray()
                     };
                     _store.Save(stored); // Acknowledge only after durable storage.
-                    if (stored.Plan.Steps.Count > 0 || agentPlansGoal) Start(stored, sessionToken, caller?.SessionCancellation ?? default);
+                    if (stored.Plan.Steps.Count > 0 || agentPlansGoal || verificationOnly) Start(stored, sessionToken, caller?.SessionCancellation ?? default, verificationOnly);
                     return Task.FromResult(new RemoteTaskReply(Task: snapshot));
                 }
                 if (stored is null) return Task.FromResult(RemoteTaskReply.Failure("not_found", "Task not found on this device for this owner."));
+                if (operation is "verify" or "repair" or "review" or "complete" or "capture")
+                    return Task.FromResult(HandleQaWorkflow(operation, request, stored, caller, sessionToken));
                 if (operation == "get") return Task.FromResult(new RemoteTaskReply(Task: stored.Snapshot));
                 if (operation == "artifacts")
                 {
@@ -183,31 +186,34 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                 throw new ArgumentException("Owned process read/cancel tools are required.");
         }
     }
-    private void Start(StoredRemoteTask task, CancellationToken sessionToken, CancellationToken ownerSessionToken)
+    private void Start(StoredRemoteTask task, CancellationToken sessionToken, CancellationToken ownerSessionToken, bool verificationOnly = false)
     {
         var active = new Active(CancellationTokenSource.CreateLinkedTokenSource(sessionToken, ownerSessionToken), sessionToken, StoredContext(task, ownerSessionToken));
         active.Stop.CancelAfter(TimeSpan.FromSeconds(task.Plan.TimeoutSeconds));
         var key = Key(task.OwnerId, task.Snapshot.TaskId);
         _active.Add(key, active);
-        active.Work = Task.Run(() => RunAsync(task, active));
+        active.Work = Task.Run(() => RunAsync(task, active, verificationOnly));
         _ = active.Work.ContinueWith(work => { _ = work.Exception; }, CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
-    private async Task RunAsync(StoredRemoteTask initial, Active active)
+    private async Task RunAsync(StoredRemoteTask initial, Active active, bool verificationOnly = false)
     {
         var task = initial;
         try
         {
             using var slot = await _taskSlots.AcquireAsync(task.OwnerId + "|" + (task.OwnerSessionId ?? task.Snapshot.TaskId), active.Stop.Token);
-            task = await EnsureAgenticPlanAsync(task, active).ConfigureAwait(false);
-            if (task.Plan.Steps.Count == 0)
+            if (!verificationOnly) task = await EnsureAgenticPlanAsync(task, active).ConfigureAwait(false);
+            if (!verificationOnly && task.Plan.Steps.Count == 0)
             {
                 Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", Error = "Task has no executable plan.", UpdatedAt = DateTimeOffset.UtcNow } });
                 return;
             }
-            var execution = await ExecuteStepsAsync(task, active, task.Plan.Steps).ConfigureAwait(false);
-            task = execution.Task;
-            if (!execution.Success) return;
+            if (!verificationOnly)
+            {
+                var execution = await ExecuteStepsAsync(task, active, task.Plan.Steps).ConfigureAwait(false);
+                task = execution.Task;
+                if (!execution.Success) return;
+            }
             var goal = await VerifyAgenticGoalAsync(task, active).ConfigureAwait(false);
             task = goal.Task;
             if (!goal.Success) return;

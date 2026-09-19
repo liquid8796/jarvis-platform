@@ -10,16 +10,15 @@ namespace Jarvis.Agent.Windows;
 public sealed partial class BrowserObservationTracker
 {
     private readonly object _sync = new();
-    private HashSet<string> _refs = new(StringComparer.Ordinal);
+    private readonly Dictionary<int, HashSet<string>> _refs = [];
     private long _generation;
-    private bool _hasReferenceObservation;
 
     public long Generation { get { lock (_sync) return _generation; } }
 
     public void BeforeTool(string toolName, JsonElement arguments)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(toolName);
-        foreach (var reference in ReferencedElements(arguments)) EnsureCurrent(reference);
+        foreach (var reference in ReferencedElements(arguments)) EnsureCurrent(Tab(arguments), reference);
     }
 
     public void AfterTool(string toolName, JsonElement arguments, string output, bool success)
@@ -35,13 +34,20 @@ public sealed partial class BrowserObservationTracker
             lock (_sync)
             {
                 _generation++;
-                _refs = refs;
-                _hasReferenceObservation = true;
+                _refs[Tab(arguments)] = refs;
             }
             return;
         }
 
-        if (IsMaterialMutation(toolName, arguments)) Invalidate();
+        if (IsMaterialMutation(toolName, arguments))
+        {
+            lock (_sync)
+            {
+                _generation++;
+                if (toolName is "browser.select_browser" or "browser.browser_batch" || Tab(arguments) == 0) _refs.Clear();
+                else _refs.Remove(Tab(arguments));
+            }
+        }
     }
 
     public void Invalidate()
@@ -50,15 +56,17 @@ public sealed partial class BrowserObservationTracker
         {
             _generation++;
             _refs.Clear();
-            _hasReferenceObservation = false;
         }
     }
 
-    private void EnsureCurrent(string reference)
+    private static int Tab(JsonElement args) => args.ValueKind == JsonValueKind.Object &&
+        ((args.TryGetProperty("tabId", out var value) || args.TryGetProperty("tab_id", out value)) && value.TryGetInt32(out var id)) ? id : 0;
+
+    private void EnsureCurrent(int tab, string reference)
     {
         lock (_sync)
         {
-            if (!_hasReferenceObservation || !_refs.Contains(reference))
+            if (!_refs.TryGetValue(tab, out var references) || !references.Contains(reference))
                 throw new InvalidOperationException(
                     $"Browser reference '{reference}' is stale or is not part of the current observation generation {_generation}. Refresh with browser.read_page or browser.find before using element refs again.");
         }

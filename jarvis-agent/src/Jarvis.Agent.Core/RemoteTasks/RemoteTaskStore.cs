@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Jarvis.Protocol;
+using Jarvis.Agent.Core.Autonomous.Verification;
 
 namespace Jarvis.Agent.Core.RemoteTasks;
 
@@ -12,7 +13,18 @@ internal sealed record StoredRemoteTask(int Version, string OwnerId, string Crea
     public string? AgentDeviceId { get; init; }
     public long? WorkspaceRevision { get; init; }
     public IReadOnlyList<string>? WorkspaceDirectories { get; init; }
+    public IReadOnlyDictionary<string, string>? SourceBaseline { get; init; }
+    public string? QaRunId { get; init; }
+    public string? QaSourceRevision { get; init; }
+    public IReadOnlyList<FrontendEvidence> FrontendEvidence { get; init; } = [];
+    public FrontendQaVisualReview? VisualReview { get; init; }
+    public int QaRepairCount { get; init; }
+    public IReadOnlyList<RemoteTaskWorkflowReceipt> WorkflowReceipts { get; init; } = [];
+    public IReadOnlyList<string> DeliveredCaptureIds { get; init; } = [];
+    public bool GoalVerificationPassed { get; init; } = true;
 }
+
+internal sealed record RemoteTaskWorkflowReceipt(string AttemptId, string Operation, string Digest);
 
 /// <summary>Atomic, bounded local snapshots. No task data is stored in the server database.</summary>
 internal sealed class RemoteTaskStore : IDisposable
@@ -29,7 +41,7 @@ internal sealed class RemoteTaskStore : IDisposable
             foreach (var path in Directory.EnumerateFiles(_root, "*.json", SearchOption.AllDirectories))
             {
                 var task = Read(path);
-                if (task.Snapshot.Status is "QUEUED" or "RUNNING" or "CANCELLING")
+                if (task.Snapshot.Status is "QUEUED" or "RUNNING" or "CANCELLING" or "PLANNING" or "VERIFYING" or "REPAIRING")
                     Save(task with { Snapshot = task.Snapshot with { Status = "INTERRUPTED", UpdatedAt = DateTimeOffset.UtcNow,
                         Error = "Agent restarted; completion may be unknown. No actions were replayed." } });
             }

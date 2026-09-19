@@ -23,6 +23,7 @@ BROWSER = (
     "jarvis-browser-service.exe", "jarvis-browser-service.dll",
     "jarvis-browser-service.deps.json", "jarvis-browser-service.runtimeconfig.json",
     "browser/jarvis-browser-host.exe",
+    "Assets/Browser/manifest.json", "Assets/Browser/background.js", "Assets/Browser/qa.js",
 )
 
 
@@ -68,6 +69,12 @@ class AgentPublishAssets(unittest.TestCase):
         result = self.verify()
         self.assertNotEqual(0, result.returncode)
         self.assertIn("conpty.dll", result.stdout + result.stderr)
+
+    def test_missing_structured_qa_runtime_fails(self) -> None:
+        (self.output / "Assets/Browser/qa.js").unlink()
+        result = self.verify()
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("qa.js", result.stdout + result.stderr)
 
     def test_root_browser_host_is_rejected(self) -> None:
         (self.output / "jarvis-browser-host.exe").write_text(

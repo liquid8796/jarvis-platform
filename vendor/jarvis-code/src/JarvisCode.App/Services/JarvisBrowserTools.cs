@@ -11,7 +11,7 @@ public static class JarvisBrowserTools
     [
         "navigate", "read_page", "find", "get_page_text", "computer",
         "form_input", "file_upload", "upload_image", "gif_creator", "javascript_tool",
-        "read_console_messages", "read_network_requests", "resize_window",
+        "read_console_messages", "read_network_requests", "resize_window", "qa",
     ];
 
     /// <summary>
@@ -75,7 +75,8 @@ public static class JarvisBrowserTools
     public static IReadOnlyList<ITool> Create(
         BrowserBridge bridge,
         string? imageDirectory = null,
-        BrowserOriginGate? origins = null)
+        BrowserOriginGate? origins = null,
+        bool enableQa = false)
     {
         var gate = origins ?? new BrowserOriginGate(bridge);
         List<ITool> tools =
@@ -99,6 +100,7 @@ public static class JarvisBrowserTools
             new BrowserNetworkTool(bridge),
             new BrowserResizeTool(bridge),
         ];
+        if (enableQa) tools.Add(new BrowserQaTool(bridge, imageDirectory));
         for (var i = 0; i < tools.Count; i++)
         {
             if (PageFacing.Contains(tools[i].Name))
@@ -350,6 +352,10 @@ public sealed class BrowserNavigateTool(BrowserBridge bridge, bool inBatch = fal
             {
                 return listing;
             }
+            var match = System.Text.RegularExpressions.Regex.Match(listing.Content, @"(?m)^\[(\d+)\]");
+            if (!match.Success || !int.TryParse(match.Groups[1].Value, out var selectedTab))
+                return ToolResult.Error("Browser context did not return an owned tab ID.");
+            args["tabId"] = selectedTab;
         }
 
         var navigated = await JarvisBrowserTools.Run(bridge, "navigate", args,
@@ -391,6 +397,7 @@ public sealed class BrowserReadPageTool(BrowserBridge bridge) : ITool
         if (JarvisBrowserFormat.ParseRef(arguments["ref_id"]) is { } rootRef)
         {
             args["rootRef"] = rootRef.Value;
+            if (rootRef.DocumentId is not null) args["documentId"] = rootRef.DocumentId;
             if (rootRef.FrameId != 0)
             {
                 args["frameId"] = rootRef.FrameId;
@@ -403,4 +410,3 @@ public sealed class BrowserReadPageTool(BrowserBridge bridge) : ITool
             cancellationToken);
     }
 }
-

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.78 - 2026-09-19
+
+- Replace frontend structural-smoke completion with measured scenarios, explicit target postconditions, separate viewport captures, overlay/console/network checks and source-bound artifact evidence. NORMAL frontend tasks now enter the QA workflow; READ_ONLY reports unverified execution without browser mutation.
+- Add specification-only QA tasks and authenticated verify/capture/review/repair/complete operations. Existing connected models can inspect actual PNGs, submit bounded idempotent repairs, retest and complete without an additional model provider. Visual reviews cannot override measured failures, stale evidence or a failed goal verifier.
+- Add browser extension 1.4.0 structured QA, strict locators/actionability, shadow and same-origin frame support, per-tab/document references, remembered family routing, full-page captures and correct viewport/UA reset. Fix ordinary Vite styles being mistaken for overlays and keyword filtering hiding arbitrary console errors. Unsupported cross-origin input geometry fails explicitly.
+- Add real isolated Chromium acceptance through the production browser service and extension, plus collector, workflow, OAuth/MCP image-delivery, session and packaging regressions. Package/assembly/file versions are 1.0.78 / 1.0.78.0. Deployment and browser extension reload remain separate from build/push.
+
 ## 1.0.77 - 2026-09-19
 
 - Add checkbox-based multi-selection to the Agent Sessions list, including Select all/Clear controls for the currently visible open sessions.

@@ -107,8 +107,8 @@ public sealed class BrowserOriginGate(BrowserBridge bridge, UiSettingsStore? set
 
         // Navigation is checked against where it is going; every other command
         // against the site the tab is already on.
-        var origin = toolName == "navigate"
-            ? OriginOf(JsonArgs.GetString(arguments, "url"))
+        var origin = toolName is "navigate" or "qa"
+            ? OriginOf(toolName == "qa" ? arguments["spec"]?["url"]?.GetValue<string>() : JsonArgs.GetString(arguments, "url"))
             : await CurrentOriginAsync(arguments, cancellationToken);
 
         // A blank tab, a file:// page or a browser-internal page has no site to

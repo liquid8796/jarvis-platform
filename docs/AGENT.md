@@ -1,5 +1,9 @@
 # Jarvis Agent operator guide
 
+## 1.0.78 frontend QA
+
+The Agent executes structured frontend scenarios through browser extension 1.4.0, records separate viewport images and blocks verified completion on failed or stale evidence. The connected model can inspect images, submit repairs and request retests through the task gateway without configuring another model provider. See [Frontend QA](FRONTEND-QA.md). Update server/Agent, refresh the tool catalog and reload the extension to use the new workflow.
+
 ## 1.0.77 multi-session actions
 
 The **Sessions** list now has a checkbox on every open session so several chats can be selected at once. **Select all** checks every currently visible open session (respecting the search filter); **Clear** resets the bulk selection. Closed sessions remain visible when **Show closed sessions** is enabled but cannot be checked for mutation.

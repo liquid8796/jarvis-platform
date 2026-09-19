@@ -1,6 +1,10 @@
 # Agent Task Gateway (Approach A)
 
-## 1.0.68 rendered frontend verification
+## 1.0.78 measured frontend QA and external repair
+
+The current frontend workflow is documented in [FRONTEND-QA.md](FRONTEND-QA.md). It applies to NORMAL and AUTONOMOUS tasks, accepts a specification-only QA task, exposes verify/capture/review/repair/complete operations, and separates execution from verified completion. Captures and reviews are bound to source/run/image hashes; later assertions cannot erase measured failures. READ_ONLY never runs browser mutation and reports verification as not_run. The following versioned sections describe historical introductions; 1.0.78 replaces the earlier last-evidence-wins, structural-visual-pass and autonomous-only rules.
+
+## Historical: 1.0.68 rendered frontend verification
 
 Agentic autonomous tasks now classify frontend-affecting work from goal intent and step argument paths. Common rendered extensions such as `.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.sass`, `.less` and `.html` trigger a typed frontend verification requirement. Visual/layout intent or stylesheet changes add responsive desktop/mobile and overflow checks.
 

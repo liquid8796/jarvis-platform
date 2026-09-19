@@ -74,7 +74,8 @@ public sealed record VisualFidelityLedger
             .OrderBy(item => item.Category)
             .ThenBy(item => item.Id, StringComparer.Ordinal)
             .ToArray();
-        return new(unresolved.Length == 0, Mismatches.ToArray(), unresolved);
+        // This ledger records discovered issues; an empty list does not prove an image comparison happened.
+        return new(Mismatches.Count > 0 && unresolved.Length == 0, Mismatches.ToArray(), unresolved);
     }
 
     public FrontendEvidence ToEvidence()
@@ -82,6 +83,7 @@ public sealed record VisualFidelityLedger
         var result = Evaluate();
         var summary = result.Passed
             ? $"Visual fidelity passed: {Mismatches.Count} ledger entr{(Mismatches.Count == 1 ? "y" : "ies")}, no unresolved blocking mismatches."
+            : Mismatches.Count == 0 ? "Visual fidelity has no recorded comparison observations. Submit a bound screenshot review."
             : "Visual fidelity blocked by: " + string.Join(", ", result.UnresolvedBlocking.Select(item => item.Id));
         return new FrontendEvidence(FrontendEvidenceKind.VisualFidelity, result.Passed, summary);
     }

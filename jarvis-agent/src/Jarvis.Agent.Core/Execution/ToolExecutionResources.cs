@@ -40,7 +40,7 @@ public static class ToolExecutionResources
     }
 
     public static bool MayChangeDesktop(string toolId) => toolId is
-        "browser.navigate" or "browser.resize_window" or "browser.tabs_create_mcp" or "browser.tabs_context_mcp" or
+        "browser.qa" or "browser.navigate" or "browser.resize_window" or "browser.tabs_create_mcp" or "browser.tabs_context_mcp" or
         "browser.tabs_close_mcp" or "browser.computer" or "browser.javascript_tool" or "browser.browser_batch" or
         "browser.form_input" or "browser.file_upload" or "browser.upload_image";
 

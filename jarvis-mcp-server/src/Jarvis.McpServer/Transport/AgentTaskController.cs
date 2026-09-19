@@ -20,8 +20,19 @@ public sealed record AgentTaskInput
     public string ExecutionMode { get; init; } = "NORMAL";
     public int TimeoutSeconds { get; init; } = 1800;
     public IReadOnlyList<RemoteTaskStep> Steps { get; init; } = [];
+    public FrontendQaSpec? VerificationSpec { get; init; }
     public RemoteTaskPlan ToPlan() => new() { Goal = Goal, Project = Project, ExecutionMode = ExecutionMode,
-        TimeoutSeconds = TimeoutSeconds, Steps = Steps };
+        TimeoutSeconds = TimeoutSeconds, Steps = Steps, VerificationSpec = VerificationSpec };
+}
+
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record AgentTaskWorkflowInput
+{
+    public string? DeviceId { get; init; }
+    public string AttemptId { get; init; } = "";
+    public RemoteTaskPlan? Plan { get; init; }
+    public FrontendQaSpec? VerificationSpec { get; init; }
+    public FrontendQaVisualReview? VisualReview { get; init; }
 }
 
 /// <summary>Cookie APIs retain existing CSRF validation. OAuth clients use the MCP task tools.</summary>
@@ -46,6 +57,17 @@ public sealed class AgentTaskController(AppDbContext db, AgentTaskService tasks)
     [HttpPost("{taskId}/cancel")]
     public async Task<IActionResult> Cancel(string taskId, [FromQuery] string deviceId, CancellationToken ct) =>
         Respond(await tasks.SendAsync(await Owner(ct), Device(deviceId), "cancel", taskId, null, 0, 20, ct));
+    [HttpPost("{taskId}/{operation:regex(^(verify|repair|review|complete)$)}")]
+    public async Task<IActionResult> Workflow(string taskId, string operation, AgentTaskWorkflowInput input, CancellationToken ct) =>
+        Respond(await tasks.SendAsync(await Owner(ct), Device(input.DeviceId), operation, taskId, input.Plan, 0, 20, null, ct,
+            attemptId: input.AttemptId, verificationSpec: input.VerificationSpec, visualReview: input.VisualReview), accepted: true);
+    [HttpGet("{taskId}/captures/{captureId}")]
+    public async Task<IActionResult> Capture(string taskId, string captureId, [FromQuery] string deviceId, CancellationToken ct)
+    {
+        var reply = await tasks.SendAsync(await Owner(ct), Device(deviceId), "capture", taskId, null, 0, 20, null, ct, captureId: captureId);
+        return reply.Error is not null ? Respond(reply) : reply.Images is { Count: 1 } images
+            ? File(Convert.FromBase64String(images[0].Base64), images[0].MimeType) : StatusCode(409, new { error = "Capture unavailable." });
+    }
     private IActionResult Respond(RemoteTaskReply reply, bool accepted = false, bool artifacts = false)
     {
         if (reply.Error is not null) return StatusCode(reply.ErrorCode switch
