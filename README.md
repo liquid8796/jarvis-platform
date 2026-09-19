@@ -1,6 +1,6 @@
-# Jarvis Control - 1.0.74
+# Jarvis Control - 1.0.75
 
-**Version 1.0.74 binds browser resource leases to the lifetime of the call that acquired them, so cancelling/stopping an old browser session promptly releases its browser/desktop claim instead of leaving a new Chrome session queued behind a stale call.** The Agent keeps the existing flat MCP browser tool IDs as compatibility proxies, `jarvis-browser-service.exe` owns browser/session execution, and `jarvis-browser-host.exe` is the Chrome/Edge native-messaging relay. Localhost work routes to an isolated dev browser profile; external browser work routes to connected Chrome/Edge. Autonomous frontend tasks collect rendered evidence themselves and fail closed when the target/browser/evidence is unavailable. See [architecture](docs/ARCHITECTURE.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
+**Version 1.0.75 closes the normal Desktop/CLI build output over the dedicated browser runtime: building either Agent entry point now also builds `jarvis-browser-service.exe` and `jarvis-browser-host.exe`, copies the service app files into the Agent output root, and keeps the native-messaging host under `browser/`.** The existing 1.0.74 cancellation-bound browser resource cleanup remains in place, the flat MCP browser tool IDs remain compatibility proxies, and the dedicated browser service/host process boundary is unchanged. See [architecture](docs/ARCHITECTURE.md), [Task Gateway](docs/AGENT-TASK-GATEWAY.md), and [BUILD-STATUS.md](docs/BUILD-STATUS.md). Build/push does not itself update a running agent or production MCP service.
 
 A chat may call `session__open` when it needs explicit per-chat workspace/mailbox isolation, but ordinary filesystem/Git/shell/process/computer/browser/task calls no longer require `_jarvis.sessionHandle`. When no handle is present, the gateway creates an ephemeral call ID and the agent uses a stable owner/device isolation scope for stateful local resources. `session__stop_work` is resumable; destructive `session__close` is hidden from normal model discovery and retained for explicit operator/UI cleanup. Upgrade server and agent together and refresh cached MCP schemas; browser extension **1.3.0** adds protocol/capability negotiation required by the dedicated browser service.
 
@@ -36,7 +36,7 @@ Mở `Jarvis.slnx` bằng Visual Studio 2026 với .NET 10 SDK và workload **.N
 
 Script sẽ restore package theo các version đã pin nếu chưa có cache. `-NoRestore` chỉ dùng sau một lần restore phù hợp cùng RID. Gói không chứa NuGet cache; không có lệnh Maven. `-SkipTests` tồn tại để điều tra lỗi build nhưng **không** dùng làm bằng chứng kiểm thử. Chưa có lockfile transitive được tạo bởi SDK.
 
-Build thành công sẽ tạo `artifacts/agent/1.0.74/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.74/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Mỗi output Agent còn có `jarvis-browser-service.exe` ở publish root để dùng chung self-contained runtime/dependencies với Agent, còn native-messaging host tối thiểu nằm tại `browser/jarvis-browser-host.exe`; giữ cả thư mục publish, không copy riêng executable. WebView2 Runtime vẫn là điều kiện riêng cho visualize WPF.
+Build thành công sẽ tạo `artifacts/agent/1.0.75/desktop/Jarvis.Agent.Desktop.exe`, `artifacts/agent/1.0.75/cli/jarvis-agent.exe`, ZIP agent và tar.gz self-contained server. Mỗi output Agent còn có `jarvis-browser-service.exe` ở root để dùng chung runtime/dependencies với Agent, còn native-messaging host nằm tại `browser/jarvis-browser-host.exe`; giữ cả thư mục output, không copy riêng executable. Từ 1.0.75, `dotnet build` trực tiếp `Jarvis.Agent.Desktop` hoặc `Jarvis.Agent.Cli` cũng tạo đúng layout browser companion này, không chỉ `scripts/Build.ps1`. WebView2 Runtime vẫn là điều kiện riêng cho visualize WPF.
 
 ## Chạy local
 
@@ -55,11 +55,11 @@ Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, 
 CLI:
 
 ```powershell
-.\artifacts\agent\1.0.74\cli\jarvis-agent.exe configure
-.\artifacts\agent\1.0.74\cli\jarvis-agent.exe list-tools
-.\artifacts\agent\1.0.74\cli\jarvis-agent.exe doctor --json
-.\artifacts\agent\1.0.74\cli\jarvis-agent.exe connect
-.\artifacts\agent\1.0.74\cli\jarvis-agent.exe browser-install
+.\artifacts\agent\1.0.75\cli\jarvis-agent.exe configure
+.\artifacts\agent\1.0.75\cli\jarvis-agent.exe list-tools
+.\artifacts\agent\1.0.75\cli\jarvis-agent.exe doctor --json
+.\artifacts\agent\1.0.75\cli\jarvis-agent.exe connect
+.\artifacts\agent\1.0.75\cli\jarvis-agent.exe browser-install
 ```
 
 `configure` hỏi token trên stdin ẩn; không nhận token qua URL/command line. `connect` cần terminal tương tác và xác nhận local. Không tự khởi động cùng Windows, không tự arm sau reconnect, không yêu cầu admin. GUI và CLI dùng một single-instance mutex theo Windows user.
@@ -107,7 +107,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.74**, assembly/file **1.0.74.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.75**, assembly/file **1.0.75.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 
@@ -160,6 +160,12 @@ Evidence is typed, the latest evidence for a kind wins, and missing/failing kind
 `PluginSkillLoader` turns validated plugin skill roots into bounded coding context without executing plugin entry files. Discovery reads only bounded front matter metadata, rejects reparse-point traversal and paths outside declared roots, isolates oversized/invalid skills as diagnostics, and exposes compact `plugin/name: description` metadata to agentic planning/verification. Full UTF-8 Markdown instructions are loaded only through explicit `LoadSelectedSkills(...)` selection and are revalidated against the current enabled plugin catalog at load time.
 
 Each per-session browser suite now owns a `BrowserObservationTracker`. Element refs produced by `browser.read_page` or `browser.find` belong to the current observation generation. Material navigation, form input, clicks/typing/scrolling, JavaScript, uploads, tab/browser switches and viewport resize invalidate that generation. A later ref-bearing call must use a ref from a fresh observation; stale refs fail locally before the raw Chrome tool runs. Failed mutations do not invalidate the prior generation.
+
+## Browser Companion Build Closure (1.0.75)
+
+A normal `dotnet build` of `Jarvis.Agent.Desktop` or `Jarvis.Agent.Cli` now builds both dedicated browser projects as non-assembly project references, then copies the browser-service app files into the Agent output root and the native-messaging host app files under `browser/`. The build removes any transitive root-level `jarvis-browser-host.*` copies so the runtime layout matches browser registration expectations. The publish verifier rejects a misplaced root native host while still requiring `jarvis-browser-service.exe` and `browser/jarvis-browser-host.exe`.
+
+The official `scripts/Build.ps1` flow still produces the self-contained win-x64 package and independently publishes the native host under `browser/`; this change specifically closes the ordinary project-build path that developers commonly copy/run directly.
 
 ## Cancelled Browser Resource Reclamation (1.0.74)
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.75 - 2026-09-19
+
+- Make normal `dotnet build` output for both Desktop and CLI include the dedicated browser runtime: the entry points build BrowserService and BrowserHost for ordering, copy `jarvis-browser-service.*` into the Agent root, and copy `jarvis-browser-host.*` under `browser/`.
+- Remove transitive root-level native-host copies from Agent build/publish output and make `Verify-AgentOutput.ps1` reject that misplaced layout while continuing to require the browser service and `browser/jarvis-browser-host.exe`.
+- Refresh the packaging regression fixture and add build-closure checks for both Agent entry points. Bump package/assembly/file versions to 1.0.75 / 1.0.75.0; browser extension protocol/version remains 1.3.0.
+
 ## 1.0.74 - 2026-09-19
 
 - Bind browser execution-resource leases to the lifetime of the call that acquired them. When an old session/call is stopped or cancelled, its browser/desktop lease is released promptly even if the underlying browser task is still unwinding, so another session is not stuck behind stale Chrome-channel ownership.

@@ -1,6 +1,12 @@
-# Architecture decisions · 1.0.74
+# Architecture decisions · 1.0.75
 
-## 1.0.74 cancelled-call resource reclamation (current)
+## 1.0.75 browser companion build closure (current)
+
+Desktop and CLI now carry non-assembly project references to `Jarvis.Agent.BrowserService` and `Jarvis.Agent.BrowserHost`. These references exist for MSBuild ordering only: the Agent entry point does not link either executable assembly. After a normal project `Build`, a shared target copies the browser-service app files into the Agent output root and the native-host app files into `browser/`, then removes any transitive root-level `jarvis-browser-host.*` artifacts. This makes ordinary `bin/<Configuration>/net10.0-windows` output obey the same runtime layout expected by browser registration instead of relying on `scripts/Build.ps1` packaging.
+
+The official release script still owns self-contained win-x64 packaging. It publishes the native host independently under `browser/` and validates the final output. `Verify-AgentOutput.ps1` now also rejects a root-level native host, so an accidental transitive copy cannot silently become a second registration candidate.
+
+## 1.0.74 cancelled-call resource reclamation
 
 Browser calls now wrap the coordinator lease in a call-cancellation-bound reference after resource admission. Stopping/cancelling a session, cancelling the call, or losing its owning connection therefore releases that call-owned browser lease promptly even when the underlying browser task is slow to unwind. Cancellation-triggered release is queued outside the token callback so a bulk stop/revocation can first cancel sibling calls rather than re-entrantly waking one while the cancellation sweep is still in progress. This is especially important for Chrome operations that claim both `browser|<isolation-scope>` and the shared `desktop`: a stale call from an old session can no longer keep a newer session queued after cancellation.
 

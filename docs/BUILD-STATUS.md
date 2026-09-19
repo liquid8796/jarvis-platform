@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.75 browser companion build closure - executed release verification (2026-09-19)
+
+- Reproduced the packaging gap with a normal Release `dotnet build` of `Jarvis.Agent.Desktop`: the Agent output contained neither dedicated browser executable even though the official publish script knew how to package them. Desktop and CLI now build BrowserService and BrowserHost through non-assembly project references; a shared MSBuild target copies `jarvis-browser-service.*` into the Agent output root and `jarvis-browser-host.*` under `browser/`, then removes any transitive root-level native-host copy.
+- Direct Release project builds for both Desktop and CLI passed `Verify-AgentOutput.ps1`; each output contains `jarvis-browser-service.exe` plus `browser/jarvis-browser-host.exe` and rejects a root-level `jarvis-browser-host.exe`. The Python packaging regression suite passed **7/7**.
+- `python scripts/Verify-CurrentVersion.py` passed package **1.0.75** and assembly/file **1.0.75.0**. Full Release solution verification passed **400/400**, **0 failed / 0 skipped**: Core **231**, Windows Agent **68**, Server **101**.
+- `scripts/Build.ps1 -Component Agent -SkipTests` completed **exit 0** after the required RID-aware restore. Desktop and CLI validators both reported **PASS** for `artifacts/agent/1.0.75`; both contain the two browser executables at the required paths, neither contains a root native-host executable, and `artifacts/Jarvis-Agent-1.0.75-win-x64.zip` was created. An earlier `-NoRestore` probe failed only because the existing assets cache lacked the `net10.0-windows/win-x64` target, matching the documented `-NoRestore` precondition.
+- Verification updated source and local build artifacts only. The already-running Agent under the user's Downloads directory was not replaced or restarted automatically.
+
 ## 1.0.74 cancelled browser-resource reclamation - executed release verification (2026-09-19)
 
 - Diagnosis confirmed browser claims are session-scoped (`browser|<scope>`) but mutation tools also hold the shared `desktop`; if an old browser call is cancelled while its tool task is slow to unwind, the call-owned lease could keep a newer session queued behind that stale desktop claim.

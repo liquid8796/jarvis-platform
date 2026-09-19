@@ -1,10 +1,10 @@
-# Jarvis Agent - 1.0.63
+# Jarvis Agent - 1.0.75
 
 Open `Jarvis Agent.slnx` with the entire repository present. Keep its Vendor projects loaded:
 those assemblies implement reused tools, while the standalone Jarvis Code application is excluded
 from Agent build/publish output. Root solution `../Jarvis.slnx` also includes the complete graph.
 
-The platform assembly version is 1.0.63.0. This release adds persistent constrained-process approvals to the Agent. `process.start` and `process.spawn` still ignore ordinary Full permission by default, but their local approval prompt now offers `Always approve`; that exact-tool grant is stored separately, survives restart/reconnect, and can be revoked from Tool permissions. Existing scoped capability leases, Arm/Pause behavior and other tool permissions remain unchanged.
+The platform assembly/file version is 1.0.75.0. A normal Desktop or CLI project build now closes over the dedicated browser runtime: `jarvis-browser-service.*` is copied to the Agent output root and `jarvis-browser-host.*` is copied under `browser/`. This matches the runtime layout already enforced by the official self-contained publish flow and prevents a developer-copied `bin` directory from losing Chrome connectivity because the browser companions were absent.
 Desktop/CLI publish and Windows startup acceptance from earlier versions remains historical evidence. See [verification evidence](../docs/BUILD-STATUS.md)
 for exact scope, the separate Visual Studio license limitation, and remaining production acceptance.
 
@@ -15,6 +15,12 @@ dotnet build 'jarvis-agent/Jarvis Agent.slnx' -c Debug --no-restore
 ```
 
 Set `Jarvis.Agent.Desktop` as Startup Project to debug the UI. See the [agent guide](../docs/AGENT.md).
+
+## 1.0.75: browser companions in normal build output
+
+`Jarvis.Agent.Desktop` and `Jarvis.Agent.Cli` reference BrowserService and BrowserHost with `ReferenceOutputAssembly=false`, so MSBuild orders/builds those executable projects without linking them into the Agent. `Directory.Build.targets` then copies the service app files to the entry-point output root and native-host app files to `browser/`; any root-level native-host copies from transitive content are removed. `Verify-AgentOutput.ps1` rejects a root native host and still requires both browser companion executables.
+
+The official `scripts/Build.ps1 -Component Agent` path remains the release packaging path and independently publishes the native host self-contained under `browser/`.
 
 ## 1.0.63: persistent process approval
 

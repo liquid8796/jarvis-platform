@@ -3,6 +3,7 @@
        Keep DLLs, debugging symbols, resources and duplicate-publish checks intact. -->
   <PropertyGroup>
     <_JarvisAgentConsumesBaseline Condition="'$(MSBuildProjectName)' == 'Jarvis.Agent.Desktop' Or '$(MSBuildProjectName)' == 'Jarvis.Agent.Cli' Or '$(MSBuildProjectName)' == 'Jarvis.Agent.Windows'">true</_JarvisAgentConsumesBaseline>
+    <_JarvisAgentEntryPoint Condition="'$(MSBuildProjectName)' == 'Jarvis.Agent.Desktop' Or '$(MSBuildProjectName)' == 'Jarvis.Agent.Cli'">true</_JarvisAgentEntryPoint>
   </PropertyGroup>
   <ItemGroup Condition="'$(_JarvisAgentConsumesBaseline)' == 'true'">
     <_JarvisStandaloneBaselineHost Include="JarvisCode.App.exe;JarvisCode.App.deps.json;JarvisCode.App.runtimeconfig.json">
@@ -10,6 +11,43 @@
       <RelativePath>%(Identity)</RelativePath>
     </_JarvisStandaloneBaselineHost>
   </ItemGroup>
+  <ItemGroup Condition="'$(_JarvisAgentEntryPoint)' == 'true'">
+    <_JarvisRootBrowserNativeHost Include="jarvis-browser-host.exe;jarvis-browser-host.dll;jarvis-browser-host.deps.json;jarvis-browser-host.runtimeconfig.json;jarvis-browser-host.pdb" />
+  </ItemGroup>
+
+  <!-- A normal Desktop/CLI Build must be runnable with the dedicated browser runtime.
+       The entry-point projects reference the browser projects for build ordering; copy only the
+       browser service app files into the shared Agent root and keep the native host isolated. -->
+  <Target Name="CopyBrowserCompanionsToAgentBuild"
+          AfterTargets="Build"
+          Condition="'$(_JarvisAgentEntryPoint)' == 'true' And '$(DesignTimeBuild)' != 'true' And '$(OutDir)' != ''">
+    <PropertyGroup>
+      <_JarvisBrowserRidSubdirectory Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)\</_JarvisBrowserRidSubdirectory>
+      <_JarvisBrowserServiceOutputDirectory>$(MSBuildThisFileDirectory)jarvis-agent\src\Jarvis.Agent.BrowserService\bin\$(Configuration)\net10.0-windows\$(_JarvisBrowserRidSubdirectory)</_JarvisBrowserServiceOutputDirectory>
+      <_JarvisBrowserHostOutputDirectory>$(MSBuildThisFileDirectory)jarvis-agent\src\Jarvis.Agent.BrowserHost\bin\$(Configuration)\net10.0-windows\$(_JarvisBrowserRidSubdirectory)</_JarvisBrowserHostOutputDirectory>
+    </PropertyGroup>
+    <ItemGroup>
+      <_JarvisBrowserServiceBuildFiles Include="$(_JarvisBrowserServiceOutputDirectory)jarvis-browser-service.exe" />
+      <_JarvisBrowserServiceBuildFiles Include="$(_JarvisBrowserServiceOutputDirectory)jarvis-browser-service.dll" />
+      <_JarvisBrowserServiceBuildFiles Include="$(_JarvisBrowserServiceOutputDirectory)jarvis-browser-service.deps.json" />
+      <_JarvisBrowserServiceBuildFiles Include="$(_JarvisBrowserServiceOutputDirectory)jarvis-browser-service.runtimeconfig.json" />
+      <_JarvisBrowserServiceBuildFiles Include="$(_JarvisBrowserServiceOutputDirectory)jarvis-browser-service.pdb"
+                                       Condition="Exists('$(_JarvisBrowserServiceOutputDirectory)jarvis-browser-service.pdb')" />
+      <_JarvisBrowserHostBuildFiles Include="$(_JarvisBrowserHostOutputDirectory)jarvis-browser-host.exe" />
+      <_JarvisBrowserHostBuildFiles Include="$(_JarvisBrowserHostOutputDirectory)jarvis-browser-host.dll" />
+      <_JarvisBrowserHostBuildFiles Include="$(_JarvisBrowserHostOutputDirectory)jarvis-browser-host.deps.json" />
+      <_JarvisBrowserHostBuildFiles Include="$(_JarvisBrowserHostOutputDirectory)jarvis-browser-host.runtimeconfig.json" />
+      <_JarvisBrowserHostBuildFiles Include="$(_JarvisBrowserHostOutputDirectory)jarvis-browser-host.pdb"
+                                    Condition="Exists('$(_JarvisBrowserHostOutputDirectory)jarvis-browser-host.pdb')" />
+    </ItemGroup>
+    <Error Condition="!Exists('$(_JarvisBrowserServiceOutputDirectory)jarvis-browser-service.exe')"
+           Text="Browser service build output is missing. Build Jarvis.Agent.BrowserService before packaging the Agent entry point." />
+    <Error Condition="!Exists('$(_JarvisBrowserHostOutputDirectory)jarvis-browser-host.exe')"
+           Text="Browser native-host build output is missing. Build Jarvis.Agent.BrowserHost before packaging the Agent entry point." />
+    <Copy SourceFiles="@(_JarvisBrowserServiceBuildFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_JarvisBrowserHostBuildFiles)" DestinationFolder="$(OutDir)browser\" SkipUnchangedFiles="true" />
+    <Delete Files="@(_JarvisRootBrowserNativeHost->'$(OutDir)%(Identity)')" />
+  </Target>
 
   <!-- GetCopyToOutputDirectoryItems also exports transitive content to VS/MSBuild.
        Filter its return value and every copy mode before any build output copy. -->
@@ -43,5 +81,11 @@
           AfterTargets="Publish"
           Condition="'$(_JarvisAgentConsumesBaseline)' == 'true' And '$(DesignTimeBuild)' != 'true' And '$(PublishDir)' != ''">
     <Delete Files="@(_JarvisStandaloneBaselineHost->'$(PublishDir)%(Identity)')" />
+  </Target>
+
+  <Target Name="RemoveRootBrowserNativeHostFromAgentPublish"
+          AfterTargets="Publish"
+          Condition="'$(_JarvisAgentEntryPoint)' == 'true' And '$(DesignTimeBuild)' != 'true' And '$(PublishDir)' != ''">
+    <Delete Files="@(_JarvisRootBrowserNativeHost->'$(PublishDir)%(Identity)')" />
   </Target>
 </Project>

@@ -11,7 +11,9 @@ if (-not (Test-Path -LiteralPath $directory -PathType Container)) {
     throw 'OutputDirectory must be a directory.'
 }
 # Keep this list independent of Directory.Build.targets to detect regressions.
-$forbidden = @('JarvisCode.App.exe','JarvisCode.App.deps.json','JarvisCode.App.runtimeconfig.json')
+$forbidden = @('JarvisCode.App.exe','JarvisCode.App.deps.json','JarvisCode.App.runtimeconfig.json',
+               'jarvis-browser-host.exe','jarvis-browser-host.dll','jarvis-browser-host.deps.json',
+               'jarvis-browser-host.runtimeconfig.json','jarvis-browser-host.pdb')
 $required = @('JarvisCode.App.dll','JarvisCode.Core.dll','JarvisCode.Host.dll',
               'JarvisCode.Providers.dll','Jarvis.Agent.Windows.dll','Jarvis.Agent.Core.dll','Jarvis.Protocol.dll')
 if ($Component -ne 'Windows') {

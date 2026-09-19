@@ -19,6 +19,11 @@ NATIVE = (
     "conpty.dll", "x64/OpenConsole.exe", "arm64/OpenConsole.exe",
     "licenses/Microsoft.Windows.Console.ConPTY-LICENSE.txt",
 )
+BROWSER = (
+    "jarvis-browser-service.exe", "jarvis-browser-service.dll",
+    "jarvis-browser-service.deps.json", "jarvis-browser-service.runtimeconfig.json",
+    "browser/jarvis-browser-host.exe",
+)
 
 
 class AgentPublishAssets(unittest.TestCase):
@@ -29,7 +34,7 @@ class AgentPublishAssets(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="jarvis-publish-test-")
         self.addCleanup(self.temp.cleanup)
         self.output = pathlib.Path(self.temp.name)
-        for name in MANAGED + NATIVE:
+        for name in MANAGED + NATIVE + BROWSER:
             path = self.output / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("synthetic packaging fixture", encoding="utf-8")
@@ -63,6 +68,30 @@ class AgentPublishAssets(unittest.TestCase):
         result = self.verify()
         self.assertNotEqual(0, result.returncode)
         self.assertIn("conpty.dll", result.stdout + result.stderr)
+
+    def test_root_browser_host_is_rejected(self) -> None:
+        (self.output / "jarvis-browser-host.exe").write_text(
+            "misplaced native host", encoding="utf-8"
+        )
+        result = self.verify()
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("jarvis-browser-host.exe", result.stdout + result.stderr)
+
+    def test_entrypoint_projects_build_browser_companions(self) -> None:
+        for relative in (
+            "jarvis-agent/src/Jarvis.Agent.Desktop/Jarvis.Agent.Desktop.csproj",
+            "jarvis-agent/src/Jarvis.Agent.Cli/Jarvis.Agent.Cli.csproj",
+        ):
+            project = (ROOT / relative).read_text(encoding="utf-8-sig")
+            self.assertIn("Jarvis.Agent.BrowserService.csproj", project)
+            self.assertIn("Jarvis.Agent.BrowserHost.csproj", project)
+            self.assertGreaterEqual(project.count('ReferenceOutputAssembly="false"'), 2)
+
+        targets = (ROOT / "Directory.Build.targets").read_text(encoding="utf-8-sig")
+        self.assertIn('Name="CopyBrowserCompanionsToAgentBuild"', targets)
+        self.assertIn('AfterTargets="Build"', targets)
+        self.assertIn('DestinationFolder="$(OutDir)"', targets)
+        self.assertIn('DestinationFolder="$(OutDir)browser\\"', targets)
 
     def test_standard_build_checks_native_assets_before_archiving(self) -> None:
         script = (ROOT / "scripts/Build.ps1").read_text(encoding="utf-8-sig")
