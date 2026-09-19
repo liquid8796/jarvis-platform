@@ -21,8 +21,9 @@ public sealed record AgentTaskInput
     public int TimeoutSeconds { get; init; } = 1800;
     public IReadOnlyList<RemoteTaskStep> Steps { get; init; } = [];
     public FrontendQaSpec? VerificationSpec { get; init; }
+    public CodingVerificationSpec? CodingVerification { get; init; }
     public RemoteTaskPlan ToPlan() => new() { Goal = Goal, Project = Project, ExecutionMode = ExecutionMode,
-        TimeoutSeconds = TimeoutSeconds, Steps = Steps, VerificationSpec = VerificationSpec };
+        TimeoutSeconds = TimeoutSeconds, Steps = Steps, VerificationSpec = VerificationSpec, CodingVerification = CodingVerification };
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -33,7 +34,11 @@ public sealed record AgentTaskWorkflowInput
     public RemoteTaskPlan? Plan { get; init; }
     public FrontendQaSpec? VerificationSpec { get; init; }
     public FrontendQaVisualReview? VisualReview { get; init; }
+    public CodingVerificationSpec? CodingVerification { get; init; }
 }
+
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record AgentTaskContextInput(string DeviceId, IReadOnlyList<string>? Paths = null);
 
 /// <summary>Cookie APIs retain existing CSRF validation. OAuth clients use the MCP task tools.</summary>
 [ApiController, Authorize, Route("api/agent/tasks")]
@@ -60,7 +65,19 @@ public sealed class AgentTaskController(AppDbContext db, AgentTaskService tasks)
     [HttpPost("{taskId}/{operation:regex(^(verify|repair|review|complete)$)}")]
     public async Task<IActionResult> Workflow(string taskId, string operation, AgentTaskWorkflowInput input, CancellationToken ct) =>
         Respond(await tasks.SendAsync(await Owner(ct), Device(input.DeviceId), operation, taskId, input.Plan, 0, 20, null, ct,
-            attemptId: input.AttemptId, verificationSpec: input.VerificationSpec, visualReview: input.VisualReview), accepted: true);
+            attemptId: input.AttemptId, verificationSpec: input.VerificationSpec, visualReview: input.VisualReview,
+            codingVerification: input.CodingVerification), accepted: true);
+    [HttpGet("{taskId}/events")]
+    public async Task<IActionResult> Events(string taskId, [FromQuery] string deviceId, CancellationToken ct,
+        [FromQuery] int offset = 0, [FromQuery] int limit = 20) =>
+        Inspection(await tasks.SendAsync(await Owner(ct), Device(deviceId), "events", taskId, null, offset, limit, ct));
+    [HttpGet("{taskId}/reports/{artifactId}")]
+    public async Task<IActionResult> Report(string taskId, string artifactId, [FromQuery] string deviceId, CancellationToken ct,
+        [FromQuery] int offset = 0) =>
+        Inspection(await tasks.SendAsync(await Owner(ct), Device(deviceId), "report", taskId, null, offset, 20, null, ct, artifactId: artifactId));
+    [HttpPost("{taskId}/context")]
+    public async Task<IActionResult> Context(string taskId, AgentTaskContextInput input, CancellationToken ct) =>
+        Inspection(await tasks.SendAsync(await Owner(ct), Device(input.DeviceId), "context", taskId, null, 0, 20, null, ct, contextPaths: input.Paths));
     [HttpGet("{taskId}/captures/{captureId}")]
     public async Task<IActionResult> Capture(string taskId, string captureId, [FromQuery] string deviceId, CancellationToken ct)
     {
@@ -76,4 +93,5 @@ public sealed class AgentTaskController(AppDbContext db, AgentTaskService tasks)
         if (artifacts) return Ok(new { task = reply.Task, artifacts = reply.Artifacts, nextOffset = reply.NextOffset });
         return StatusCode(accepted ? 202 : 200, reply.Task);
     }
+    private IActionResult Inspection(RemoteTaskReply reply) => reply.Error is null ? Ok(reply) : Respond(reply);
 }

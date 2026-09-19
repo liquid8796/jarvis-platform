@@ -1,5 +1,13 @@
 # Build / test status
 
+## 1.0.79 backend/general coding QA - executed verification (2026-09-19)
+
+- Final Release solution verification passed **517/517**, **0 failed / 0 skipped**: Core **314**, Windows Agent **78**, Server **125**. Current TRX files are under `artifacts/test-results/1.0.79/`; earlier failed development runs are retained but are not release evidence.
+- The dedicated `Verify-CodingQa.ps1 -NoBuild` acceptance command passed **51/51** with a fresh machine-readable TRX and SHA-256. Evidence: `artifacts/verification/coding-qa/20260919T130801-50311b2f/results.json`. It covers real executable API/SQLite/CLI/package/JUnit task fixtures, measured probes, bounded test runners and parser/permission contracts; this is not a model-quality or global parity score.
+- Seven task-path cases cover same-task API/queue repair, actual CLI/JUnit/package checks, known failure/no-replay, source changes during or after checks, ignored-output package tampering and mixed FE/BE fixture lifetime. The mixed case uses a deliberately failing fake browser boundary to test shared fixture lifetime; it does not claim new rendered browser evidence. The 1.0.78 real-browser results below remain historical, while this patch reran **15/15** JavaScript browser/session checks and **8/8** Python publish-asset checks.
+- OAuth/MCP tests cover generic spec execution, live events, owned report delivery, disabled catalog enforcement, forged allowance rejection and older-Agent compatibility. Unknown/nonpassing receipt states, missing reports, zero tests and unsupported checks cannot become verified completion.
+- Package/assembly version verification passed **1.0.79 / 1.0.79.0**. Release archives and OCI rollout are independently checked in versioned `artifacts/verification/1.0.79/` and `artifacts/oci-deploy-1.0.79/`; source publication alone does not prove deployment. The Windows Agent needs 1.0.79 and refreshed tool discovery/catalog for coding features. Browser extension remains 1.4.0.
+
 ## 1.0.78 frontend QA workflow - executed verification (2026-09-19)
 
 - Latest Release suites passed **442/442**, **0 failed / 0 skipped**: Core **256**, Windows Agent **78**, Server **108**. Full solution verification passed before the final desktop-resource regression; Core was rerun after adding the `browser.qa` desktop lease and passed all 256 tests. TRX files are retained under `artifacts/test-results/1.0.78/`. This includes real OAuth/MCP/Agent task creation, native image delivery, bound visual review, completion and idempotency; its browser fixture is synthetic and is not counted as rendered evidence.

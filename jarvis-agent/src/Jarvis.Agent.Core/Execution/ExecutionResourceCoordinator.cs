@@ -33,6 +33,16 @@ public sealed class ExecutionResourceCoordinator : IDisposable
     }
 
     public Task<IDisposable> AcquireAsync(string owner, IReadOnlyList<string> resources, bool exclusive, CancellationToken cancellationToken)
+        => AcquireCoreAsync(owner, null, resources, exclusive, cancellationToken);
+
+    internal Task<IDisposable> AcquireGroupAsync(string owner, string group, IReadOnlyList<string> resources,
+        bool exclusive, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(group) || group.Length > 200) throw new ArgumentException("Invalid host resource group.");
+        return AcquireCoreAsync(owner, group, resources, exclusive, cancellationToken);
+    }
+
+    private Task<IDisposable> AcquireCoreAsync(string owner, string? group, IReadOnlyList<string> resources, bool exclusive, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(owner)) throw new ArgumentException("An execution owner is required.");
         if (resources.Count > 32 || resources.Any(string.IsNullOrWhiteSpace)) throw new ArgumentException("At most 32 nonempty resource claims are allowed.");
@@ -41,12 +51,13 @@ public sealed class ExecutionResourceCoordinator : IDisposable
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (cancellationToken.IsCancellationRequested) return Task.FromCanceled<IDisposable>(cancellationToken);
-            if (!_held.Any(held => Conflicts(held.Resources, held.Exclusive, claims, exclusive)) &&
-                !_waiting.Any(waiter => Conflicts(waiter.Resources, waiter.Exclusive, claims, exclusive)))
-                return Task.FromResult<IDisposable>(Grant(owner, claims, exclusive));
+            var continuingGroup = group is not null && _held.Any(held => held.Owner == owner && held.Group == group);
+            if (!_held.Any(held => Conflicts(held.Owner, held.Group, held.Resources, held.Exclusive, owner, group, claims, exclusive)) &&
+                (continuingGroup || !_waiting.Any(waiter => Conflicts(waiter.Owner, waiter.Group, waiter.Resources, waiter.Exclusive, owner, group, claims, exclusive))))
+                return Task.FromResult<IDisposable>(Grant(owner, group, claims, exclusive));
             if (_waiting.Count >= _maximumQueued)
                 return Task.FromException<IDisposable>(new AgentRequestException("RESOURCE_BUSY", "The requested resource is held by other work and the resource queue is full. No tool was started."));
-            var pending = new Waiter(owner, claims, exclusive, cancellationToken);
+            var pending = new Waiter(owner, group, claims, exclusive, cancellationToken);
             pending.Node = _waiting.AddLast(pending);
             pending.Registration = cancellationToken.UnsafeRegister(_ => Cancel(pending), null);
             if (pending.Node is null) pending.Registration.Unregister();
@@ -62,9 +73,9 @@ public sealed class ExecutionResourceCoordinator : IDisposable
             _waiting.Count(waiter => waiter.Owner == owner));
     }
 
-    private Lease Grant(string owner, string[] resources, bool exclusive)
+    private Lease Grant(string owner, string? group, string[] resources, bool exclusive)
     {
-        var held = new Held(owner, resources, exclusive);
+        var held = new Held(owner, group, resources, exclusive);
         _held.Add(held);
         return new(this, held);
     }
@@ -98,11 +109,12 @@ public sealed class ExecutionResourceCoordinator : IDisposable
                 Remove(waiter);
                 waiter.Completion.TrySetCanceled(waiter.Cancellation);
             }
-            else if (!_held.Any(held => Conflicts(held.Resources, held.Exclusive, waiter.Resources, waiter.Exclusive)) &&
-                     !earlier.Any(previous => Conflicts(previous.Resources, previous.Exclusive, waiter.Resources, waiter.Exclusive)))
+            else if (!_held.Any(held => Conflicts(held.Owner, held.Group, held.Resources, held.Exclusive, waiter.Owner, waiter.Group, waiter.Resources, waiter.Exclusive)) &&
+                     (waiter.Group is not null && _held.Any(held => held.Owner == waiter.Owner && held.Group == waiter.Group) ||
+                     !earlier.Any(previous => Conflicts(previous.Owner, previous.Group, previous.Resources, previous.Exclusive, waiter.Owner, waiter.Group, waiter.Resources, waiter.Exclusive))))
             {
                 Remove(waiter);
-                waiter.Completion.TrySetResult(Grant(waiter.Owner, waiter.Resources, waiter.Exclusive));
+                waiter.Completion.TrySetResult(Grant(waiter.Owner, waiter.Group, waiter.Resources, waiter.Exclusive));
             }
             else earlier.Add(waiter);
             node = next;
@@ -124,7 +136,9 @@ public sealed class ExecutionResourceCoordinator : IDisposable
         waiter.Node = null;
         waiter.Registration.Unregister();
     }
-    private static bool Conflicts(string[] first, bool firstExclusive, string[] second, bool secondExclusive) =>
+    private static bool Conflicts(string firstOwner, string? firstGroup, string[] first, bool firstExclusive,
+        string secondOwner, string? secondGroup, string[] second, bool secondExclusive) =>
+        !(firstGroup is not null && firstGroup == secondGroup && firstOwner == secondOwner) &&
         (firstExclusive || secondExclusive) && first.Any(a => second.Any(b => Overlaps(a, b)));
     private static bool Overlaps(string a, string b)
     {
@@ -152,9 +166,10 @@ public sealed class ExecutionResourceCoordinator : IDisposable
             }
         }
     }
-    private sealed class Held(string owner, string[] resources, bool exclusive)
+    private sealed class Held(string owner, string? group, string[] resources, bool exclusive)
     {
         public string Owner { get; } = owner;
+        public string? Group { get; } = group;
         public string[] Resources { get; } = resources;
         public bool Exclusive { get; } = exclusive;
         public int References = 1;
@@ -165,9 +180,10 @@ public sealed class ExecutionResourceCoordinator : IDisposable
         public IDisposable Retain() => (Volatile.Read(ref _owner) ?? throw new ObjectDisposedException(nameof(Lease))).Retain(held);
         public void Dispose() => Interlocked.Exchange(ref _owner, null)?.Release(held);
     }
-    private sealed class Waiter(string owner, string[] resources, bool exclusive, CancellationToken cancellation)
+    private sealed class Waiter(string owner, string? group, string[] resources, bool exclusive, CancellationToken cancellation)
     {
         public string Owner { get; } = owner;
+        public string? Group { get; } = group;
         public string[] Resources { get; } = resources;
         public bool Exclusive { get; } = exclusive;
         public CancellationToken Cancellation { get; } = cancellation;

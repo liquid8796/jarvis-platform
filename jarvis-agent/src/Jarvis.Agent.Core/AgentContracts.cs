@@ -32,6 +32,14 @@ public sealed record AgentExecutionContext(string Workspace, string CallId, stri
     public CancellationToken SessionCancellation { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]
     public Func<IDisposable>? RetainResources { get; init; }
+    // Host-created verification groups let an owned fixture service and its probes cooperate.
+    // Neither property is deserialized from a remote tool request.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? CooperativeResourceGroup { get; internal init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Func<string, string, Task>? ReportOutput { get; internal init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlyList<string>? TaskAllowedTools { get; internal init; }
     public bool HasExplicitSession => AgentSessionRules.IsSessionId(SessionId);
     public bool IsSessionlessExecution => AgentSessionRules.IsEphemeralExecutionId(SessionId);
     public string IsolationScopeId => IsSessionlessExecution ? SessionlessIsolationScope(OwnerId, AgentDeviceId) : SessionId;

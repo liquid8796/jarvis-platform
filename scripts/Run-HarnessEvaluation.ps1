@@ -6,9 +6,10 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
-    # V2 deliberately mixes Core contracts with shipping Windows/server composition tests so
-    # an engine that exists only in a unit-test seam cannot make the parity harness green.
+    # Test-group coverage includes production acceptance and unit contracts. Timing is not target
+    # API latency or an end-to-end model/Codex parity score.
     $scenarios = @(
+        @{ name = "coding_acceptance_v3"; project = "tests/Jarvis.Core.Tests/Jarvis.Core.Tests.csproj"; filter = "FullyQualifiedName~CodingTaskAcceptanceTests|FullyQualifiedName~DeveloperVerificationCorpusTests|FullyQualifiedName~BoundedDeveloperTestRunnerTests|FullyQualifiedName~StructuredTestReportParserTests" },
         @{ name = "dynamic_catalog"; project = "tests/Jarvis.Core.Tests/Jarvis.Core.Tests.csproj"; filter = "FullyQualifiedName~DynamicToolRegistryTests|FullyQualifiedName~DynamicAgentConnectionTests" },
         @{ name = "permission_pause"; project = "tests/Jarvis.Core.Tests/Jarvis.Core.Tests.csproj"; filter = "FullyQualifiedName~InvocationPermissionTests|FullyQualifiedName~LocalControlLifecycleTests|FullyQualifiedName~ToolPermissionTests|FullyQualifiedName~ToolCapabilityLeaseTests" },
         @{ name = "adaptive_no_replay_parallel"; project = "tests/Jarvis.Core.Tests/Jarvis.Core.Tests.csproj"; filter = "FullyQualifiedName~AdaptiveAgentHarnessTests|FullyQualifiedName~RemoteTaskAdaptiveRulesTests" },
@@ -70,6 +71,7 @@ try {
 
     $report = [pscustomobject]@{
         schemaVersion = 2
+        metricScope = 'Test-group outcomes and durations; not application request latency or model-quality parity.'
         version = (Get-Content VERSION -Raw).Trim()
         startedAt = $started
         finishedAt = [DateTimeOffset]::UtcNow

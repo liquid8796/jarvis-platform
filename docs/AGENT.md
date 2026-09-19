@@ -1,5 +1,9 @@
 # Jarvis Agent operator guide
 
+## 1.0.79 backend and general coding QA
+
+The Agent now executes general acceptance specifications through structured test runners and measured HTTP/SQLite/JSON/file checks, retains source-bound reports and exposes live task events. Backend failures can receive bounded new repair steps in the same task. Refresh/import the installed tool manifest and enable `developer.verify` where required; see [Coding QA](CODING-QA.md). Browser extension 1.4.0 remains the frontend runtime.
+
 ## 1.0.78 frontend QA
 
 The Agent executes structured frontend scenarios through browser extension 1.4.0, records separate viewport images and blocks verified completion on failed or stale evidence. The connected model can inspect images, submit repairs and request retests through the task gateway without configuring another model provider. See [Frontend QA](FRONTEND-QA.md). Update server/Agent, refresh the tool catalog and reload the extension to use the new workflow.

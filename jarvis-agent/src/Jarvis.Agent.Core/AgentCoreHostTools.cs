@@ -20,6 +20,7 @@ public static class AgentCoreHostTools
             new SafeScriptTool(new SafeScriptEngine(guardedInvoker)),
             new DeveloperSymbolSearchTool(),
             new DeveloperTestTool(),
+            new DeveloperVerifyTool(),
             .. SessionToolSet.Create(sessionServices)
         ];
     }

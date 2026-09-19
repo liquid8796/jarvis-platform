@@ -41,6 +41,7 @@ internal sealed partial class RemoteTaskHost
             AgentDeviceId = task.AgentDeviceId,
             WorkspaceRevision = task.WorkspaceRevision,
             AdditionalDirectories = task.WorkspaceDirectories ?? _folders.Additional,
+            TaskAllowedTools = task.AllowedToolIds,
             SessionCancellation = sessionCancellation
         };
 

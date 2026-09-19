@@ -197,7 +197,7 @@ public static class FrontendChangeClassifier
     private static readonly HashSet<string> FrontendExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".tsx", ".jsx", ".vue", ".svelte", ".css", ".scss", ".sass", ".less", ".html", ".htm",
-        ".cshtml", ".razor", ".astro", ".mdx", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".avif", ".woff", ".woff2", ".ttf", ".otf"
+        ".cshtml", ".razor", ".astro", ".mdx"
     };
 
     private static readonly HashSet<string> VisualExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -207,7 +207,7 @@ public static class FrontendChangeClassifier
 
     private static readonly string[] FrontendTerms =
     [
-        "frontend", "front-end", " ui ", "user interface", "component", "dashboard", "modal", "dialog", "button", "form", "page", "browser",
+        "frontend", "front-end", "front end", "ui", "user interface", "dashboard", "modal", "dialog", "button", "form", "web page", "web form",
         "giao diện", "trang web", "nút bấm", "biểu mẫu", "trình duyệt"
     ];
 
@@ -222,33 +222,103 @@ public static class FrontendChangeClassifier
     {
         goal ??= string.Empty;
         ArgumentNullException.ThrowIfNull(steps);
-        var values = steps.SelectMany(step => Strings(step.Arguments)).Concat(changedPaths ?? []).ToArray();
-        var extensions = values.Select(value => Path.GetExtension(value.Trim())).Where(ext => !string.IsNullOrEmpty(ext)).ToArray();
-        var normalizedGoal = " " + goal.ToLowerInvariant() + " ";
-        var renderedProject = (projectFiles ?? []).Any(path => Path.GetExtension(path).ToLowerInvariant() is ".tsx" or ".jsx" or ".html" or ".vue" or ".svelte" or ".astro" or ".cshtml" or ".razor");
-        var renderedScript = values.Any(path => Path.GetExtension(path.Trim()).ToLowerInvariant() is ".js" or ".mjs" or ".cjs" or ".ts" &&
-            (renderedProject || path.Replace('\\', '/').Split('/').Any(segment => segment.ToLowerInvariant() is "wwwroot" or "client" or "frontend" or "ui" or "components" or "pages" or "views")));
-        var frontend = spec is not null || renderedScript || extensions.Any(FrontendExtensions.Contains) || FrontendTerms.Any(term => normalizedGoal.Contains(term, StringComparison.Ordinal));
+        // Actual changes supersede argument hints. Reading an image, mentioning a source path in
+        // a command, or editing backend code beside a web package does not make a task frontend.
+        var values = (changedPaths ?? steps.Where(IsFileMutation).SelectMany(step => MutationPaths(step.Arguments)).ToArray())
+            .Select(Normalize).Where(path => !IsTestPath(path)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var files = (projectFiles ?? []).Select(Normalize).ToArray();
+        var packages = files.Where(file => file == "package.json" || file.EndsWith("/package.json", StringComparison.Ordinal))
+            .Select(Parent).OrderByDescending(root => root.Length).ToArray();
+        var webRoots = WebRoots(files, packages);
+        var frontendPaths = values.Where(path => IsFrontendPath(path, packages, webRoots)).ToArray();
+        var databaseNormalForm = ContainsTerm(goal, "normal form") &&
+            (ContainsTerm(goal, "database") || ContainsTerm(goal, "sql") || ContainsTerm(goal, "relational"));
+        var frontend = spec is not null || frontendPaths.Length > 0 ||
+            FrontendTerms.Any(term => !(term == "form" && databaseNormalForm) && ContainsTerm(goal, term));
         if (!frontend) return FrontendVerificationRequirement.None;
-        var visual = spec?.RequireVisualReview == true || !string.IsNullOrWhiteSpace(spec?.ReferenceId) || extensions.Any(VisualExtensions.Contains) || VisualTerms.Any(term => normalizedGoal.Contains(term, StringComparison.Ordinal));
+        var visual = spec?.RequireVisualReview == true || !string.IsNullOrWhiteSpace(spec?.ReferenceId) ||
+            frontendPaths.Any(path => VisualExtensions.Contains(Path.GetExtension(path))) || VisualTerms.Any(term => ContainsTerm(goal, term));
         return FrontendVerificationRequirement.ForFrontend(visual);
     }
 
-    private static IEnumerable<string> Strings(JsonElement element)
+    private static bool ContainsTerm(string goal, string term) => System.Text.RegularExpressions.Regex.IsMatch(goal,
+        @"(?<![\p{L}\p{N}_])" + System.Text.RegularExpressions.Regex.Escape(term) + @"(?![\p{L}\p{N}_])",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+        TimeSpan.FromMilliseconds(100));
+
+    private static string Normalize(string path) => path.Replace('\\', '/').Trim().TrimStart('.', '/').ToLowerInvariant();
+    private static bool Within(string path, string root) => root.Length == 0 || path.StartsWith(root + "/", StringComparison.Ordinal);
+    private static string Parent(string path) => path.LastIndexOf('/') is var index && index >= 0 ? path[..index] : "";
+    private static bool IsTestPath(string path) => path.Split('/').Any(part => part is "test" or "tests" or "__tests__" or "fixtures") ||
+        path.Contains(".test.", StringComparison.Ordinal) || path.Contains(".spec.", StringComparison.Ordinal);
+    private static string? Package(string path, IReadOnlyList<string> packages) => packages.FirstOrDefault(root => Within(path, root));
+    private static IReadOnlyList<string> WebRoots(IReadOnlyCollection<string> files, IReadOnlyList<string> packages)
+    {
+        var roots = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in files.Where(file => !IsTestPath(file)))
+        {
+            var ext = Path.GetExtension(file);
+            if (ext is ".tsx" or ".jsx" or ".vue" or ".svelte" or ".astro" or ".razor" or ".cshtml")
+            {
+                var package = Package(file, packages);
+                if (package is not null) roots.Add(package);
+                else
+                {
+                    var parts = file.Split('/');
+                    var boundary = Array.FindIndex(parts, part => part is "src" or "wwwroot" or "client" or "frontend" or "web" or "ui" or "components" or "pages" or "views");
+                    roots.Add(boundary >= 0 ? string.Join('/', parts.Take(boundary)) : Parent(file));
+                }
+            }
+            else if (Path.GetFileName(file) == "index.html" && !file.Split('/').Any(part => part is "docs" or "samples" or "examples"))
+            {
+                var root = Parent(file);
+                if (Path.GetFileName(root) is "public" or "src" or "wwwroot") root = Parent(root);
+                roots.Add(root);
+            }
+        }
+        return roots.ToArray();
+    }
+
+    private static bool IsFrontendPath(string path, IReadOnlyList<string> packages, IReadOnlyList<string> webRoots)
+    {
+        var extension = Path.GetExtension(path);
+        if (FrontendExtensions.Contains(extension)) return true;
+        if (extension is not (".js" or ".mjs" or ".cjs" or ".ts") && !VisualExtensions.Contains(extension)) return false;
+        var parts = path.Split('/');
+        var package = Package(path, packages);
+        var relative = package is { Length: > 0 } ? path[(package.Length + 1)..] : path;
+        if (parts.Any(part => part is "server" or "backend" or "database" or "migrations" or "workers" or "scripts" or "data" or "datasets" or "models") ||
+            relative.StartsWith("api/", StringComparison.Ordinal) || relative.Contains("/app/api/", StringComparison.Ordinal) ||
+            relative.StartsWith("app/api/", StringComparison.Ordinal) || relative.Contains("/pages/api/", StringComparison.Ordinal) || relative.StartsWith("pages/api/", StringComparison.Ordinal) ||
+            Path.GetFileNameWithoutExtension(path) is "server" or "worker") return false;
+        if (package is null && parts.Any(part => part is "wwwroot" or "client" or "frontend" or "ui" or "components" or "pages" or "views")) return true;
+        return webRoots.Any(root => Within(path, root) && (package is null || Package(root + "/placeholder", packages) == package));
+    }
+
+    private static bool IsFileMutation(RemoteTaskStep step)
+    {
+        var id = step.ToolId.ToLowerInvariant();
+        return id.StartsWith("filesystem.", StringComparison.Ordinal) &&
+            (id.Contains("write", StringComparison.Ordinal) || id.Contains("edit", StringComparison.Ordinal) || id.Contains("patch", StringComparison.Ordinal));
+    }
+
+    private static IEnumerable<string> MutationPaths(JsonElement element)
     {
         switch (element.ValueKind)
         {
-            case JsonValueKind.String:
-                var value = element.GetString();
-                if (!string.IsNullOrWhiteSpace(value)) yield return value;
-                break;
             case JsonValueKind.Object:
                 foreach (var property in element.EnumerateObject())
-                    foreach (var item in Strings(property.Value)) yield return item;
+                    if (property.Name is "file_path" or "path" or "filePath" && property.Value.ValueKind == JsonValueKind.String)
+                    {
+                        var value = property.Value.GetString();
+                        if (!string.IsNullOrWhiteSpace(value)) yield return value;
+                    }
+                    else if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+                        foreach (var item in MutationPaths(property.Value)) yield return item;
                 break;
             case JsonValueKind.Array:
                 foreach (var child in element.EnumerateArray())
-                    foreach (var item in Strings(child)) yield return item;
+                    foreach (var item in MutationPaths(child)) yield return item;
                 break;
         }
     }

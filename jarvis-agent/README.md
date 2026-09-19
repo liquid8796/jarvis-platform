@@ -1,10 +1,10 @@
-# Jarvis Agent - 1.0.78
+# Jarvis Agent - 1.0.79
 
 Open `Jarvis Agent.slnx` with the entire repository present. Keep its Vendor projects loaded:
 those assemblies implement reused tools, while the standalone Jarvis Code application is excluded
 from Agent build/publish output. Root solution `../Jarvis.slnx` also includes the complete graph.
 
-The platform assembly/file version is 1.0.78.0. See [frontend QA](../docs/FRONTEND-QA.md) for structured scenarios, per-viewport captures, source-bound review and repair. Install/reload browser extension 1.4.0 with this release. Normal Desktop/CLI builds include `jarvis-browser-service.*` in the Agent root and `jarvis-browser-host.*` under `browser/`, matching the publish layout.
+The platform assembly/file version is 1.0.79.0. See [coding QA](../docs/CODING-QA.md) for backend/general acceptance, test reports and repair, and [frontend QA](../docs/FRONTEND-QA.md) for browser scenarios and image review. Browser extension 1.4.0 remains compatible. Normal Desktop/CLI builds include `jarvis-browser-service.*` in the Agent root and `jarvis-browser-host.*` under `browser/`, matching the publish layout.
 Desktop/CLI publish and Windows startup acceptance from earlier versions remains historical evidence. See [verification evidence](../docs/BUILD-STATUS.md)
 for exact scope, the separate Visual Studio license limitation, and remaining production acceptance.
 

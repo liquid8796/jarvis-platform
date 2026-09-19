@@ -351,6 +351,8 @@ public sealed partial class AgentConnection : IAsyncDisposable
         {
             ct.ThrowIfCancellationRequested();
             ValidateSessionBeforeExecution(toolId, context);
+            if (context.TaskAllowedTools is { } allowed && !allowed.Contains(toolId))
+                throw new UnauthorizedAccessException("The task cannot invoke a tool disabled in the server catalog: " + toolId);
             if (!_gate.IsArmed && !AgentSessionRules.AllowedWhilePaused(toolId)) throw new UnauthorizedAccessException("Local control is paused.");
             var snapshot = _registry.Snapshot;
             if (expectedCatalogGeneration is { } generation && generation != snapshot.Generation)
@@ -369,7 +371,9 @@ public sealed partial class AgentConnection : IAsyncDisposable
                     if (!composite && !control)
                     {
                         var claims = ToolExecutionResources.For(tool.Descriptor, arguments, context);
-                        resources = await _resources.AcquireAsync(SchedulingKey(context), claims.Resources, claims.Exclusive, waiting.Token);
+                        resources = context.CooperativeResourceGroup is { } group
+                            ? await _resources.AcquireGroupAsync(SchedulingKey(context), group, claims.Resources, claims.Exclusive, waiting.Token)
+                            : await _resources.AcquireAsync(SchedulingKey(context), claims.Resources, claims.Exclusive, waiting.Token);
                         if (ToolExecutionResources.ReleaseCallLeaseOnCancellation(tool.Descriptor) && resources is IExecutionResourceLease acquired)
                             resources = CancellationBoundResourceLease.Bind(acquired, ct);
                     }

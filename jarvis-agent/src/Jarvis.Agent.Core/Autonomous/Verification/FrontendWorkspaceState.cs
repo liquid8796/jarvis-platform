@@ -12,7 +12,7 @@ public sealed record FrontendWorkspaceState(string Revision, IReadOnlyDictionary
     private static readonly HashSet<string> IgnoredDirectories = new(StringComparer.OrdinalIgnoreCase)
     {
         ".git", ".vs", ".idea", "node_modules", "bin", "obj", "artifacts", "dist", "build", ".next", ".nuxt",
-        "coverage", "TestResults", ".cache", ".turbo", ".venv", "venv", "__pycache__"
+        "coverage", "TestResults", ".cache", ".turbo", ".venv", "venv", "__pycache__", ".pytest_cache", ".jarvis-qa"
     };
 
     public static FrontendWorkspaceState Capture(string project, CancellationToken cancellationToken = default)
@@ -41,6 +41,9 @@ public sealed record FrontendWorkspaceState(string Revision, IReadOnlyDictionary
                     if (attributes.HasFlag(FileAttributes.ReparsePoint))
                         return new("", files, false, "Source contains a linked path; select a workspace without untracked linked source.");
                     if (isDirectory) { pending.Push(path); continue; }
+                    // Runtime databases/logs are observations, not source revisions. Their schema/input sources remain hashed.
+                    var extension = Path.GetExtension(path).ToLowerInvariant();
+                    if (extension is ".db" or ".sqlite" or ".sqlite3" or ".db-wal" or ".db-shm" or ".sqlite-wal" or ".sqlite-shm" or ".log" or ".trx") continue;
                     var before = new FileInfo(path);
                     var length = before.Length;
                     var modified = before.LastWriteTimeUtc;

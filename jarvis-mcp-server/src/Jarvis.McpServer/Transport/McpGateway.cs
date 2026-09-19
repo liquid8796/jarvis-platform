@@ -32,11 +32,15 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
             tools.AddRange(capabilities.Values.Where(t => AgentSessionRules.IsTool(t.Id) && t.Id != "session.close")
                 .Select(t => PublicTool(t, t.Id.Replace(".", "__", StringComparison.Ordinal), t.Description, true)));
         if (tasks.SupportsTasks(user.Id, device.Id))
-            foreach (var tool in AgentTaskMcpTools.List())
+        {
+            var agentVersion = await db.Devices.AsNoTracking().Where(item => item.Id == device.Id && item.OwnerId == user.Id)
+                .Select(item => item.AgentVersion).SingleOrDefaultAsync(ct);
+            foreach (var tool in AgentTaskMcpTools.List(includeCoding: AgentTaskService.SupportsCodingVersion(agentVersion)))
             {
                 if (scoped) tool.InputSchema = sessions.AugmentSchema(tool.InputSchema, required: false);
                 tools.Add(tool);
             }
+        }
         return new ListToolsResult { Tools = tools.OrderBy(t => t.Name, StringComparer.Ordinal).ToList() };
     }
 

@@ -51,11 +51,23 @@ public sealed class AgentTaskExecutionTests
             : "tar -tzf fixture.tar.gz | grep Fixture.dll && echo VERIFIED";
         var plan = Plan(Command("patch", patch), Command("build", build, "BUILD", 60),
             Command("test", test, "TEST"), Command("package", package, "PACKAGE"),
-            Command("verify", verify, "VERIFY") with { ExpectedText = "VERIFIED" });
+            Command("verify", verify, "VERIFY") with { ExpectedText = "VERIFIED" }) with
+        {
+            CodingVerification = new()
+            {
+                Profiles = ["cli"], Checks =
+                [new() { Id = "runtime-acceptance", Kind = "command", ToolId = "process.start", Requirement = "The patched executable computes Add(2,3)=5 and emits its success marker.",
+                    Arguments = WireJson.Element(new { command = test, timeoutSeconds = 30 }), ExpectedText = "FIXTURE_TEST_OK" },
+                 new() { Id = "package-acceptance", Kind = "command", ToolId = "process.start", Requirement = "The produced archive contains Fixture.dll.",
+                    Arguments = WireJson.Element(new { command = verify, timeoutSeconds = 30 }), ExpectedText = "VERIFIED" }]
+            }
+        };
         var created = await peer.CreateAsync(admin, plan);
         var result = await peer.TerminalAsync(admin, created.TaskId);
         Assert.True(result.Status == "COMPLETED", JsonSerializer.Serialize(result));
-        Assert.Equal(5, result.CompletedSteps); Assert.Equal(5, peer.Approval.Calls);
+        Assert.Equal(5, result.CompletedSteps); Assert.Equal(7, peer.Approval.Calls);
+        Assert.True(result.CodingVerification!.Passed);
+        Assert.Equal(2, result.CodingVerification.Checks.Count);
         var artifacts = await admin.GetFromJsonAsync<JsonElement>(peer.Url(created.TaskId, "/artifacts"));
         Assert.Equal(5, artifacts.GetProperty("artifacts").GetArrayLength());
         foreach (var artifact in artifacts.GetProperty("artifacts").EnumerateArray())

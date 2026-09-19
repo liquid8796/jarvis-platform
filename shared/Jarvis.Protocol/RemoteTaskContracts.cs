@@ -25,11 +25,14 @@ public sealed record RemoteTaskPlan
     public int TimeoutSeconds { get; init; } = 1800;
     public IReadOnlyList<RemoteTaskStep> Steps { get; init; } = [];
     public FrontendQaSpec? VerificationSpec { get; init; }
+    public CodingVerificationSpec? CodingVerification { get; init; }
 }
 
 public sealed record RemoteTaskRequest(string OwnerId, string TaskId, RemoteTaskPlan? Plan = null,
     int Offset = 0, int Limit = 20, string? ParentTaskId = null, string? SessionId = null,
-    string? AttemptId = null, FrontendQaSpec? VerificationSpec = null, FrontendQaVisualReview? VisualReview = null, string? CaptureId = null);
+    string? AttemptId = null, FrontendQaSpec? VerificationSpec = null, FrontendQaVisualReview? VisualReview = null, string? CaptureId = null,
+    CodingVerificationSpec? CodingVerification = null, string? ArtifactId = null, IReadOnlyList<string>? ContextPaths = null,
+    IReadOnlyList<string>? EnabledToolIds = null);
 public sealed record RemoteTaskEvidenceSummary(string Kind, bool Success, string Summary, string? Artifact = null,
     FrontendQaProvenance? Provenance = null, FrontendQaCapture? Capture = null);
 public sealed record RemoteTaskVerificationSummary(bool Required, bool Passed, string Type,
@@ -45,13 +48,18 @@ public sealed record RemoteTaskVerificationSummary(bool Required, bool Passed, s
 public sealed record RemoteTaskSnapshot(string TaskId, string Goal, string Project, string Status,
     string? CurrentStep, int CompletedSteps, int TotalSteps, DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt, string? Error = null, string? ParentTaskId = null,
-    string? RootTaskId = null, int Depth = 0, RemoteTaskVerificationSummary? Verification = null);
+    string? RootTaskId = null, int Depth = 0, RemoteTaskVerificationSummary? Verification = null)
+{
+    public CodingVerificationSummary? CodingVerification { get; init; }
+}
 public sealed record RemoteTaskArtifact(int Sequence, string StepId, string Stage, string ToolId,
     int Attempt, bool Success, string Output, bool Truncated, int? ExitCode, DateTimeOffset CreatedAt,
     string? Error = null);
 public sealed record RemoteTaskReply(RemoteTaskSnapshot? Task = null,
     IReadOnlyList<RemoteTaskArtifact>? Artifacts = null, int? NextOffset = null,
-    string? Error = null, string? ErrorCode = null, IReadOnlyList<WireImage>? Images = null)
+    string? Error = null, string? ErrorCode = null, IReadOnlyList<WireImage>? Images = null,
+    IReadOnlyList<RemoteTaskEvent>? Events = null, bool? EventsTruncated = null,
+    CodingReportContent? Report = null, CodingProjectContext? Context = null)
 {
     public static RemoteTaskReply Failure(string code, string message) => new(Error: message, ErrorCode: code);
 }
@@ -62,7 +70,7 @@ public static partial class RemoteTaskRules
     public const int MaxSteps = 32;
     public const int OutputLimit = 16000;
     public const int MaxPlanBytes = 128 * 1024;
-    public static readonly string[] Operations = ["create", "plan", "get", "artifacts", "cancel", "verify", "repair", "review", "complete", "capture"];
+    public static readonly string[] Operations = ["create", "plan", "get", "artifacts", "cancel", "verify", "repair", "review", "complete", "capture", "events", "report", "context"];
     public static string McpName(string operation) => "agent_task_" + operation;
     public static bool IsReservedName(string name) => name.StartsWith("agent_task_", StringComparison.Ordinal);
     [GeneratedRegex("^[A-Za-z0-9_.-]{1,100}$", RegexOptions.CultureInvariant)]
@@ -70,6 +78,14 @@ public static partial class RemoteTaskRules
 
     public static string TaskId(string value) => Guid.TryParse(value, out var id) && id != Guid.Empty
         ? id.ToString("N") : throw new ArgumentException("taskId must be a non-empty UUID.");
+
+    public static void ValidateEnabledToolIds(IReadOnlyList<string>? ids)
+    {
+        if (ids is null) return; // Direct in-process hosts retain their existing local authorization path.
+        if (ids.Count > 512 || ids.Any(id => string.IsNullOrEmpty(id) || !Identifier().IsMatch(id)) ||
+            ids.Distinct(StringComparer.Ordinal).Count() != ids.Count)
+            throw new ArgumentException("The trusted task tool allowlist requires at most 512 unique canonical tool IDs.");
+    }
 
     public static void Validate(RemoteTaskPlan plan)
     {
@@ -82,6 +98,7 @@ public static partial class RemoteTaskRules
         if (plan.Steps is null || plan.Steps.Count > MaxSteps)
             throw new ArgumentException("A plan may contain at most 32 steps.");
         if (plan.VerificationSpec is not null) FrontendQaRules.Validate(plan.VerificationSpec);
+        if (plan.CodingVerification is not null) CodingVerificationRules.Validate(plan.CodingVerification);
         var ids = new HashSet<string>(StringComparer.Ordinal);
         var stage = -1;
         string[] stages = ["EXECUTE", "BUILD", "TEST", "PACKAGE", "VERIFY"];

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.79 - 2026-09-19
+
+- Extend measured verification to backend/API/database/worker, CLI/native/desktop, data/ML, infrastructure/security/performance profiles. Acceptance requirements, real outcomes, source revisions and task-owned report hashes govern completion; exemptions require a reason and cannot erase observed failures.
+- Add structured TRX/JUnit/Jest/Vitest/Go test-report validation, bounded argv execution and diagnostic artifacts. Zero/skipped-only/unrecognized/inconsistent reports cannot pass. Correct frontend classifier token boundaries and package ownership so backend and non-web artifact work is not forced into browser QA.
+- Add measured HTTP/body/schema/auth, readonly SQLite, JSON/numeric/shape and file/archive checks through `developer.verify`. Owned loopback fixtures and their probes share a host-only cooperative resource group while unrelated tasks remain excluded; startup, cancellation and shutdown are observed.
+- Generalize idempotent repair/verify/completion and add live task events, owned report pagination and guarded project context. Preserve unknown/cancelled mutation non-replay, enforce fresh server-enabled tool scope and fence coding features to compatible agents. Existing connected models perform the workflow without configuring a paid provider.
+- Add a real executable API/SQLite/CLI/package/JUnit fixture and positive/negative task-path acceptance, plus parser, process, schema, ownership and OAuth/MCP regressions. Package/assembly versions are 1.0.79 / 1.0.79.0; browser extension remains 1.4.0. See `docs/CODING-QA.md` for scope and activation.
+
 ## 1.0.78 - 2026-09-19
 
 - Replace frontend structural-smoke completion with measured scenarios, explicit target postconditions, separate viewport captures, overlay/console/network checks and source-bound artifact evidence. NORMAL frontend tasks now enter the QA workflow; READ_ONLY reports unverified execution without browser mutation.

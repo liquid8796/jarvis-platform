@@ -16,7 +16,7 @@ public sealed partial class AgentTaskMcpTests
         var listed = await RpcAsync(client, "tools/list", new { });
         var tools = listed.GetProperty("result").GetProperty("tools").EnumerateArray().ToArray();
         Assert.Contains(tools, t => t.GetProperty("name").GetString() == "schema_fixture");
-        Assert.Equal(11, tools.Count(t => t.GetProperty("name").GetString()!.StartsWith("agent_task_", StringComparison.Ordinal)));
+        Assert.Equal(14, tools.Count(t => t.GetProperty("name").GetString()!.StartsWith("agent_task_", StringComparison.Ordinal)));
         foreach (var tool in tools)
         {
             Assert.True(tool.TryGetProperty("outputSchema", out var schema), tool.GetProperty("name").GetString());
@@ -103,6 +103,9 @@ public sealed partial class AgentTaskMcpTests
     [InlineData("review")]
     [InlineData("complete")]
     [InlineData("capture")]
+    [InlineData("events")]
+    [InlineData("report")]
+    [InlineData("context")]
     public async Task Every_task_operation_returns_schema_compatible_validation_errors(string operation)
     {
         using var app = new ServerFixture(); using var admin = await app.Admin();

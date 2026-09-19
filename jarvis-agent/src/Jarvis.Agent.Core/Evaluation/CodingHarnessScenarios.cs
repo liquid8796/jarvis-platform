@@ -43,8 +43,8 @@ public sealed record CodingHarnessMetrics(
     double AverageEvidenceCount);
 
 /// <summary>
-/// Stable engineering scenarios used to compare Jarvis coding-harness releases on evidence quality,
-/// not only throughput and tool latency.
+/// Legacy fixture metadata and aggregation over supplied booleans. This is not the production QA
+/// gate or an executable quality benchmark; use RemoteTaskHost coding verification and Verify-CodingQa.ps1.
 /// </summary>
 public static class CodingHarnessScenarios
 {

@@ -1,5 +1,9 @@
 # Agent Task Gateway (Approach A)
 
+## 1.0.79 general coding verification
+
+`codingVerification` extends the task contract to backend and other coding domains alongside the existing frontend `verificationSpec`. Required acceptance runs through installed guarded tools and retains source/run/report-bound receipts. Known failures can accept new repair steps without replaying prior mutations. `agent_task_events`, `agent_task_report` and `agent_task_context` expose live diagnostics, owned reports and applicable project context. Coding features require Agent 1.0.79; older agents retain legacy FE/task operations. See [Coding QA](CODING-QA.md).
+
 ## 1.0.78 measured frontend QA and external repair
 
 The current frontend workflow is documented in [FRONTEND-QA.md](FRONTEND-QA.md). It applies to NORMAL and AUTONOMOUS tasks, accepts a specification-only QA task, exposes verify/capture/review/repair/complete operations, and separates execution from verified completion. Captures and reviews are bound to source/run/image hashes; later assertions cannot erase measured failures. READ_ONLY never runs browser mutation and reports verification as not_run. The following versioned sections describe historical introductions; 1.0.78 replaces the earlier last-evidence-wins, structural-visual-pass and autonomous-only rules.

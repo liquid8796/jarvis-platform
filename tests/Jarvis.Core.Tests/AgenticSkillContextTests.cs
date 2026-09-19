@@ -30,6 +30,7 @@ public sealed class AgenticSkillContextTests
             {
                 Goal = "Inspect backend state",
                 ExecutionMode = "AUTONOMOUS",
+                CodingVerification = new() { Mode = "not_required", Reason = "No source mutation; this fixture exercises only the coordinator skill-context contract." },
                 TimeoutSeconds = 20
             }), CancellationToken.None);
             Assert.Null(create.Error);

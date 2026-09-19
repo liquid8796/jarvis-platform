@@ -76,6 +76,7 @@ internal sealed partial class RemoteTaskHost
                 task = Save(task with { Snapshot = task.Snapshot with { Status = "RUNNING", CurrentStep = step.Id, UpdatedAt = DateTimeOffset.UtcNow } });
                 var succeeded = false;
                 var cancelledOrTimedOut = false;
+                var knownFailure = false;
                 RemoteTaskArtifact? failureArtifact = null;
 
                 for (var attempt = 1; attempt <= step.MaxAttempts; attempt++)
@@ -85,17 +86,26 @@ internal sealed partial class RemoteTaskHost
                     var context = active.Context with
                     {
                         CallId = task.Snapshot.TaskId + ":" + step.Id + ":r" + repairs + ":" + attempt,
-                        SessionCancellation = active.Stop.Token
+                        SessionCancellation = active.Stop.Token,
+                        ReportOutput = (stream, text) => EmitCodingEvent(task, new() { Type = "step.output", StepId = step.Id,
+                            ToolId = step.ToolId, Stream = stream, Text = text })
                     };
                     RemoteStepResult result;
                     try
                     {
                         if (step.ToolId is "process.start" or "process.spawn")
-                            result = await RemoteProcessRunner.RunAsync(step, context, _invoke, _cancelJob, stepStop.Token).ConfigureAwait(false);
+                            result = await RemoteProcessRunner.RunAsync(step, context, _invoke, _cancelJob, stepStop.Token,
+                                e => EmitCodingEvent(task, e)).ConfigureAwait(false);
                         else
                         {
                             var reply = await _invoke(step.ToolId, step.Arguments, context, stepStop.Token).ConfigureAwait(false);
                             result = new(!reply.IsError, reply.Text, Error: reply.IsError ? reply.Text : null);
+                            if (step.ToolId == "developer.test")
+                            {
+                                using var testResult = JsonDocument.Parse(reply.Text);
+                                if (testResult.RootElement.TryGetProperty("exitCode", out var code) && code.TryGetInt32(out var exitCode))
+                                    result = result with { ExitCode = exitCode, KnownCompletion = true };
+                            }
                         }
                         if (result.Output.Length > RemoteTaskRules.OutputLimit)
                             result = result with { Output = result.Output[^RemoteTaskRules.OutputLimit..], Truncated = true };
@@ -112,6 +122,7 @@ internal sealed partial class RemoteTaskHost
                     }
 
                     cancelledOrTimedOut = stepStop.IsCancellationRequested;
+                    knownFailure = result.KnownCompletion && !cancelledOrTimedOut;
                     var output = result.Output ?? "";
                     var artifactAttempt = repairs * 3 + attempt;
                     var artifact = new RemoteTaskArtifact(task.Artifacts.Count, step.Id, step.Stage, step.ToolId, artifactAttempt,
@@ -150,7 +161,13 @@ internal sealed partial class RemoteTaskHost
                     }
                 }
 
-                Save(task with { Snapshot = task.Snapshot with { Status = "FAILED", Error = failureArtifact?.Error, UpdatedAt = DateTimeOffset.UtcNow } });
+                var failedSource = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
+                var frontendFailure = FrontendChangeClassifier.Classify(task.Plan.Goal, task.Plan.Steps,
+                    failedSource.ChangedSince(task.SourceBaseline).ToArray(), task.Plan.VerificationSpec, failedSource.Files.Keys.ToArray()).IsFrontend;
+                var repairable = knownFailure && (RequiresCodingQa(task, failedSource, frontendFailure) || task.Plan.VerificationSpec is not null);
+                task = Save(task with { KnownExecutionFailure = repairable,
+                    Snapshot = task.Snapshot with { Status = repairable ? "NEEDS_REPAIR" : "FAILED", CurrentStep = null,
+                        Error = failureArtifact?.Error, UpdatedAt = DateTimeOffset.UtcNow } });
                 return (task, false);
             }
         }
@@ -166,11 +183,39 @@ internal sealed partial class RemoteTaskHost
             var requirement = FrontendChangeClassifier.Classify(task.Plan.Goal, task.Plan.Steps,
                 source.ChangedSince(task.SourceBaseline).ToArray(), task.Plan.VerificationSpec, source.Files.Keys.ToArray());
             var spec = task.Plan.VerificationSpec;
+            List<FrontendEvidence>? mixedEvidence = null;
+            var mixedRunId = Guid.NewGuid().ToString("N");
+            if (RequiresCodingQa(task, source, requirement.IsFrontend))
+            {
+                Func<AgentExecutionContext, Task>? beforeChecks = spec is not null && task.Plan.CodingVerification?.Mode == "required"
+                    ? async context => { mixedEvidence = await CollectRenderedFrontendEvidenceAsync(task, active, spec, mixedRunId, source.Revision, context).ConfigureAwait(false); }
+                    : null;
+                var coding = await VerifyCodingGoalAsync(task, active, source, beforeChecks).ConfigureAwait(false);
+                task = coding.Task;
+                if (mixedEvidence is not null)
+                {
+                    var mixedResult = FrontendVerificationGate.Evaluate(requirement, mixedEvidence, spec, null, mixedRunId, source.Revision);
+                    task = Save(task with { FrontendEvidence = mixedEvidence, QaRunId = mixedRunId, QaSourceRevision = source.Revision,
+                        Snapshot = task.Snapshot with { Verification = ToProtocolVerificationSummary(requirement, mixedResult) } });
+                }
+                if (!coding.Success) return (task, false);
+                source = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
+                var artifactsFresh = true;
+                try { ValidateCodingArtifactTargets(task); }
+                catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or JsonException) { artifactsFresh = false; }
+                if (!source.Complete || task.CodingEvidence?.SourceAfter != source.Revision || !artifactsFresh)
+                {
+                    task = SaveCoding(task, task.CodingEvidence! with { Passed = false, State = "stale",
+                        SourceAfter = source.Complete ? source.Revision : null,
+                        Reason = "Source or a measured artifact changed after coding checks; fresh verification is required." }, "NEEDS_VERIFICATION");
+                    return (task, false);
+                }
+            }
             if (!requirement.IsFrontend && (_agentic is null || task.Plan.ExecutionMode != "AUTONOMOUS"))
             {
                 var none = new RemoteTaskVerificationSummary(false, false, "none", [], [], [])
                 { State = "not_required", SourceRevision = source.Complete ? source.Revision : null };
-                return (Save(task with { Snapshot = task.Snapshot with { Verification = none } }), true);
+                return (Save(task with { GoalVerificationPassed = true, Snapshot = task.Snapshot with { Verification = none } }), true);
             }
             if (task.Plan.ExecutionMode == "READ_ONLY")
             {
@@ -180,7 +225,7 @@ internal sealed partial class RemoteTaskHost
             }
 
             RequireArmed();
-            var runId = Guid.NewGuid().ToString("N");
+            var runId = mixedEvidence is null ? Guid.NewGuid().ToString("N") : mixedRunId;
             task = Save(task with
             {
                 QaRunId = runId, QaSourceRevision = source.Complete ? source.Revision : null,
@@ -199,9 +244,9 @@ internal sealed partial class RemoteTaskHost
                     Verification = summary, Error = reason, UpdatedAt = DateTimeOffset.UtcNow } }), false);
             }
 
-            var evidence = requirement.IsFrontend
+            var evidence = mixedEvidence ?? (requirement.IsFrontend
                 ? await CollectRenderedFrontendEvidenceAsync(task, active, spec!, runId, source.Revision).ConfigureAwait(false)
-                : new List<FrontendEvidence>();
+                : new List<FrontendEvidence>());
             var after = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
             var sourceStable = after.Complete && source.Revision == after.Revision;
             if (requirement.IsFrontend && !sourceStable)
@@ -223,25 +268,35 @@ internal sealed partial class RemoteTaskHost
                     FrontendRequirement = requirement, FrontendEvidence = evidence
                 }.WithSkillLoader(_skillLoader), active.Stop.Token).ConfigureAwait(false);
                 // Model assertions are planning/review input, never replacements for measured browser failures.
+            }
+
+            var finalSource = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
+            var finalArtifactsFresh = true;
+            try { ValidateCodingArtifactTargets(task); }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or JsonException) { finalArtifactsFresh = false; }
+            if (!finalSource.Complete || finalSource.Revision != source.Revision || !finalArtifactsFresh ||
+                task.CodingEvidence is { } codingEvidence && codingEvidence.SourceAfter != finalSource.Revision)
+            {
+                sourceStable = false;
                 if (requirement.IsFrontend)
-                {
-                    var finalSource = FrontendWorkspaceState.Capture(task.Snapshot.Project, active.Stop.Token);
-                    if (!finalSource.Complete || finalSource.Revision != source.Revision)
-                    {
-                        sourceStable = false;
-                        evidence.Add(Measured(task, runId, source.Revision, spec!.Url, FrontendEvidenceKind.TargetIdentity,
-                            false, "Source changed while the coordinator evaluated the goal. New browser evidence is required."));
-                    }
-                }
+                    evidence.Add(Measured(task, runId, source.Revision, spec!.Url, FrontendEvidenceKind.TargetIdentity,
+                        false, "Source or a measured artifact changed during verification. Fresh evidence is required."));
+                if (task.CodingEvidence is { } previousCoding)
+                    task = SaveCoding(task, previousCoding with { Passed = false, State = "stale",
+                        SourceAfter = finalSource.Complete ? finalSource.Revision : null,
+                        Reason = "Source or a measured artifact changed after checks; coding evidence is stale." }, "NEEDS_VERIFICATION");
             }
 
             var result = FrontendVerificationGate.Evaluate(requirement, evidence, spec, null, runId, source.Revision);
-            var passed = verification.Success && result.Passed && (!requirement.IsFrontend || sourceStable);
+            var passed = verification.Success && result.Passed && sourceStable;
             var reviewOnly = !passed && verification.Success && sourceStable && result.Failed.Count == 0 &&
                 result.Missing.Count > 0 && result.Missing.All(k => k == FrontendEvidenceKind.VisualFidelity);
             var nextState = passed ? "passed" : reviewOnly ? "needs_review" : !sourceStable ? "stale" : "failed";
-            var status = passed ? "COMPLETED" : !requirement.IsFrontend ? "FAILED" : reviewOnly ? "NEEDS_REVIEW" : !sourceStable ? "NEEDS_VERIFICATION" : "NEEDS_REPAIR";
-            var error = passed ? null : reviewOnly ? "Measured checks passed. Inspect every captured image and submit a bound visual review."
+            var repairSteps = verification.RepairSteps?.ToArray() ?? [];
+            var willRepair = !passed && !reviewOnly && repairSteps.Length > 0 && repairRound < RemoteTaskAdaptiveRules.MaxRepairs;
+            var status = willRepair ? "REPAIRING" : passed ? "COMPLETED" : !sourceStable ? "NEEDS_VERIFICATION" : reviewOnly ? "NEEDS_REVIEW" :
+                requirement.IsFrontend || task.CodingEvidence is not null ? "NEEDS_REPAIR" : "FAILED";
+            var error = passed ? null : !sourceStable ? "Source or a measured artifact changed after verification; current evidence is stale." : reviewOnly ? "Measured checks passed. Inspect every captured image and submit a bound visual review."
                 : verification.Error ?? result.DescribeFailure();
             var summaryResult = ToProtocolVerificationSummary(requirement, result) with
             {
@@ -256,15 +311,15 @@ internal sealed partial class RemoteTaskHost
                 false, null, DateTimeOffset.UtcNow, error);
             task = Save(task with
             {
-                GoalVerificationPassed = verification.Success,
+                GoalVerificationPassed = verification.Success && sourceStable,
+                KnownExecutionFailure = passed ? false : task.KnownExecutionFailure,
                 Artifacts = task.Artifacts.Append(artifact).ToArray(),
                 Snapshot = task.Snapshot with { Verification = summaryResult, Status = status, CurrentStep = null,
                     Error = error, UpdatedAt = DateTimeOffset.UtcNow }
             });
             if (passed) return (task, true);
 
-            var repairSteps = verification.RepairSteps?.ToArray() ?? [];
-            if (reviewOnly || repairSteps.Length == 0 || repairRound >= RemoteTaskAdaptiveRules.MaxRepairs)
+            if (!willRepair)
                 return (task, false);
             // Validate repairs as a fresh ordered sequence; completed stages are not replayed.
             var repairPlan = task.Plan with { Steps = repairSteps };
@@ -287,7 +342,7 @@ internal sealed partial class RemoteTaskHost
     }
 
     private async Task<List<FrontendEvidence>> CollectRenderedFrontendEvidenceAsync(StoredRemoteTask task, Active active,
-        FrontendQaSpec spec, string runId, string revision)
+        FrontendQaSpec spec, string runId, string revision, AgentExecutionContext? verificationContext = null)
     {
         var evidence = new List<FrontendEvidence>();
         if (!_registry.Snapshot.Tools.ContainsKey("browser.qa"))
@@ -300,7 +355,7 @@ internal sealed partial class RemoteTaskHost
         try
         {
             reply = await _invoke("browser.qa", WireJson.Element(new { spec, browserFamily = "dev" }),
-                active.Context with { CallId = task.Snapshot.TaskId + ":qa:" + runId, SessionCancellation = active.Stop.Token },
+                (verificationContext ?? active.Context) with { CallId = task.Snapshot.TaskId + ":qa:" + runId, SessionCancellation = active.Stop.Token },
                 active.Stop.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException or IOException or TimeoutException)

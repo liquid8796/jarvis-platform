@@ -105,9 +105,52 @@ public sealed class DeveloperSymbolSearchTool : IAgentTool
     }
 }
 
-public sealed record DeveloperTestRunRequest(string Project, string? Filter, int TimeoutSeconds);
-public sealed record DeveloperTestRunResult(int ExitCode, string Stdout, string Stderr);
-public sealed record StructuredTestSummary(int ExitCode, int Passed, int Failed, int Skipped, int Total, string Output, bool Truncated);
+public sealed record DeveloperTestRunRequest(string Project, string? Filter, int TimeoutSeconds)
+{
+    public string Framework { get; init; } = "dotnet";
+    public IReadOnlyList<string>? Argv { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlyDictionary<string, string>? Environment { get; init; }
+    public string ReportFormat { get; init; } = "trx";
+    public string? ReportFile { get; init; }
+    public string ArtifactDirectory { get; init; } = "";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Func<string, string, Task>? ReportOutput { get; init; }
+}
+public sealed record DeveloperTestRunResult(int ExitCode, string Stdout, string Stderr)
+{
+    public string? ReportContent { get; init; }
+    public string? ReportError { get; init; }
+    public string? StdoutPath { get; init; }
+    public string? StderrPath { get; init; }
+    public bool LogsTruncated { get; init; }
+    public IReadOnlyList<string> Argv { get; init; } = [];
+    public DateTimeOffset StartedAt { get; init; }
+    public DateTimeOffset FinishedAt { get; init; }
+}
+public sealed record StructuredTestSummary(int ExitCode, int Passed, int Failed, int Skipped, int Total, string Output, bool Truncated)
+{
+    public int SchemaVersion { get; init; } = 1;
+    public string CallId { get; init; } = "";
+    public string ScopeId { get; init; } = "";
+    public string State { get; init; } = "unrecognized";
+    public int Executed { get; init; }
+    public bool ReportParsed { get; init; }
+    public string Framework { get; init; } = "";
+    public string ReportFormat { get; init; } = "";
+    public string RunId { get; init; } = "";
+    public string WorkingDirectory { get; init; } = "";
+    public IReadOnlyList<string> Argv { get; init; } = [];
+    public string? ReportPath { get; init; }
+    public string? ReportSha256 { get; init; }
+    public string? StdoutPath { get; init; }
+    public string? StderrPath { get; init; }
+    public string? StdoutSha256 { get; init; }
+    public string? StderrSha256 { get; init; }
+    public DateTimeOffset StartedAt { get; init; }
+    public DateTimeOffset FinishedAt { get; init; }
+    public IReadOnlyList<string> Diagnostics { get; init; } = [];
+}
 public delegate Task<DeveloperTestRunResult> DeveloperTestRunner(DeveloperTestRunRequest request, CancellationToken cancellationToken);
 
 public static partial class DotnetTestSummaryParser
@@ -137,20 +180,34 @@ public static partial class DotnetTestSummaryParser
 public sealed class DeveloperTestTool : IAgentTool
 {
     private readonly DeveloperTestRunner _runner;
-    public DeveloperTestTool() : this(RunDotnetAsync) { }
-    public DeveloperTestTool(DeveloperTestRunner runner) => _runner = runner ?? throw new ArgumentNullException(nameof(runner));
+    private readonly string _artifactRoot;
+    public DeveloperTestTool() : this(BoundedDeveloperTestRunner.RunAsync) { }
+    public DeveloperTestTool(DeveloperTestRunner runner, string? artifactRoot = null)
+    {
+        _runner = runner ?? throw new ArgumentNullException(nameof(runner));
+        _artifactRoot = Path.GetFullPath(artifactRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JarvisAgent", "qa-artifacts"));
+    }
 
     public ToolDescriptor Descriptor { get; } = new(
         "developer.test", "developer__test", "developer",
-        "Run dotnet test for a project/directory inside the selected workspace and return bounded structured passed/failed/skipped/total counts plus output. This tool may build/write project artifacts and is therefore mutating and sensitive.",
+        "Run bounded tests and validate a fresh machine-readable report. Default dotnet emits TRX; python emits pytest JUnit; go emits go-test JSON. For node/native/custom supply argv and reportFormat. {report}/{results} placeholders are substituted inside individual argv tokens without a shell. Zero, skipped-only, missing, inconsistent or unrecognized test results never pass. Private report/stdout/stderr artifacts and hashes are returned.",
         WireJson.Element(new
         {
             type = "object",
             properties = new
             {
                 project = new { type = "string", minLength = 1, maxLength = 1024 },
-                filter = new { type = "string", minLength = 1, maxLength = 1000 },
-                timeoutSeconds = new { type = "integer", minimum = 1, maximum = 1800, @default = 600 }
+                filter = new { type = "string", minLength = 1, maxLength = 1000, description = "Filter for default dotnet/python/go commands; include custom framework filters directly in argv." },
+                timeoutSeconds = new { type = "integer", minimum = 1, maximum = 1800, @default = 600 },
+                framework = new { type = "string", @enum = new[] { "dotnet", "python", "node", "go", "native", "custom" } },
+                argv = new { type = "array", minItems = 1, maxItems = 64, items = new { type = "string", maxLength = 4096 } },
+                environment = new { type = "object", maxProperties = 128, propertyNames = new { pattern = "^[A-Za-z_][A-Za-z0-9_]*$" },
+                    additionalProperties = new { type = "string", maxLength = 32768 } },
+                environmentFromProcess = new { type = "object", maxProperties = 128, propertyNames = new { pattern = "^[A-Za-z_][A-Za-z0-9_]*$" },
+                    additionalProperties = new { type = "string", maxLength = 200, pattern = "^[A-Za-z_][A-Za-z0-9_]*$" },
+                    description = "Map child environment names to existing host environment names. Values are resolved in memory and never added to argv or result metadata; missing names fail explicitly." },
+                reportFormat = new { type = "string", @enum = new[] { "trx", "junit", "jest", "vitest", "go-json" } },
+                reportFile = new { type = "string", minLength = 1, maxLength = 2048, description = "Optional report output path within the workspace; '-' parses stdout. Otherwise use {report} in argv for a unique private output file." }
             },
             additionalProperties = false
         }),
@@ -159,41 +216,120 @@ public sealed class DeveloperTestTool : IAgentTool
 
     public async Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context, CancellationToken cancellationToken)
     {
+        context.SessionCancellation.ThrowIfCancellationRequested();
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.SessionCancellation);
+        cancellationToken = lifetime.Token;
+        var invocationStarted = DateTimeOffset.UtcNow;
         var projectArg = arguments.TryGetProperty("project", out var projectNode) ? projectNode.GetString() : null;
         var filter = arguments.TryGetProperty("filter", out var filterNode) ? filterNode.GetString() : null;
         var timeout = arguments.TryGetProperty("timeoutSeconds", out var timeoutNode) ? timeoutNode.GetInt32() : 600;
         if (filter?.Length > 1000 || timeout is < 1 or > 1800) throw new ArgumentException("Invalid developer test bounds.");
         var project = DeveloperPathPolicy.Resolve(context, projectArg);
-        var result = await _runner(new(project, filter, timeout), cancellationToken).ConfigureAwait(false);
+        var framework = arguments.TryGetProperty("framework", out var frameworkNode) ? frameworkNode.GetString() ?? "" : "dotnet";
+        if (framework is not ("dotnet" or "python" or "node" or "go" or "native" or "custom")) throw new ArgumentException("Unsupported test framework.");
+        var format = arguments.TryGetProperty("reportFormat", out var formatNode) ? formatNode.GetString() ?? "" : framework switch
+        { "dotnet" => "trx", "python" => "junit", "go" => "go-json", _ => "" };
+        if (format is not ("trx" or "junit" or "jest" or "vitest" or "go-json")) throw new ArgumentException("An explicit supported reportFormat is required.");
+        var argv = arguments.TryGetProperty("argv", out var argvNode) ? argvNode.Deserialize<string[]>() : null;
+        if (argv is not null && (argv.Length is < 1 or > 64 || string.IsNullOrWhiteSpace(argv[0]) || argv.Any(arg => arg is null || arg.Length > 4096 || arg.Contains('\0')) || argv.Sum(arg => arg.Length) > 32768))
+            throw new ArgumentException("Test argv exceeds bounded limits.");
+        if (argv is not null && !string.IsNullOrWhiteSpace(filter))
+            throw new ArgumentException("With explicit argv, include the framework filter in argv; filter is only applied by the default framework commands.");
+        if (argv is null && framework is "node" or "native" or "custom") throw new ArgumentException("This framework requires explicit argv.");
+        var environment = ResolveEnvironment(arguments);
+        var reportFile = arguments.TryGetProperty("reportFile", out var reportNode) ? reportNode.GetString() : null;
+        if (reportFile is not null && reportFile != "-") reportFile = ResolveReportOutput(context, reportFile);
+        var runId = Guid.NewGuid().ToString("N");
+        var scope = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(
+            (context.OwnerId ?? "") + "\n" + (context.AgentDeviceId ?? "") + "\n" + context.IsolationScopeId))).ToLowerInvariant();
+        var directory = Path.Combine(_artifactRoot, scope, runId);
+        RejectLinks(directory);
+        Directory.CreateDirectory(directory);
+        RejectLinks(directory);
+        var result = await _runner(new(project, filter, timeout)
+        {
+            Framework = framework, Argv = argv, Environment = environment, ReportFormat = format, ReportFile = reportFile,
+            ArtifactDirectory = directory, ReportOutput = context.ReportOutput
+        }, cancellationToken).ConfigureAwait(false);
         var combined = string.IsNullOrEmpty(result.Stderr) ? result.Stdout : result.Stdout + "\n--- stderr ---\n" + result.Stderr;
-        var summary = DotnetTestSummaryParser.Parse(combined, result.ExitCode);
-        return new ToolReply(JsonSerializer.Serialize(summary, WireJson.Options), IsError: result.ExitCode != 0);
+        var summary = StructuredTestReportParser.Parse(format, result.ReportContent ?? "", result.ExitCode, combined) with
+        {
+            Framework = framework, RunId = runId, CallId = context.CallId, ScopeId = context.IsolationScopeId,
+            WorkingDirectory = Directory.Exists(project) ? project : Path.GetDirectoryName(project)!,
+            Argv = result.Argv.Count > 0 ? result.Argv : argv ?? [],
+            StartedAt = result.StartedAt == default ? invocationStarted : result.StartedAt,
+            FinishedAt = result.FinishedAt == default ? DateTimeOffset.UtcNow : result.FinishedAt
+        };
+        if (result.ReportError is { Length: > 0 } reportError)
+            summary = summary with { State = result.ExitCode == 0 ? "invalid_report" : "failed", ReportParsed = false, Diagnostics = summary.Diagnostics.Append(reportError).ToArray() };
+        var stdoutPath = result.StdoutPath ?? Path.Combine(directory, "stdout.txt");
+        var stderrPath = result.StderrPath ?? Path.Combine(directory, "stderr.txt");
+        if (result.StdoutPath is null) await File.WriteAllTextAsync(stdoutPath, result.Stdout, cancellationToken).ConfigureAwait(false);
+        if (result.StderrPath is null) await File.WriteAllTextAsync(stderrPath, result.Stderr, cancellationToken).ConfigureAwait(false);
+        string? reportPath = null;
+        if (result.ReportContent is { } report && Encoding.UTF8.GetByteCount(report) <= StructuredTestReportParser.MaxReportBytes)
+        {
+            reportPath = Path.Combine(directory, "report.txt");
+            await File.WriteAllTextAsync(reportPath, report, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+        }
+        summary = summary with
+        {
+            ReportPath = reportPath, ReportSha256 = reportPath is null ? null : FileHash(reportPath),
+            StdoutPath = stdoutPath, StderrPath = stderrPath, StdoutSha256 = FileHash(stdoutPath), StderrSha256 = FileHash(stderrPath),
+            Truncated = summary.Truncated || result.LogsTruncated
+        };
+        return new ToolReply(JsonSerializer.Serialize(summary, WireJson.Options), IsError: summary.State != "passed");
     }
 
-    private static async Task<DeveloperTestRunResult> RunDotnetAsync(DeveloperTestRunRequest request, CancellationToken cancellationToken)
+    private static string FileHash(string path)
+    { using var stream = File.OpenRead(path); return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream)).ToLowerInvariant(); }
+
+    private static IReadOnlyDictionary<string, string>? ResolveEnvironment(JsonElement arguments)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(request.TimeoutSeconds));
-        var start = new ProcessStartInfo("dotnet")
+        var values = new Dictionary<string, string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        foreach (var field in new[] { "environment", "environmentFromProcess" })
         {
-            WorkingDirectory = Directory.Exists(request.Project) ? request.Project : Path.GetDirectoryName(request.Project)!,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true
-        };
-        start.ArgumentList.Add("test"); start.ArgumentList.Add(request.Project); start.ArgumentList.Add("--nologo");
-        if (!string.IsNullOrWhiteSpace(request.Filter)) { start.ArgumentList.Add("--filter"); start.ArgumentList.Add(request.Filter); }
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Failed to start dotnet test.");
-        var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
-        var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
-        try { await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false); }
-        catch (OperationCanceledException)
-        {
-            try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
-            throw;
+            if (!arguments.TryGetProperty(field, out var source)) continue;
+            if (source.ValueKind != JsonValueKind.Object) throw new ArgumentException(field + " must be an object.");
+            foreach (var item in source.EnumerateObject())
+            {
+                if (values.Count >= 128 || !EnvironmentName(item.Name) || item.Value.ValueKind != JsonValueKind.String || values.ContainsKey(item.Name))
+                    throw new ArgumentException("Invalid, duplicate or excessive test environment names.");
+                var value = item.Value.GetString()!;
+                if (field == "environmentFromProcess")
+                {
+                    if (!EnvironmentName(value)) throw new ArgumentException("Invalid source environment name.");
+                    value = System.Environment.GetEnvironmentVariable(value) ?? throw new InvalidOperationException("Required host environment variable is missing: " + value);
+                }
+                if (value.Length > 32768 || value.Contains('\0')) throw new ArgumentException("Test environment value exceeds process-tool bounds.");
+                values.Add(item.Name, value);
+            }
         }
-        return new(process.ExitCode, await stdout.ConfigureAwait(false), await stderr.ConfigureAwait(false));
+        return values.Count == 0 ? null : values;
+    }
+
+    private static bool EnvironmentName(string name) => name.Length is > 0 and <= 200 &&
+        Regex.IsMatch(name, @"\A[A-Za-z_][A-Za-z0-9_]*\z", RegexOptions.CultureInvariant);
+
+    private static void RejectLinks(string path)
+    {
+        for (var current = path; !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
+            if ((File.Exists(current) || Directory.Exists(current)) && File.GetAttributes(current).HasFlag(FileAttributes.ReparsePoint))
+                throw new UnauthorizedAccessException("Private test artifacts must not contain linked paths.");
+    }
+
+    private static string ResolveReportOutput(AgentExecutionContext context, string path)
+    {
+        if (path.Length is < 1 or > 2048) throw new ArgumentException("Invalid reportFile.");
+        var full = Path.GetFullPath(path, context.Workspace);
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!new WorkspaceDirectories(context.Workspace, context.AdditionalDirectories).Directories.Any(root =>
+            full.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison)))
+            throw new UnauthorizedAccessException("Test report must remain within selected workspace directories.");
+        for (var current = full; !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
+            if ((File.Exists(current) || Directory.Exists(current)) && File.GetAttributes(current).HasFlag(FileAttributes.ReparsePoint))
+                throw new UnauthorizedAccessException("Test report path must not contain linked paths.");
+        return full;
     }
 }
 

@@ -45,6 +45,8 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
             if (string.IsNullOrWhiteSpace(request.OwnerId) || request.OwnerId.Length > 256)
                 throw new ArgumentException("Invalid owner identity.");
             var id = RemoteTaskRules.TaskId(request.TaskId);
+            if (operation is "create" or "plan" or "verify" or "repair" or "context")
+                RemoteTaskRules.ValidateEnabledToolIds(request.EnabledToolIds);
             var caller = ResolveCaller(request);
             lock (_sync)
             {
@@ -82,7 +84,8 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                     }
                     ValidateTools(request.Plan);
                     var agentPlansGoal = request.Plan.Steps.Count == 0 && request.Plan.ExecutionMode == "AUTONOMOUS" && _agentic is not null;
-                    var verificationOnly = request.Plan.Steps.Count == 0 && request.Plan.ExecutionMode != "READ_ONLY" && request.Plan.VerificationSpec is not null;
+                    var verificationOnly = !agentPlansGoal && request.Plan.Steps.Count == 0 && request.Plan.ExecutionMode != "READ_ONLY" &&
+                        (request.Plan.VerificationSpec is not null || request.Plan.CodingVerification is not null);
                     if (_store.AtCapacity) return Task.FromResult(RemoteTaskReply.Failure("busy", "Local task history is full (128). Archive terminal task files locally before creating more."));
                     if ((request.Plan.Steps.Count > 0 || agentPlansGoal || verificationOnly) && _active.Count >= (long)_settings.MaxDurableTasks + _settings.MaxQueuedCalls) return Busy();
                     var now = DateTimeOffset.UtcNow;
@@ -94,6 +97,7 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                     {
                         OwnerSessionId = request.SessionId, AgentDeviceId = caller?.AgentDeviceId,
                         WorkspaceRevision = caller?.WorkspaceRevision,
+                        AllowedToolIds = request.EnabledToolIds?.ToArray(),
                         WorkspaceDirectories = (caller?.AdditionalDirectories ?? _folders.Additional).ToArray()
                     };
                     _store.Save(stored); // Acknowledge only after durable storage.
@@ -101,6 +105,9 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                     return Task.FromResult(new RemoteTaskReply(Task: snapshot));
                 }
                 if (stored is null) return Task.FromResult(RemoteTaskReply.Failure("not_found", "Task not found on this device for this owner."));
+                if (operation == "context") return ReadProjectContextAsync(stored, request, caller, sessionToken);
+                if (operation == "events") return Task.FromResult(ReadTaskEvents(stored, request));
+                if (operation == "report") return Task.FromResult(ReadCodingReport(stored, request));
                 if (operation is "verify" or "repair" or "review" or "complete" or "capture")
                     return Task.FromResult(HandleQaWorkflow(operation, request, stored, caller, sessionToken));
                 if (operation == "get") return Task.FromResult(new RemoteTaskReply(Task: stored.Snapshot));
@@ -144,7 +151,7 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                         throw new ArgumentException("A submitted plan must retain the task's goal, project, mode and timeout.");
                     RequireArmed(); ValidateTools(request.Plan);
                     if (_active.Count >= (long)_settings.MaxDurableTasks + _settings.MaxQueuedCalls) return Busy();
-                    stored = stored with { Plan = Clone(request.Plan), PlanDigest = digest,
+                    stored = stored with { Plan = Clone(request.Plan), PlanDigest = digest, AllowedToolIds = request.EnabledToolIds?.ToArray(),
                         Snapshot = stored.Snapshot with { Status = "QUEUED", TotalSteps = request.Plan.Steps.Count, UpdatedAt = DateTimeOffset.UtcNow } };
                     _store.Save(stored); Start(stored, sessionToken, caller?.SessionCancellation ?? default);
                     return Task.FromResult(new RemoteTaskReply(Task: stored.Snapshot));
@@ -175,7 +182,7 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
     private void ValidateTools(RemoteTaskPlan plan)
     {
         var snapshot = _registry.Snapshot;
-        foreach (var step in plan.Steps)
+        foreach (var step in plan.Steps.Concat(CodingVerificationRules.ToolSteps(plan.CodingVerification)))
         {
             if (!snapshot.Tools.TryGetValue(step.ToolId, out var tool)) throw new ArgumentException("Tool is not installed: " + step.ToolId);
             if (!SchemaGuard.Matches(snapshot.Schemas[step.ToolId], step.Arguments))
@@ -252,6 +259,8 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
             try
             {
                 var current = _store.Load(task.OwnerId, task.Snapshot.TaskId);
+                if (current is not null && current.NextEventSequence > task.NextEventSequence)
+                    task = task with { Events = current.Events, NextEventSequence = current.NextEventSequence };
                 if (current?.Snapshot.Status == "CANCELLING" && !RemoteTaskRules.IsTerminal(task.Snapshot.Status))
                     task = task with { Snapshot = task.Snapshot with { Status = "CANCELLING" } };
                 _store.Save(task); _storageFaults.Remove(key); return task;

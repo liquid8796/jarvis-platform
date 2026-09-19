@@ -10,6 +10,7 @@
     <Project Path="jarvis-agent/src/Jarvis.Agent.Desktop/Jarvis.Agent.Desktop.csproj" />
   </Folder>
   <Folder Name="/Tests/">
+    <Project Path="tests/Jarvis.QaFixture/Jarvis.QaFixture.csproj" />
     <Project Path="tests/Jarvis.Core.Tests/Jarvis.Core.Tests.csproj" />
     <Project Path="tests/Jarvis.Agent.Windows.Tests/Jarvis.Agent.Windows.Tests.csproj" />
     <Project Path="tests/Jarvis.Server.Tests/Jarvis.Server.Tests.csproj" />

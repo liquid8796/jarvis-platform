@@ -97,4 +97,38 @@ public sealed class FrontendVerificationTests
         new(FrontendEvidenceKind.Interaction, true, "primary interaction changed expected state"),
         new(FrontendEvidenceKind.Overflow, true, "no clipping")
     ];
+
+    [Theory]
+    [InlineData("Improve backend performance")]
+    [InlineData("Fix platform authentication")]
+    [InlineData("Repair database transformation")]
+    [InlineData("Refactor dependency injection component")]
+    [InlineData("Validate normal form of a database table")]
+    public void Backend_words_do_not_trigger_frontend_by_substring(string goal) =>
+        Assert.False(FrontendChangeClassifier.Classify(goal, [], ["src/Store.cs"]).IsFrontend);
+
+    [Fact]
+    public void Monorepo_web_package_does_not_claim_backend_typescript_or_dataset_images()
+    {
+        string[] files = ["package.json", "packages/web/package.json", "packages/web/index.html", "packages/web/src/App.tsx",
+            "packages/api/package.json", "packages/api/src/handler.ts", "datasets/sample.png"];
+        Assert.False(FrontendChangeClassifier.Classify("Repair behavior", [], ["packages/api/src/handler.ts"], projectFiles: files).IsFrontend);
+        Assert.False(FrontendChangeClassifier.Classify("Repair behavior", [], ["packages/api/src/components/service.ts"], projectFiles: files).IsFrontend);
+        Assert.False(FrontendChangeClassifier.Classify("Repair image preprocessing", [], ["datasets/sample.png"], projectFiles: files).IsFrontend);
+        Assert.True(FrontendChangeClassifier.Classify("Repair behavior", [], ["packages/web/src/store.ts"], projectFiles: files).IsFrontend);
+        Assert.True(FrontendChangeClassifier.Classify("Repair behavior", [], ["packages/web/src/api/client.ts"], projectFiles: files).IsFrontend);
+        Assert.False(FrontendChangeClassifier.Classify("Repair behavior", [], ["packages/web/src/app/api/route.ts"], projectFiles: files).IsFrontend);
+        Assert.True(FrontendChangeClassifier.Classify("Repair asset", [], ["packages/web/public/logo.png"], projectFiles: files).IsVisual);
+    }
+
+    [Fact]
+    public void Actual_changed_paths_override_read_only_or_unexecuted_argument_hints()
+    {
+        var edit = new RemoteTaskStep { Id = "edit", ToolId = "filesystem.Edit", Arguments = WireJson.Element(new { file_path = "src/Button.tsx" }) };
+        Assert.False(FrontendChangeClassifier.Classify("Repair database retry", [edit], ["src/Store.cs"]).IsFrontend);
+        Assert.False(FrontendChangeClassifier.Classify("Inspect source", [edit with { ToolId = "filesystem.Read" }]).IsFrontend);
+        Assert.False(FrontendChangeClassifier.Classify("Resize image", [], ["photo.png"]).IsFrontend);
+        Assert.False(FrontendChangeClassifier.Classify("Repair backend", [], ["src/server.ts"], projectFiles: ["index.html"]).IsFrontend);
+        Assert.True(FrontendChangeClassifier.Classify("Fix the UI button", []).IsFrontend);
+    }
 }

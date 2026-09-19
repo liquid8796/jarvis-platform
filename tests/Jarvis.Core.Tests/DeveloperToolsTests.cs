@@ -73,8 +73,9 @@ public sealed class DeveloperToolsTests : IDisposable
         var tool = new DeveloperTestTool((request, _) =>
         {
             calls++;
-            return Task.FromResult(new DeveloperTestRunResult(0, "Passed! - Failed: 0, Passed: 1, Skipped: 0, Total: 1", ""));
-        });
+            return Task.FromResult(new DeveloperTestRunResult(0, "Passed! - Failed: 0, Passed: 1, Skipped: 0, Total: 1", "")
+            { ReportContent = "<TestRun><Results><UnitTestResult testName='fixture' outcome='Passed'/></Results><ResultSummary outcome='Completed'><Counters total='1' executed='1' passed='1' failed='0'/></ResultSummary></TestRun>" });
+        }, Path.Combine(_root, "private-artifacts"));
         var ok = await tool.ExecuteAsync(WireJson.Element(new { project = "src", filter = "Fast" }), Context(), default);
         Assert.False(ok.IsError);
         Assert.Equal(1, calls);

@@ -22,6 +22,11 @@ internal sealed record StoredRemoteTask(int Version, string OwnerId, string Crea
     public IReadOnlyList<RemoteTaskWorkflowReceipt> WorkflowReceipts { get; init; } = [];
     public IReadOnlyList<string> DeliveredCaptureIds { get; init; } = [];
     public bool GoalVerificationPassed { get; init; } = true;
+    public CodingVerificationSummary? CodingEvidence { get; init; }
+    public bool KnownExecutionFailure { get; init; }
+    public IReadOnlyList<RemoteTaskEvent> Events { get; init; } = [];
+    public int NextEventSequence { get; init; }
+    public IReadOnlyList<string>? AllowedToolIds { get; init; }
 }
 
 internal sealed record RemoteTaskWorkflowReceipt(string AttemptId, string Operation, string Digest);
@@ -38,7 +43,7 @@ internal sealed class RemoteTaskStore : IDisposable
         _lease = new FileStream(Path.Combine(_root, ".lease"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         try
         {
-            foreach (var path in Directory.EnumerateFiles(_root, "*.json", SearchOption.AllDirectories))
+            foreach (var path in SnapshotPaths())
             {
                 var task = Read(path);
                 if (task.Snapshot.Status is "QUEUED" or "RUNNING" or "CANCELLING" or "PLANNING" or "VERIFYING" or "REPAIRING")
@@ -65,7 +70,28 @@ internal sealed class RemoteTaskStore : IDisposable
             throw new InvalidDataException("Task snapshot identity mismatch.");
         return task;
     }
-    public bool AtCapacity => Directory.EnumerateFiles(_root, "*.json", SearchOption.AllDirectories).Take(128).Count() >= 128;
+    private IEnumerable<string> SnapshotPaths() => Directory.EnumerateDirectories(_root)
+        .SelectMany(directory => Directory.EnumerateFiles(directory, "*.json", SearchOption.TopDirectoryOnly));
+    public bool AtCapacity => SnapshotPaths().Take(128).Count() >= 128;
+    internal string EvidenceDirectory(string owner, string id, string runId)
+    {
+        var directory = Path.Combine(_root, Hash(owner), RemoteTaskRules.TaskId(id) + "-evidence", RemoteTaskRules.TaskId(runId));
+        for (var path = directory; !string.IsNullOrEmpty(path); path = Path.GetDirectoryName(path))
+            if ((Directory.Exists(path) || File.Exists(path)) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                throw new IOException("Task evidence storage contains a linked directory.");
+        Directory.CreateDirectory(directory);
+        for (var path = directory; !string.IsNullOrEmpty(path); path = Path.GetDirectoryName(path))
+            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                throw new IOException("Task evidence storage contains a linked directory.");
+        return directory;
+    }
+    internal bool OwnsEvidencePath(string owner, string id, string runId, string path)
+    {
+        if (!Path.IsPathFullyQualified(path)) return false;
+        var directory = Path.Combine(_root, Hash(owner), RemoteTaskRules.TaskId(id) + "-evidence", RemoteTaskRules.TaskId(runId));
+        return Path.GetFullPath(path).StartsWith(directory + Path.DirectorySeparatorChar,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
     public IReadOnlyList<StoredRemoteTask> ForSession(string owner, string sessionId)
     {
         var directory = Path.Combine(_root, Hash(owner));

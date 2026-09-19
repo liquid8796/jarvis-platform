@@ -1,5 +1,9 @@
 # API overview
 
+## General coding QA — 1.0.79
+
+Task plans and verify/repair requests accept `codingVerification`, with typed checks, requirements, profiles and optional owned service fixtures. Snapshots expose `codingVerification` outcomes and hash-bound receipts. New task operations `events`, `report` and `context` preserve authenticated owner/device/session boundaries; callers cannot supply report paths, result verdicts or the server's enabled-tool allowance. Coding operations reject older agents explicitly. See [Coding QA](CODING-QA.md).
+
 ## Frontend QA workflow — 1.0.78
 
 Task plans optionally include a structured `verificationSpec`. New `agent_task_verify`, `agent_task_capture`, `agent_task_review`, `agent_task_repair` and `agent_task_complete` operations are routed through existing authenticated owner/device/session binding. Mutating workflow calls require an idempotency `attemptId`; capture accepts only a task-owned capture ID and returns native image content. Snapshot verification adds state, revision, run ID, capture metadata and next action. See [Frontend QA](FRONTEND-QA.md) for the schema, state transitions and image-review contract.

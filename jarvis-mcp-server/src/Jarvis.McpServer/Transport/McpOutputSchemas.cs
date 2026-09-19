@@ -40,7 +40,7 @@ internal static class McpOutputSchemas
 
     public static JsonElement ForTask(string operation) => operation switch
     {
-        "create" or "plan" or "get" or "cancel" or "verify" or "repair" or "review" or "complete" or "capture" => TaskReply,
+        "create" or "plan" or "get" or "cancel" or "verify" or "repair" or "review" or "complete" or "capture" or "events" or "report" or "context" => TaskReply,
         "artifacts" => ArtifactReply,
         "tools" => ToolListReply,
         _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown task operation.")
@@ -57,6 +57,9 @@ internal static class McpOutputSchemas
             task = Snapshot(),
             artifacts = new { type = "array", description = "Retained step-attempt artifacts for this page.", items = Artifact() },
             nextOffset = Integer("Next artifact-page offset; omitted on the last page.", 0),
+            events = new { type = "array", maxItems = 20, items = CodingVerificationSchemas.Event() },
+            eventsTruncated = Boolean("Whether older live events precede the retained event window."),
+            report = CodingVerificationSchemas.ReportContent(), context = CodingVerificationSchemas.Context(),
             error = Text("Operation error message; present when the MCP result isError flag is true."),
             errorCode = Text("Machine-readable agent/gateway error code, when available.")
         },
@@ -87,7 +90,7 @@ internal static class McpOutputSchemas
             parentTaskId = Text("Parent task UUID, omitted for a root task."),
             rootTaskId = Text("Root task UUID, when lineage is available."),
             depth = Integer("Task lineage depth; root tasks have depth zero.", 0),
-            verification = VerificationSummary()
+            verification = VerificationSummary(), codingVerification = CodingVerificationSchemas.Summary()
         },
         required = new[] { "taskId", "goal", "project", "status", "completedSteps", "totalSteps", "createdAt", "updatedAt", "depth" },
         additionalProperties = false
