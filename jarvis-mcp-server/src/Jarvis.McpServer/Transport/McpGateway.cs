@@ -180,6 +180,7 @@ public sealed class McpGateway(AppDbContext db, IAgentRouter router, IAuditWrite
             var content = new List<ContentBlock> { new TextContentBlock { Text = reply.Text } };
             if (reply.Images is not null)
                 content.AddRange(reply.Images.Select(i => ImageContentBlock.FromBytes(Convert.FromBase64String(i.Base64), i.MimeType)));
+            McpPromptContext.AppendTo(content, reply.UserPromptContext, reply.IsError);
             outcome = reply.IsError ? "error" : "completed";
             return new CallToolResult { Content = content, IsError = reply.IsError,
                 StructuredContent = WireJson.Element(new { text = reply.Text, isError = reply.IsError }) };

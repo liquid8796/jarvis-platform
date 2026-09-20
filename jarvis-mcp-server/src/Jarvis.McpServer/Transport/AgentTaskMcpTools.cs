@@ -60,9 +60,13 @@ internal static class AgentTaskMcpTools
             var offset = args.TryGetProperty("offset", out var start) ? start.GetInt32() : 0;
             var limit = args.TryGetProperty("limit", out var size) ? size.GetInt32() : 20;
             var reply = await tasks.SendAsync(owner, device, operation, id, plan, offset, limit, parentTaskId, ct, sessionId);
+            var promptContext = reply.UserPromptContext;
+            reply = reply with { UserPromptContext = null };
+            var content = new List<ContentBlock> { new TextContentBlock { Text = JsonSerializer.Serialize(reply, WireJson.Options) } };
+            McpPromptContext.AppendTo(content, promptContext, reply.Error is not null);
             return new CallToolResult { IsError = reply.Error is not null,
                 StructuredContent = WireJson.Element(reply),
-                Content = [new TextContentBlock { Text = JsonSerializer.Serialize(reply, WireJson.Options) }] };
+                Content = content };
         }
         catch (Exception ex) when (ex is ArgumentException or JsonException or InvalidOperationException or UnauthorizedAccessException or KeyNotFoundException)
         { return Error(ex.Message); }

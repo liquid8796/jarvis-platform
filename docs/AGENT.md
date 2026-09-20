@@ -1,5 +1,25 @@
 # Jarvis Agent operator guide
 
+## 1.0.80 user-managed prompt context
+
+The fifth Agent navigation tab, **Prompt injection**, manages local prompt presets. Use **Add prompt**, select a row to edit its title/text, toggle individual entries, and turn on **Attach enabled prompts to MCP replies**. All changes, including deletions and switches, are drafts until **Save changes**. **Reload saved** discards a dirty draft only after confirmation; **Restore defaults** explicitly replaces the draft with the seven disabled examples. Deletion also requires confirmation. Preview shows the draft context, while the saved revision/status describes what the running Agent will use.
+
+The seven examples cover attach/inject/hook planning, live-memory state inference, live entities/pointers, memory snapshots/comparison, changing byte/field investigation, controlled memory writes and signal-driven overlays. They are editable workflow text, **not implementations or capability grants**. They do not install a debugger, read/write process memory, bypass anti-cheat or guarantee that a game account is safe. Existing tool permissions, local approval, Arm/Pause, schema validation and OS protections remain in force.
+
+Settings live in `prompt-injection.json` under the existing per-user Agent settings directory, separate from enrollment credentials and tool permissions. The initial global switch and all examples are disabled. A valid saved empty list stays empty on reload. Saves use a revision check, file lock and atomic replacement; a corrupt existing file is preserved rather than reset. Limits are 64 entries, 120 characters per title, 4,000 per body, 16,000 enabled title/body characters and 64,000 stored title/body characters; serialized settings are limited to 512 KiB. Do not put passwords, enrollment tokens or unrelated private data into prompts.
+
+### Delivery and scope
+
+Agent and server negotiate the additive `user-prompt-context-v1` capability. On each subsequent successful top-level tool reply or Agent task lifecycle reply, the Agent takes the latest saved enabled snapshot and includes it as optional transport metadata. The server appends a separate MCP text-content block with a fixed provenance notice and JSON-encoded editable text. The original first text block, images and structured-result schema remain unchanged. The context is explicitly user-editable, not a system/developer message, proof of consent or permission grant. Invalid optional metadata is dropped at the MCP adapter rather than replacing the actual tool result.
+
+Both Agent and MCP server must support this capability. An older server receives no prompt context; the tab reports the missing support. Saving while connected applies to future replies without restarting. Saving while disconnected applies on the next connection. This patch does not automatically deploy or restart the already-running Agent or OCI service.
+
+Presets are **per local Agent settings profile**, not per chat or workspace: every authorized chat routed to that Agent can receive the enabled text. The text is shared with the connected MCP server/client and may enter the client's conversation history. Disabling/deleting a preset stops attaching it to subsequent replies; it cannot remove copies already sent. The client may ignore, truncate or retain this optional context, so delivery is not proof that a model followed it.
+
+No context is added to failed/denied replies, `tools/list`, the server-only `agent_task_tools` inventory, or reasoning before the first successful Agent reply. Internal task steps/artifacts and the built-in deterministic planner are not rewritten. This implementation is an opt-in Jarvis tool-reply context attachment, **not** registration of native MCP `prompts/list` or `prompts/get` templates. It cannot force higher-priority host instructions to change.
+
+In security terminology, prompt injection is the risk that instructions inside lower-trust content influence a model as though they were authoritative. Labelling and JSON encoding make the provenance explicit but are not a complete model-level security boundary. The actual execution boundaries remain outside the model. References: [MCP server primitives](https://modelcontextprotocol.io/specification/2025-06-18/server), [MCP hints versus enforcement](https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/), and [NCSC: prompt injection and instruction/data boundaries](https://www.ncsc.gov.uk/blog-post/prompt-injection-is-not-sql-injection).
+
 ## 1.0.77 multi-session actions
 
 The **Sessions** list now has a checkbox on every open session so several chats can be selected at once. **Select all** checks every currently visible open session (respecting the search filter); **Clear** resets the bulk selection. Closed sessions remain visible when **Show closed sessions** is enabled but cannot be checked for mutation.

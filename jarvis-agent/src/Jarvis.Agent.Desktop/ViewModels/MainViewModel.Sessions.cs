@@ -16,6 +16,7 @@ public sealed partial class MainViewModel
     private DispatcherTimer? _sessionRefreshTimer;
     public ExecutionSettingsViewModel Execution { get; private set; } = null!;
     public SessionsViewModel Sessions { get; private set; } = null!;
+    public PromptInjectionViewModel PromptInjection { get; private set; } = null!;
     public RelayCommand ClearWorkspaceCommand { get; private set; } = null!;
     public RelayCommand SaveWorkspaceDefaultsCommand { get; private set; } = null!;
     private string _workspaceStatus = "A default is optional. Each chat can select its own folder later.";
@@ -25,6 +26,10 @@ public sealed partial class MainViewModel
     {
         Execution = new(new ExecutionSettingsStore(System.IO.Path.Combine(_settingsRoot, "execution-settings.json")),
             settings => _runtime?.ApplyExecutionSettings(settings));
+        PromptInjection = new(new Jarvis.Agent.Core.Prompts.PromptInjectionStore(System.IO.Path.Combine(_settingsRoot, "prompt-injection.json")),
+            settings => _runtime?.Connection.ConfigurePromptContext(settings.CreateContext()),
+            message => MessageBox.Show(_owner, message, "Prompt injection", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
         Sessions = new(() => _runtime?.Connection.GetLocalSessionOverview() ?? [],
             () => _runtime?.Connection.IsConnected == true,
             (identity, close) => _runtime!.Connection.StopSession(identity, close),
@@ -64,5 +69,6 @@ public sealed partial class MainViewModel
         Execution.UpdateRuntimeState(connection?.IsConnected == true, connection?.ExecutionSettings.Revision ?? 0,
             connection?.AcknowledgedExecutionSettingsRevision ?? 0, connection?.ServerSupportsExecutionSettings == true);
         if (SelectedTab == 3) Sessions.Refresh();
+        PromptInjection.UpdateRuntimeState(connection?.IsConnected == true, connection?.ServerSupportsPromptContext == true);
     }
 }

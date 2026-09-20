@@ -36,6 +36,7 @@ public sealed class AgentRuntime : IAsyncDisposable
     {
         var root = settingsRoot ?? AgentProfile.Root;
         var execution = new ExecutionSettingsStore(System.IO.Path.Combine(root, "execution-settings.json")).Load();
+        var promptSettings = new Jarvis.Agent.Core.Prompts.PromptInjectionStore(System.IO.Path.Combine(root, "prompt-injection.json")).Load();
         _processes = new ProcessToolSet(() => Connection?.ExecutionSettings ?? new AgentExecutionSettings());
         if (permissions is not null) _permissions = permissions;
         else
@@ -52,6 +53,7 @@ public sealed class AgentRuntime : IAsyncDisposable
         Connection = new AgentConnection(registry, approvals, Gate, _permissions,
             taskStorageRoot: System.IO.Path.Combine(root, "TaskRuns"), lifecycle: lifecycle, adaptiveCoordinator: adaptive);
         Connection.ApplyExecutionSettings(execution);
+        Connection.ConfigurePromptContext(promptSettings.CreateContext());
         Connection.SessionProcessCountProvider = _processes.RunningForSession;
         Connection.SessionStopped += StopSessionOwnedActivity;
         _inventory.BrowserSessionStopRequested += StopBrowserSession;

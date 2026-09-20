@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text.Json;
@@ -195,6 +195,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
                     var welcome = await wire.ReceiveAsync(welcomeTimeout.Token).ConfigureAwait(false);
                     _sessionProtocol = welcome?.Capabilities?.Contains(AgentSessionRules.Capability, StringComparer.Ordinal) == true;
                     _settingsProtocol = welcome?.Capabilities?.Contains(AgentExecutionSettings.Capability, StringComparer.Ordinal) == true;
+                    _promptContextProtocol = welcome?.Capabilities?.Contains(UserPromptContext.Capability, StringComparer.Ordinal) == true;
                     if (_settingsProtocol) AcknowledgeExecutionSettings(welcome?.ExecutionSettingsRevision);
                     if (welcome?.Type != "welcome")
                         throw new InvalidDataException("Server did not accept the agent handshake.");
@@ -443,7 +444,8 @@ public sealed partial class AgentConnection : IAsyncDisposable
             stop.CancelAfter(remaining);
             stop.Token.ThrowIfCancellationRequested();
             var reply = await _remoteTasks!.HandleAsync(message.TaskOperation!, message.TaskRequest!, sessionToken);
-            await wire.SendAsync(new("task.result") { Id = message.Id, TaskReply = reply }, stop.Token);
+            await wire.SendAsync(new("task.result") { Id = message.Id,
+                TaskReply = reply with { UserPromptContext = OutboundPromptContext(reply.Error is not null) } }, stop.Token);
         }
         catch (Exception ex)
         {
@@ -463,8 +465,9 @@ public sealed partial class AgentConnection : IAsyncDisposable
         try { await socket.ConnectAsync(endpoint, ct); return socket; }
         catch { socket.Dispose(); throw; }
     }
-    private static Task ReplyAsync(WireSocket wire, string id, ToolReply reply, CancellationToken token) =>
-        wire.SendAsync(new WireMessage("result") { Id = id, Result = reply }, token);
+    private Task ReplyAsync(WireSocket wire, string id, ToolReply reply, CancellationToken token) =>
+        wire.SendAsync(new WireMessage("result") { Id = id,
+            Result = reply with { UserPromptContext = OutboundPromptContext(reply.IsError) } }, token);
     private void Emit(string kind, string message) => Activity?.Invoke(new(DateTimeOffset.Now, kind, message));
     public async ValueTask DisposeAsync()
     {

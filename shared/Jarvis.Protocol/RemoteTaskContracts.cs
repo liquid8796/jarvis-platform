@@ -42,6 +42,7 @@ public sealed record RemoteTaskReply(RemoteTaskSnapshot? Task = null,
     IReadOnlyList<RemoteTaskArtifact>? Artifacts = null, int? NextOffset = null,
     string? Error = null, string? ErrorCode = null)
 {
+    public UserPromptContext? UserPromptContext { get; init; }
     public static RemoteTaskReply Failure(string code, string message) => new(Error: message, ErrorCode: code);
 }
 

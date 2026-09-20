@@ -11,6 +11,7 @@
 <ListBoxItem AutomationProperties.Name="Tool permissions"><TextBlock Text="Tool permissions" FontWeight="SemiBold"/></ListBoxItem>
 <ListBoxItem AutomationProperties.Name="Execution limits"><TextBlock Text="Execution limits" FontWeight="SemiBold"/></ListBoxItem>
 <ListBoxItem AutomationProperties.Name="Sessions"><TextBlock Text="Sessions" FontWeight="SemiBold"/></ListBoxItem>
+<ListBoxItem AutomationProperties.Name="Prompt injection"><TextBlock Text="Prompt injection" FontWeight="SemiBold"/></ListBoxItem>
 </ListBox>
 <TextBlock Text="Your computer stays yours." TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="11" Margin="13,10,10,0"/>
 </StackPanel>
@@ -85,5 +86,6 @@
 </TabItem>
 <TabItem Header="Execution limits"><views:ExecutionSettingsView DataContext="{Binding Execution}"/></TabItem>
 <TabItem Header="Sessions"><views:SessionsView DataContext="{Binding Sessions}"/></TabItem>
+<TabItem Header="Prompt injection"><views:PromptInjectionView DataContext="{Binding PromptInjection}"/></TabItem>
 </TabControl>
 </DockPanel></Grid></Window>

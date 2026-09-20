@@ -27,7 +27,7 @@ class SessionUiAssets(unittest.TestCase):
                 self.assertGreaterEqual(contrast(colors[text], colors[background]), 4.5)
 
     def test_primary_actions_and_filter_have_accessible_names(self):
-        for file in ['ExecutionSettingsView.xaml', 'SessionsView.xaml']:
+        for file in ['ExecutionSettingsView.xaml', 'SessionsView.xaml', 'PromptInjectionView.xaml']:
             root = ET.parse(UI / 'Views' / file).getroot()
             for element in root.iter(WPF + 'TextBox'):
                 self.assertTrue(element.get('AutomationProperties.Name'), file)

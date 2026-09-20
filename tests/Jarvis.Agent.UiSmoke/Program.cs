@@ -30,9 +30,10 @@ internal static class Program
     private static int Main(string[] args)
     {
         var ptyOnly = args.Length == 3 && args[2] == "--pty-only";
-        if (args.Length != 2 && !ptyOnly)
+        var promptsOnly = args.Length == 3 && args[2] == "--prompts-only";
+        if (args.Length != 2 && !ptyOnly && !promptsOnly)
         {
-            Console.Error.WriteLine("Usage: UiSmoke <published-agent-directory> <report-directory> [--pty-only]");
+            Console.Error.WriteLine("Usage: UiSmoke <published-agent-directory> <report-directory> [--pty-only|--prompts-only]");
             return 2;
         }
         var publish = Path.GetFullPath(args[0]); var report = Path.GetFullPath(args[1]);
@@ -88,7 +89,7 @@ internal static class Program
 
             var navigation = window.FindName("WorkspaceNavigation") as ListBox
                 ?? throw new InvalidOperationException("Workspace navigation list is missing.");
-            if (navigation.Items.Count != 4) throw new InvalidOperationException("Workspace navigation must expose exactly four destinations.");
+            if (navigation.Items.Count != 5) throw new InvalidOperationException("Workspace navigation must expose exactly five destinations.");
             Set("SelectedTab", 1); window.UpdateLayout();
             if (navigation.SelectedIndex != 1) throw new InvalidOperationException("Sidebar selection did not follow SelectedTab.");
             navigation.SelectedIndex = 0; window.UpdateLayout();
@@ -204,6 +205,13 @@ internal static class Program
             if (bindingErrors.Messages.Count != 0) throw new InvalidOperationException("WPF binding errors: " + string.Join(" | ", bindingErrors.Messages));
 
 
+            PromptUiSmoke.Run(window, model, report, Capture);
+            if (bindingErrors.Messages.Count != 0) throw new InvalidOperationException("WPF binding errors: " + string.Join(" | ", bindingErrors.Messages));
+            if (promptsOnly)
+            {
+                Console.WriteLine(File.ReadAllText(Path.Combine(report, "prompt-ui-smoke.json")));
+                return 0;
+            }
             var permissions = Get("Permissions")!; var permissionsType = permissions.GetType();
             object? PermissionGet(string property) => permissionsType.GetProperty(property)!.GetValue(permissions);
             void PermissionCommand(string name) => ((ICommand)PermissionGet(name)!).Execute(null);

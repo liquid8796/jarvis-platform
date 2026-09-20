@@ -8,6 +8,7 @@ public sealed record WidgetArtifact(string Title, string Html);
 public sealed record ToolReply(string Text, bool IsError = false, IReadOnlyList<WireImage>? Images = null,
     WidgetArtifact? Widget = null)
 {
+    public UserPromptContext? UserPromptContext { get; init; }
     public static ToolReply Error(string message) => new(message, true);
 }
 public sealed record AgentHello(string DeviceId, string Version, string Platform, string MachineName,

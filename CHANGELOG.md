@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.80 - 2026-09-20
+
+- Add the Agent **Prompt injection** tab with editable titles/text, add/delete, individual and global enable switches, draft preview, explicit Save/Reload and confirmed restore-to-defaults. Seed seven disabled process/memory/overlay workflow examples; prompts do not implement these capabilities or promise anti-cheat bypass/account safety.
+- Persist presets separately from credentials and permissions in `prompt-injection.json`, with atomic replacement, revision-conflict detection, bounded input and preservation of corrupt files. Deleting all presets does not silently restore defaults.
+- Negotiate `user-prompt-context-v1`. Attach saved, enabled context to subsequent successful Agent tool/task replies; the MCP server adds a separately labelled text block while preserving the original tool text, images and structured-output schemas. Legacy peers and error/denial replies receive no prompt context. Tool permissions, Arm/Pause and operating-system controls are unchanged.
+- Add persistence, view-model, protocol, approval-isolation, device-isolation and WPF binding/render regression coverage. Bump package/assembly/file versions to **1.0.80 / 1.0.80.0**, based directly on 1.0.77 without restoring the discarded 1.0.78/1.0.79 changes. Browser extension remains 1.3.0.
+
 ## 1.0.77 - 2026-09-19
 
 - Add checkbox-based multi-selection to the Agent Sessions list, including Select all/Clear controls for the currently visible open sessions.
