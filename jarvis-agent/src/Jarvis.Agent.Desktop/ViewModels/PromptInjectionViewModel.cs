@@ -16,7 +16,7 @@ public sealed class PromptEntryViewModel : ObservableViewModel
     public bool Enabled { get => _enabled; set { if (Set(ref _enabled, value)) _changed(); } }
     public PromptEntryViewModel(PromptInjectionEntry entry, Action changed)
     { Id = entry.Id; _title = entry.Title; _text = entry.Text; _enabled = entry.Enabled; _changed = changed; }
-    public PromptInjectionEntry Snapshot() => new(Id, Title.Trim(), Text.Trim(), Enabled);
+    public PromptInjectionEntry Snapshot() => new(Id, Title.Trim(), Text, Enabled);
 }
 
 public sealed class PromptInjectionViewModel : ObservableViewModel
@@ -76,7 +76,7 @@ public sealed class PromptInjectionViewModel : ObservableViewModel
     {
         RuntimeStatus = !connected ? "Not connected. Saved prompts apply when the agent connects."
             : !supportsContext ? "Server does not support prompt context. Upgrade the MCP server and reconnect; nothing is being sent."
-            : "Connected: saved, enabled prompts accompany subsequent successful MCP replies. Existing chat history is not changed.";
+            : "Connected: saved, enabled prompts accompany subsequent successful MCP replies as plain-text tool context, not system messages. Existing chat history is not changed.";
     }
 
     private PromptInjectionSettings Draft() => new()

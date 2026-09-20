@@ -32,7 +32,8 @@ internal static class PromptUiSmoke
         var selected = Descendants(view).OfType<CheckBox>().Single(box => AutomationProperties.GetName(box) == "Enable selected prompt");
         Execute(vm, "AddCommand"); window.UpdateLayout();
         title.SetCurrentValue(TextBox.TextProperty, "UI smoke example");
-        text.SetCurrentValue(TextBox.TextProperty, "Explain observations and uncertainty. Synthetic test context only.");
+        const string body = " \r\n    Ghi r\u00f5 \u0111\u1ed9 tin c\u1eady. \U0001F9EA\r\n  Synthetic test context only.\r\n ";
+        text.SetCurrentValue(TextBox.TextProperty, body);
         title.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
         text.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
         selected.SetCurrentValue(CheckBox.IsCheckedProperty, true);
@@ -41,21 +42,31 @@ internal static class PromptUiSmoke
         global.GetBindingExpression(CheckBox.IsCheckedProperty)!.UpdateSource();
         if ((string)Get(Get(vm, "Selected"), "Title") != "UI smoke example" || !(bool)Get(vm, "Enabled"))
             throw new InvalidOperationException("Prompt input bindings did not update the draft.");
+        if ((string)Get(vm, "Preview") != body)
+            throw new InvalidOperationException("Draft preview changed the prompt body.");
         Execute(vm, "SaveCommand");
         if (!string.IsNullOrEmpty((string)Get(vm, "Error"))) throw new InvalidOperationException((string)Get(vm, "Error"));
         Execute(vm, "ReloadCommand");
         if (((IEnumerable)Get(vm, "Items")).Cast<object>().Count() != 8 || !(bool)Get(vm, "Enabled"))
             throw new InvalidOperationException("Prompt draft did not survive persistence and reload.");
         var expander = Descendants(view).OfType<Expander>().Single(); expander.IsExpanded = true;
+        window.UpdateLayout();
+        var preview = Descendants(view).OfType<TextBox>().Single(box => AutomationProperties.GetName(box) == "Prompt context preview text");
+        if ((string)Get(vm, "Preview") != body || preview.Text != body)
+            throw new InvalidOperationException("Saved preview binding changed the plain-text prompt body.");
         window.Width = 1160; window.Height = 820; capture("agent-prompts.png");
         window.Width = 870; window.Height = 650; capture("agent-prompts-minimum.png");
         Set(vm, "Enabled", false); Execute(vm, "SaveCommand");
         if (!string.IsNullOrEmpty((string)Get(vm, "Error"))) throw new InvalidOperationException((string)Get(vm, "Error"));
         var saved = JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(Path.Combine(report, "isolated-settings", "prompt-injection.json")));
         if (saved.GetProperty("enabled").GetBoolean()) throw new InvalidOperationException("Disabling prompt injection did not persist.");
+        var persisted = saved.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("title").GetString() == "UI smoke example");
+        if (persisted.GetProperty("text").GetString() != body)
+            throw new InvalidOperationException("Saved JSON changed the prompt body whitespace or Unicode.");
         var result = new { promptTabRendered = true, defaultCount = 7, defaultsDisabled = true,
             titleAndTextBindings = true, toggleBindings = true, addAndSave = true, reload = true,
             disablePersisted = true, previewRendered = true, minimumSizeRendered = true,
+            exactBodyPreview = true, exactBodyPersistence = true,
             isolatedSettingsOnly = true, connectionStarted = false, controlArmed = false };
         File.WriteAllText(Path.Combine(report, "prompt-ui-smoke.json"), JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
         window.Width = 1160; window.Height = 820;

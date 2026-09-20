@@ -7,7 +7,7 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="14,24,14,20">
       <TextBlock Text="Prompt injection" FontSize="28" FontWeight="SemiBold" Foreground="{DynamicResource Text}"/>
-      <TextBlock Text="Your editable prompt presets. Optional context, not additional permissions." Style="{StaticResource SessionHint}" Margin="0,8,0,16"/>
+      <TextBlock Text="Your editable prompt presets. Plain-text tool context, not system instructions or additional permissions." Style="{StaticResource SessionHint}" Margin="0,8,0,16"/>
       <Border Style="{StaticResource SessionCard}" Padding="16">
         <StackPanel>
           <CheckBox Content="Attach enabled prompts to MCP replies" IsChecked="{Binding Enabled, Mode=TwoWay}" IsEnabled="{Binding IsLoaded}" Foreground="{DynamicResource Text}" AutomationProperties.Name="Enable prompt injection"/>
@@ -37,14 +37,14 @@
           </DataTemplate></ListBox.ItemTemplate>
         </ListBox>
         <StackPanel Grid.Column="2" IsEnabled="{Binding HasSelection}">
-          <TextBlock Text="TITLE" Style="{StaticResource SessionHint}" Margin="0,0,0,6"/>
+          <TextBlock Text="TITLE (EDITOR ONLY)" Style="{StaticResource SessionHint}" Margin="0,0,0,6"/>
           <TextBox Text="{Binding Selected.Title, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SessionInput}" MaxLength="120" AutomationProperties.Name="Prompt title"/>
           <CheckBox Content="Enable this prompt" IsChecked="{Binding Selected.Enabled, Mode=TwoWay}" Foreground="{DynamicResource Text}" Margin="0,10,0,12" AutomationProperties.Name="Enable selected prompt"/>
           <TextBlock Text="PROMPT TEXT" Style="{StaticResource SessionHint}" Margin="0,0,0,6"/>
           <TextBox Text="{Binding Selected.Text, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SessionInput}" Height="210"
                    MaxLength="4000" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                    VerticalContentAlignment="Top" AutomationProperties.Name="Prompt text"/>
-          <TextBlock Text="Up to 4,000 characters per prompt; 16,000 enabled characters in total." Style="{StaticResource SessionHint}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+          <TextBlock Text="Up to 4,000 characters per prompt; 16,000 enabled title/body characters total. Sent text, including separators, must also fit 16,000 characters." Style="{StaticResource SessionHint}" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </StackPanel>
       </Grid>
       <Expander Header="Preview context sent to the AI (draft)" Foreground="{DynamicResource Text}" Margin="0,16,0,0" AutomationProperties.Name="Prompt context preview">

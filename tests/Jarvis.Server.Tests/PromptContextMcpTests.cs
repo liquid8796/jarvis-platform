@@ -15,14 +15,15 @@ public sealed partial class AgentTaskMcpTests
         await using var peer = await TaskAgentPeer.ConnectAsync(app, admin, new SessionContextProbe());
         using var client = await GrantAsync(app, admin, peer.DeviceId);
         Assert.True(peer.Connection.ServerSupportsPromptContext);
-        var snippets = new[] { new UserPromptSnippet("one", "One", "Explain evidence and uncertainty.") };
+        const string body = " \r\nExplain evidence and uncertainty.\r\n  {\"example\":\"literal\"}\t ";
+        var snippets = new[] { new UserPromptSnippet("one", "One", body) };
         peer.Connection.ConfigurePromptContext(new(5, snippets));
         snippets[0] = new("other", "Other", "A later caller-side mutation must not change the snapshot.");
         var listed = await RpcAsync(client, "tools/list", new { });
         var opened = await RawSessionCall(client, "session__open", new { label = "Prompt test" });
         Assert.Equal(2, opened.GetProperty("content").GetArrayLength());
-        Assert.Contains("Explain evidence", opened.GetProperty("content")[1].GetProperty("text").GetString());
-        Assert.Contains(UserPromptContext.Notice, opened.GetProperty("content")[1].GetProperty("text").GetString());
+        Assert.Equal(body, opened.GetProperty("content")[1].GetProperty("text").GetString());
+        Assert.False(opened.GetProperty("content")[1].TryGetProperty("role", out _));
         Assert.False(string.IsNullOrEmpty(ParseText(opened).GetProperty("sessionHandle").GetString()));
         AssertOutputMatches(listed, "session__open", opened);
         Assert.DoesNotContain("userPromptContext", opened.GetProperty("structuredContent").GetRawText());
@@ -30,12 +31,17 @@ public sealed partial class AgentTaskMcpTests
         var created = await RawSessionCall(client, "agent_task_create", new { goal = "Prompt lifecycle test" });
         Assert.False(created.GetProperty("isError").GetBoolean(), created.GetRawText());
         Assert.Equal(2, created.GetProperty("content").GetArrayLength());
+        Assert.Equal(body, created.GetProperty("content")[1].GetProperty("text").GetString());
         AssertOutputMatches(listed, "agent_task_create", created);
         Assert.DoesNotContain("userPromptContext", created.GetProperty("structuredContent").GetRawText());
         Assert.DoesNotContain("Explain evidence", created.GetProperty("content")[0].GetProperty("text").GetString());
         var taskId = ParseText(created).GetProperty("task").GetProperty("taskId").GetString()!;
         var task = await RawSessionCall(client, "agent_task_get", new { taskId });
         Assert.Equal(2, task.GetProperty("content").GetArrayLength());
+        Assert.Equal(body, task.GetProperty("content")[1].GetProperty("text").GetString());
+        var ordinary = await RawSessionCall(client, "test__session_context", new { });
+        Assert.Equal(2, ordinary.GetProperty("content").GetArrayLength());
+        Assert.Equal(body, ordinary.GetProperty("content")[1].GetProperty("text").GetString());
 
         peer.Connection.ConfigurePromptContext(null);
         var plain = await RawSessionCall(client, "test__session_context", new { });
@@ -83,6 +89,21 @@ public sealed partial class AgentTaskMcpTests
         Assert.DoesNotContain("Only this agent", other.GetRawText());
     }
 
+    [Fact]
+    public async Task Invalid_prompt_update_keeps_the_last_valid_agent_snapshot()
+    {
+        using var app = new ServerFixture(); using var admin = await app.Admin();
+        await using var peer = await TaskAgentPeer.ConnectAsync(app, admin, new SessionContextProbe());
+        using var client = await GrantAsync(app, admin, peer.DeviceId);
+        const string body = "Last saved context.";
+        peer.Connection.ConfigurePromptContext(new(2, [new("valid", "Valid", body)]));
+        var oversized = Enumerable.Range(0, 4).Select(i => new UserPromptSnippet("p" + i, "T",
+            new string('x', i == 3 ? 3995 : 4000))).ToArray();
+        Assert.Throws<ArgumentException>(() => peer.Connection.ConfigurePromptContext(new(3, oversized)));
+        var reply = await RawSessionCall(client, "test__session_context", new { });
+        Assert.Equal(body, reply.GetProperty("content")[1].GetProperty("text").GetString());
+    }
+
     private sealed class PromptProtectedProbe : IAgentTool
     {
         public int Calls;
@@ -113,5 +134,48 @@ public sealed class McpPromptContextTests
         Assert.False(McpPromptContext.AppendTo(blocks, null));
         Assert.False(McpPromptContext.AppendTo(blocks, new(1, [new("one", "One", "Optional context.")]), true));
         Assert.Single(blocks);
+    }
+
+    [Fact]
+    public void Plain_text_append_preserves_images_and_structured_output_without_adding_a_role()
+    {
+        const string body = " \r\n  Ghi r\u00f5. {\"example\":true}\t ";
+        var original = new TextContentBlock { Text = "actual tool output" };
+        var image = ImageContentBlock.FromBytes(Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z9sAAAAASUVORK5CYII="), "image/png");
+        var blocks = new List<ContentBlock> { original, image };
+        Assert.True(McpPromptContext.AppendTo(blocks, new(1, [new("one", "Editor title", body)])));
+        Assert.Equal(3, blocks.Count);
+        Assert.Same(original, blocks[0]);
+        Assert.Same(image, blocks[1]);
+        Assert.Equal(body, Assert.IsType<TextContentBlock>(blocks[2]).Text);
+        var structured = WireJson.Element(new { text = "actual tool output", isError = false });
+        var result = new CallToolResult { Content = blocks, StructuredContent = structured, IsError = false };
+        var wire = JsonSerializer.SerializeToElement(result, WireJson.Options);
+        Assert.Equal("actual tool output", wire.GetProperty("content")[0].GetProperty("text").GetString());
+        Assert.Equal("image", wire.GetProperty("content")[1].GetProperty("type").GetString());
+        var contextBlock = wire.GetProperty("content")[2];
+        Assert.Equal("text", contextBlock.GetProperty("type").GetString());
+        Assert.Equal(body, contextBlock.GetProperty("text").GetString());
+        Assert.False(contextBlock.TryGetProperty("role", out _));
+        Assert.Equal(structured.GetRawText(), wire.GetProperty("structuredContent").GetRawText());
+    }
+
+    [Fact]
+    public void Malformed_optional_metadata_is_dropped_without_altering_existing_content()
+    {
+        UserPromptContext[] invalid = [
+            new(1, null!), new(1, [null!]), new(1, [new("p", null!, "text")]),
+            new(1, [new("p", "T", null!)]), new(1, [new(null!, "T", "text")]),
+            new(1, [new("p", "T", "text"), new("p", "T", "text")]),
+            new(1, Enumerable.Range(0, 4).Select(i => new UserPromptSnippet("p" + i, "T",
+                new string('x', i == 3 ? 3995 : 4000))).ToArray())];
+        foreach (var context in invalid)
+        {
+            var original = new TextContentBlock { Text = "completed" };
+            var blocks = new List<ContentBlock> { original };
+            Assert.False(McpPromptContext.AppendTo(blocks, context));
+            Assert.Same(original, Assert.Single(blocks));
+        }
     }
 }

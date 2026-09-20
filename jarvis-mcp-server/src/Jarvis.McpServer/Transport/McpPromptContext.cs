@@ -3,7 +3,7 @@ using ModelContextProtocol.Protocol;
 
 namespace Jarvis.McpServer.Transport;
 
-/// <summary>Append separately labelled optional context without changing the actual tool output or its schema.</summary>
+/// <summary>Append optional plain text as a separate tool-result block, preserving the actual output and schema.</summary>
 public static class McpPromptContext
 {
     public static bool AppendTo(ICollection<ContentBlock> content, UserPromptContext? context, bool isError = false)

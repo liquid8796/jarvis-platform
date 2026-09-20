@@ -84,15 +84,16 @@ public sealed class PromptInjectionViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Runtime_status_reports_missing_protocol_support_and_preview_is_labelled()
+    public void Runtime_status_reports_missing_protocol_support_and_preview_is_plain_text()
     {
         var vm = new PromptInjectionViewModel(Store);
         vm.UpdateRuntimeState(true, false);
         Assert.Contains("does not support", vm.RuntimeStatus);
         vm.Enabled = true; vm.Items[0].Enabled = true;
-        Assert.Contains(UserPromptContext.Notice, vm.Preview);
+        Assert.Equal(vm.Items[0].Text, vm.Preview);
         vm.UpdateRuntimeState(true, true);
         Assert.Contains("subsequent successful", vm.RuntimeStatus);
+        Assert.Contains("not system messages", vm.RuntimeStatus);
     }
 
     [Fact]

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.81 - 2026-09-20
+
+- Complete plain-text prompt delivery: append saved enabled bodies in order with blank-line separators, without a source banner, nested JSON, title prefix, synthetic fences or zero-width rewriting. Preserve prompt body whitespace/Unicode through preview, save, reload and delivery.
+- Enforce the 16,000-character rendered limit including separators, retain existing input/storage bounds, and report null snippets as validation errors. Keep malformed optional metadata from replacing a completed tool result.
+- Extend regression coverage for exact text, boundary sizes, wire roundtrips, UI persistence and normal/session/task MCP replies. Preserve first output blocks, images, structured schemas, local approvals, Arm/Pause and enrolled-agent isolation; do not claim text formatting grants system priority or proves model obedience.
+- Bump package to **1.0.81**, assembly/file to **1.0.81.0**. Internal wire/storage JSON, capability `user-prompt-context-v1`, default preset contents and browser extension 1.3.0 remain unchanged.
+
 ## 1.0.80 - 2026-09-20
 
 - Add the Agent **Prompt injection** tab with editable titles/text, add/delete, individual and global enable switches, draft preview, explicit Save/Reload and confirmed restore-to-defaults. Seed seven disabled process/memory/overlay workflow examples; prompts do not implement these capabilities or promise anti-cheat bypass/account safety.
