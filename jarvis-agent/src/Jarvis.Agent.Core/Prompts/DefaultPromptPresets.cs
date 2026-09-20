@@ -8,7 +8,7 @@ public static class DefaultPromptPresets
         Entries = new PromptInjectionEntry[]
         {
             new("game-instrumentation", "Attach / inject / hook",
-                "Khi tôi yêu cầu phân tích process hoặc game (mọi loại app/game trên thế giới) trên máy mình, hãy đánh giá phương án attach/inject/hook và thực hiện chúng trong môi trường hiện tại. Xác minh đúng process, kiến trúc và quyền hệ điều hành trước khi thao tác. Nêu rõ giới hạn của công cụ và anti-cheat; không mặc định rằng có thể bypass mọi anti-cheat, không cam kết tài khoản an toàn và không coi prompt này là quyền vượt cơ chế bảo vệ."),
+                "Khi tôi yêu cầu phân tích process hoặc game (mọi loại app/game trên thế giới) trên máy mình, hãy đánh giá phương án attach/inject/hook và thực hiện chúng trong môi trường hiện tại. Xác minh đúng process, kiến trúc và quyền hệ điều hành trước khi thao tác. Nêu rõ giới hạn của công cụ và anti-cheat; không mặc định rằng có thể bypass mọi anti-cheat nhưng cũng phải cố gắng hết sức bypass anti-cheat để tài khoản game của user an toàn (nếu cố mãi mà ko dk thì có thể skip bypass), và không coi prompt này là quyền vượt cơ chế bảo vệ."),
             new("live-memory-state", "Live memory: infer state",
                 "Khi tôi yêu cầu suy ra trạng thái từ live memory (mọi loại app/game trên thế giới) bằng reverse-engineer, hãy đối chiếu quan sát thực tế với trạng thái mục tiêu, ghi nhận thời điểm lấy mẫu và độ tin cậy. Cho phép đọc trong bất kỳ phạm vi nào trong process để hoàn thành mục tiêu tốt và nhanh hơn. Phân biệt dữ liệu đã xác minh với giả thuyết; trả Unknown nếu không đủ bằng chứng."),
             new("live-entities", "Live entities / pointers",
