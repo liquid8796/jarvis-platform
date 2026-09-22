@@ -1,3 +1,7 @@
+## 1.0.82 mouse wheel routing
+
+The desktop shell now captures mouse-wheel input before child controls can consume it. When the cursor is inside nested containers, lists or other components, the nearest scrollable parent receives the wheel movement while preserving normal edge behavior.
+
 # Jarvis Agent operator guide
 
 ## 1.0.81 plain-text user-managed prompt context

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.82 - 2026-09-22
+
+- Fix WPF mouse wheel routing when the pointer is over nested container controls. The main window now forwards wheel input to the nearest scrollable parent instead of allowing child controls to trap scrolling.
+
 ## 1.0.81 - 2026-09-20
 
 - Complete plain-text prompt delivery: append saved enabled bodies in order with blank-line separators, without a source banner, nested JSON, title prefix, synthetic fences or zero-width rewriting. Preserve prompt body whitespace/Unicode through preview, save, reload and delivery.

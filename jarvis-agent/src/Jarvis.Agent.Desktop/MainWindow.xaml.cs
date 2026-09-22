@@ -1,7 +1,10 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Jarvis.Agent.Desktop.ViewModels;
 using Jarvis.Agent.Windows;
 using Forms = System.Windows.Forms;
@@ -17,7 +20,9 @@ public partial class MainWindow : Window
     public MainWindow() : this(null, true) { }
     public MainWindow(string? settingsRoot, bool loadProfile)
     {
-        InitializeComponent(); _model = new MainViewModel(this, settingsRoot, loadProfile); DataContext = _model;
+        InitializeComponent();
+        PreviewMouseWheel += HandleContainerMouseWheel;
+        _model = new MainViewModel(this, settingsRoot, loadProfile); DataContext = _model;
         if (_model.InitialProfile is { } profile) try { TokenBox.Password = AgentProfile.GetToken(profile); } catch (Exception) { }
         _trayIcon = LoadTrayIcon();
         _tray = new Forms.NotifyIcon { Text = "Jarvis Agent — local tool permissions", Icon = _trayIcon, Visible = true };
@@ -34,6 +39,26 @@ public partial class MainWindow : Window
             if (!RegisterHotKey(new WindowInteropHelper(this).Handle, PauseHotkey, 0x4000 | 0x0002 | 0x0001, 0x13))
                 _tray.ShowBalloonTip(4000, "Pause hotkey unavailable", "Another application owns Ctrl+Alt+Pause. Use the tray's Pause command.", Forms.ToolTipIcon.Warning);
         };
+    }
+    private void HandleContainerMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Handled) return;
+        var scrollViewer = FindParent<ScrollViewer>(e.OriginalSource as DependencyObject);
+        if (scrollViewer is null) return;
+        var canScroll = e.Delta < 0 ? scrollViewer.VerticalOffset < scrollViewer.ScrollableHeight : scrollViewer.VerticalOffset > 0;
+        if (!canScroll) return;
+        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - (e.Delta / 3.0));
+        e.Handled = true;
+    }
+
+    private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child is not null)
+        {
+            if (child is T result) return result;
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return null;
     }
     private static System.Drawing.Icon LoadTrayIcon()
     {
