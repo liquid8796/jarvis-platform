@@ -1,6 +1,10 @@
-﻿## 1.0.82 - 2026-09-22
+## 1.0.82 - 2026-09-22
 
 - Fix WPF mouse wheel routing when the pointer is over nested input containers by forwarding wheel events to visible scroll viewers.
+
+## 1.0.83 - 2026-09-22
+
+- Fix WPF mouse wheel routing when the pointer is over nested input containers by handling already-routed wheel events at the window level and resolving the actual scroll viewer under the cursor.
 
 # Changelog
 

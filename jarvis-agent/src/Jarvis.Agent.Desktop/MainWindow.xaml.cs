@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,7 +21,7 @@ public partial class MainWindow : Window
     public MainWindow(string? settingsRoot, bool loadProfile)
     {
         InitializeComponent();
-        PreviewMouseWheel += HandleContainerMouseWheel;
+        AddHandler(Mouse.PreviewMouseWheelEvent, new MouseWheelEventHandler(HandleContainerMouseWheel), true);
         _model = new MainViewModel(this, settingsRoot, loadProfile); DataContext = _model;
         if (_model.InitialProfile is { } profile) try { TokenBox.Password = AgentProfile.GetToken(profile); } catch (Exception) { }
         _trayIcon = LoadTrayIcon();
@@ -42,18 +42,23 @@ public partial class MainWindow : Window
     }
     private void HandleContainerMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (e.Handled) return;
-        var scrollViewer = FindParent<ScrollViewer>(e.OriginalSource as DependencyObject) ?? FindVisibleScrollViewer();
-        if (scrollViewer is null) return;
-        var canScroll = e.Delta < 0 ? scrollViewer.VerticalOffset < scrollViewer.ScrollableHeight : scrollViewer.VerticalOffset > 0;
-        if (!canScroll) return;
-        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - (e.Delta / 3.0));
+        var source = e.OriginalSource as DependencyObject ?? Mouse.DirectlyOver as DependencyObject;
+        var scrollViewer = FindParent<ScrollViewer>(source) ?? FindScrollViewerUnderMouse();
+        if (scrollViewer is null || scrollViewer.ScrollableHeight <= 0) return;
+
+        var nextOffset = scrollViewer.VerticalOffset - (e.Delta / 3.0);
+        nextOffset = Math.Clamp(nextOffset, 0, scrollViewer.ScrollableHeight);
+        if (Math.Abs(nextOffset - scrollViewer.VerticalOffset) < 0.1) return;
+
+        scrollViewer.ScrollToVerticalOffset(nextOffset);
         e.Handled = true;
     }
 
-    private ScrollViewer? FindVisibleScrollViewer()
+    private ScrollViewer? FindScrollViewerUnderMouse()
     {
-        return FindChildren<ScrollViewer>(this).FirstOrDefault(viewer => viewer.IsVisible && viewer.ScrollableHeight > 0);
+        var point = Mouse.GetPosition(this);
+        var hit = InputHitTest(point) as DependencyObject;
+        return FindParent<ScrollViewer>(hit);
     }
 
     private static IEnumerable<T> FindChildren<T>(DependencyObject parent) where T : DependencyObject
