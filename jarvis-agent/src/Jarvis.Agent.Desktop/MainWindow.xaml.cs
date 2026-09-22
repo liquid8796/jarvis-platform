@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,7 +25,7 @@ public partial class MainWindow : Window
         _model = new MainViewModel(this, settingsRoot, loadProfile); DataContext = _model;
         if (_model.InitialProfile is { } profile) try { TokenBox.Password = AgentProfile.GetToken(profile); } catch (Exception) { }
         _trayIcon = LoadTrayIcon();
-        _tray = new Forms.NotifyIcon { Text = "Jarvis Agent — local tool permissions", Icon = _trayIcon, Visible = true };
+        _tray = new Forms.NotifyIcon { Text = "Jarvis Agent â€” local tool permissions", Icon = _trayIcon, Visible = true };
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Open Jarvis Agent", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Pause remote control", null, (_, _) => Dispatcher.Invoke(_model.Pause));
@@ -43,12 +43,27 @@ public partial class MainWindow : Window
     private void HandleContainerMouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (e.Handled) return;
-        var scrollViewer = FindParent<ScrollViewer>(e.OriginalSource as DependencyObject);
+        var scrollViewer = FindParent<ScrollViewer>(e.OriginalSource as DependencyObject) ?? FindVisibleScrollViewer();
         if (scrollViewer is null) return;
         var canScroll = e.Delta < 0 ? scrollViewer.VerticalOffset < scrollViewer.ScrollableHeight : scrollViewer.VerticalOffset > 0;
         if (!canScroll) return;
         scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - (e.Delta / 3.0));
         e.Handled = true;
+    }
+
+    private ScrollViewer? FindVisibleScrollViewer()
+    {
+        return FindChildren<ScrollViewer>(this).FirstOrDefault(viewer => viewer.IsVisible && viewer.ScrollableHeight > 0);
+    }
+
+    private static IEnumerable<T> FindChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) yield return match;
+            foreach (var descendant in FindChildren<T>(child)) yield return descendant;
+        }
     }
 
     private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
@@ -84,3 +99,4 @@ public partial class MainWindow : Window
     [DllImport("user32.dll", SetLastError = true)] private static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool UnregisterHotKey(IntPtr hwnd, int id);
 }
+

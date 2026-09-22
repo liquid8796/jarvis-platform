@@ -1,3 +1,7 @@
+﻿## 1.0.82 - 2026-09-22
+
+- Fix WPF mouse wheel routing when the pointer is over nested input containers by forwarding wheel events to visible scroll viewers.
+
 # Changelog
 
 ## 1.0.82 - 2026-09-22
@@ -58,7 +62,7 @@
 
 - Move browser execution out of the Agent process: keep the existing flat `browser.*` MCP surface as a proxy, add dedicated `jarvis-browser-service.exe` runtime ownership and a minimal `jarvis-browser-host.exe` Chrome/Edge native-messaging relay, and package/verify both companions for Desktop and CLI.
 - Add browser-family routing (`auto`, `dev`, `chrome`, `edge`, `extension`). Loopback targets use an isolated Jarvis dev-browser profile; external calls select a ready non-dev browser so frontend verification cannot leak into the user's normal browser selection.
-- Add versioned browser capability negotiation: extension 1.3.0 advertises browser/native-host protocol versions, family, capabilities and persistent instance identity; incompatible extension connections remain non-ready. The Agent↔browser-service channel has a separate protocol/capability handshake and retains existing browser tool IDs for client compatibility.
+- Add versioned browser capability negotiation: extension 1.3.0 advertises browser/native-host protocol versions, family, capabilities and persistent instance identity; incompatible extension connections remain non-ready. The Agentâ†”browser-service channel has a separate protocol/capability handshake and retains existing browser tool IDs for client compatibility.
 - Enforce rendered frontend verification in production even when no `IRemoteTaskAgenticCoordinator` is configured. Autonomous frontend tasks deterministically collect target, DOM, overlay, console, screenshot and post-interaction evidence; visual tasks also collect desktop/mobile/overflow and structural fidelity evidence. Missing target/browser/evidence fails closed, while explicit Figma/pixel-perfect/reference-image work still requires semantic comparison evidence.
 - Add routing/session/frontend regressions, require browser companion executables in publish validation, and bump package/assembly/file versions to 1.0.71 / 1.0.71.0.
 
@@ -336,4 +340,5 @@ feat(jarvis): prepare v1.0.17 agent build baseline
 - Fix agent publish target resolution for win-x64 packaging.
 - Allow publish restore to resolve runtime assets when package generation is executed.
 - Align package metadata with VERSION 1.0.47.
+
 

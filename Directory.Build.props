@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <Version>1.0.82</Version>
     <AssemblyVersion>1.0.82.0</AssemblyVersion>
@@ -9,3 +9,4 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 </Project>
+
