@@ -33,6 +33,23 @@ public sealed class MultiSessionContractTests
             Assert.Contains(id, ids);
     }
 
+    [Fact]
+    public async Task Workspace_contract_does_not_infer_overrides_from_prior_chat_context()
+    {
+        await using var connection = new AgentConnection([], new DenyApproval(), new LocalControlGate());
+        var open = connection.Descriptors.Single(t => t.Id == "session.open");
+        var set = connection.Descriptors.Single(t => t.Id == "workspace.set");
+
+        Assert.Contains("current default workspace", open.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("another chat", open.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("current user request explicitly", set.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("prior memory", set.Description, StringComparison.OrdinalIgnoreCase);
+
+        var pathDescription = set.InputSchema.GetProperty("properties").GetProperty("path").GetProperty("description").GetString();
+        Assert.Contains("current user request explicitly", pathDescription, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("prior chats or memory", pathDescription, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class DenyApproval : IApprovalService
     {
         public Task<bool> ApproveAsync(ToolDescriptor tool, JsonElement arguments, CancellationToken cancellationToken) => Task.FromResult(false);

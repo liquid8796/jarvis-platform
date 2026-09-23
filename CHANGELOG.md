@@ -1,3 +1,8 @@
+## 1.0.84 - 2026-09-24
+
+- Keep newly opened chat sessions on the Agent's configured default workspace unless the current user request explicitly asks for a workspace override. Workspace tool descriptions and schema guidance now reject inferred switches sourced from prior chats, remembered project paths, session labels/list results or unrelated project context.
+- Add regression coverage for the session/workspace tool contract and bump package/assembly/file versions to **1.0.84 / 1.0.84.0**.
+
 ## 1.0.82 - 2026-09-22
 
 - Fix WPF mouse wheel routing when the pointer is over nested input containers by forwarding wheel events to visible scroll viewers.
