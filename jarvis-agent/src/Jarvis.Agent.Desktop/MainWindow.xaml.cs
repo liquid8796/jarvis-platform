@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private bool _exiting;
     private HwndSource? _source;
     private const int PauseHotkey = 9126;
+    private const int WmMouseWheel = 0x020A;
     public MainWindow() : this(null, true) { }
     public MainWindow(string? settingsRoot, bool loadProfile)
     {
@@ -40,10 +41,24 @@ public partial class MainWindow : Window
                 _tray.ShowBalloonTip(4000, "Pause hotkey unavailable", "Another application owns Ctrl+Alt+Pause. Use the tray's Pause command.", Forms.ToolTipIcon.Warning);
         };
     }
+    private void ForwardInputMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        // PasswordBox/TextBox templates can stop WPF wheel routing. Forward directly to the page owner.
+        var scrollViewer = ConnectionScrollViewer;
+        if (scrollViewer.ScrollableHeight <= 0) return;
+
+        var nextOffset = scrollViewer.VerticalOffset - (e.Delta / 3.0);
+        nextOffset = Math.Clamp(nextOffset, 0, scrollViewer.ScrollableHeight);
+        if (Math.Abs(nextOffset - scrollViewer.VerticalOffset) < 0.1) return;
+
+        scrollViewer.ScrollToVerticalOffset(nextOffset);
+        e.Handled = true;
+    }
+
     private void HandleContainerMouseWheel(object sender, MouseWheelEventArgs e)
     {
         var source = e.OriginalSource as DependencyObject ?? Mouse.DirectlyOver as DependencyObject;
-        var scrollViewer = FindParent<ScrollViewer>(source) ?? FindScrollViewerUnderMouse();
+        var scrollViewer = FindParent<ScrollViewer>(source) ?? FindScrollViewerUnderMouse() ?? ConnectionScrollViewer;
         if (scrollViewer is null || scrollViewer.ScrollableHeight <= 0) return;
 
         var nextOffset = scrollViewer.VerticalOffset - (e.Delta / 3.0);
@@ -92,7 +107,31 @@ public partial class MainWindow : Window
     private void TokenChanged(object sender, RoutedEventArgs e) { if (DataContext is MainViewModel model) model.Token = TokenBox.Password; }
     private void ShowFromTray() { Show(); WindowState = WindowState.Normal; Activate(); }
     private IntPtr WindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
-    { if (message == 0x0312 && wParam.ToInt32() == PauseHotkey) { _model.Pause(); handled = true; } return IntPtr.Zero; }
+    {
+        if (message == WmMouseWheel && TryHandleNativeMouseWheel(wParam))
+        {
+            handled = true;
+            return IntPtr.Zero;
+        }
+        if (message == 0x0312 && wParam.ToInt32() == PauseHotkey)
+        {
+            _model.Pause();
+            handled = true;
+        }
+        return IntPtr.Zero;
+    }
+
+    private bool TryHandleNativeMouseWheel(IntPtr wParam)
+    {
+        var delta = (short)((wParam.ToInt64() >> 16) & 0xffff);
+        if (delta == 0) return false;
+        var viewer = FindParent<ScrollViewer>(Mouse.DirectlyOver as DependencyObject);
+        if (viewer is null || viewer.ScrollableHeight <= 0) return false;
+        var next = Math.Clamp(viewer.VerticalOffset - (delta / 3.0), 0, viewer.ScrollableHeight);
+        if (Math.Abs(next - viewer.VerticalOffset) < 0.1) return false;
+        viewer.ScrollToVerticalOffset(next);
+        return true;
+    }
     protected override void OnClosing(CancelEventArgs e) { if (!_exiting) { e.Cancel = true; Hide(); } base.OnClosing(e); }
     private async Task ExitAsync()
     {
