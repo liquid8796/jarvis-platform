@@ -12,8 +12,11 @@ function browser() {
   const event = () => ({ listeners: [], addListener(fn) { this.listeners.push(fn); } });
   const chrome = {
     runtime: { onMessage: event(), getManifest: () => ({ version: 'test' }),
-      connectNative: () => ({ onMessage: event(), onDisconnect: event(), postMessage(m) { if (m.id) replies.set(m.id, m); } }) },
-    storage: { session: {
+      connectNative: () => ({ onMessage: event(), onDisconnect: event(), disconnect() {}, postMessage(m) { if (m.id) replies.set(m.id, m); } }) },
+    storage: { local: {
+      async get(key) { return { [key]: '12345678-1234-1234-1234-123456789abc' }; },
+      async set() {}
+    }, session: {
       async get(key) { return { [key]: structuredClone(storage[key]) }; },
       async set(value) { Object.assign(storage, structuredClone(value)); }
     } },

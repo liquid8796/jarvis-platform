@@ -15,7 +15,7 @@ using Microsoft.Win32;
 
 namespace Jarvis.Agent.Windows;
 
-public sealed class BrowserServiceServer : IDisposable
+public sealed partial class BrowserServiceServer : IDisposable
 {
     private sealed record Suite(IReadOnlyDictionary<string, ITool> Tools)
     {
@@ -38,6 +38,7 @@ public sealed class BrowserServiceServer : IDisposable
         _root = root ?? AgentProfile.Root;
         _bridge = new BrowserBridge(extensionPipeName);
         _bridge.ApplicationStopRequested += OnApplicationStopRequested;
+        _bridge.ImageGenerationBindingRequested += OnImageGenerationBindingRequested;
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
@@ -112,6 +113,8 @@ public sealed class BrowserServiceServer : IDisposable
             ?? throw new ArgumentException("Browser runtime request is required.");
         var args = JsonNode.Parse(request.Arguments.GetRawText())?.AsObject()
             ?? throw new ArgumentException("Browser tool arguments must be an object.");
+        if (request.ToolId.StartsWith("imagegen.", StringComparison.Ordinal))
+            return await ExecuteImageGenerationAsync(id, request, args, cancellationToken).ConfigureAwait(false);
         var requestedFamily = BrowserFamilyRouting.Parse(request.Context.BrowserFamily);
         var family = BrowserFamilyRouting.Resolve(requestedFamily, args);
         var suite = GetSuite(request.Context.IsolationScopeId, family);
@@ -333,6 +336,7 @@ public sealed class BrowserServiceServer : IDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _bridge.ApplicationStopRequested -= OnApplicationStopRequested;
+        _bridge.ImageGenerationBindingRequested -= OnImageGenerationBindingRequested;
         _bridge.Dispose();
         try
         {

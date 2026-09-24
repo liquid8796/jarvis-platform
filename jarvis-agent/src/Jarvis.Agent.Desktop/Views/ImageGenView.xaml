@@ -1,0 +1,25 @@
+<UserControl x:Class="Jarvis.Agent.Desktop.Views.ImageGenView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ScrollViewer PanningMode="VerticalOnly" VerticalScrollBarVisibility="Auto"><StackPanel Margin="14,18,14,25">
+<TextBlock Text="ImageGen · ChatGPT Web" FontSize="28" FontWeight="SemiBold"/>
+<TextBlock Text="Generate and edit images in the Chrome or Edge profile you already use." Foreground="{StaticResource Muted}" Margin="0,8,0,20" TextWrapping="Wrap"/>
+<Border Style="{StaticResource Card}" Padding="20"><StackPanel>
+<TextBlock Text="Your browser, your ChatGPT account" FontSize="17" FontWeight="SemiBold"/>
+<TextBlock Text="No separate Chromium, no cookie import and no paid API fallback. Your ChatGPT account limits still apply. Signing out or changing accounts stops the job instead of silently routing elsewhere." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,10,0,16"/>
+<TextBlock Text="SAVED BROWSER" Style="{StaticResource Caption}"/>
+<TextBlock Text="{Binding SavedBrowser}" TextWrapping="Wrap" FontFamily="Consolas" Margin="0,5,0,16" AutomationProperties.Name="Saved ImageGen browser"/>
+<TextBlock Text="CONNECTED PROFILES" Style="{StaticResource Caption}"/>
+<ListBox ItemsSource="{Binding Browsers}" SelectedItem="{Binding SelectedBrowser, Mode=TwoWay}" DisplayMemberPath="Label" Height="130" Background="{StaticResource Panel}" Foreground="{StaticResource Text}" BorderBrush="{StaticResource Line}" AutomationProperties.Name="ImageGen browser profiles"/>
+<WrapPanel Margin="0,14,0,8"><Button Content="Refresh connections" Command="{Binding RefreshCommand}" Margin="0,0,8,5"/><Button Content="Use selected browser" Command="{Binding BindCommand}" Style="{StaticResource Primary}" Margin="0,0,8,5"/><Button Content="Remove binding" Command="{Binding ClearCommand}" Margin="0,0,0,5"/></WrapPanel>
+<TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#8CD8B7" Margin="0,8,0,0" AutomationProperties.Name="ImageGen connection status"/>
+<TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="#FFA5B7" Margin="0,8,0,0" AutomationProperties.Name="ImageGen error"/>
+</StackPanel></Border>
+<Border Style="{StaticResource Card}" Padding="20" Margin="0,20,0,0"><StackPanel>
+<TextBlock Text="Setup and session ownership" FontSize="17" FontWeight="SemiBold"/>
+<TextBlock Text="1. In Connection center, set up browser integration. Reload Jarvis Agent Browser 1.4.0+ in your existing Chrome/Edge profile and allow Downloads.&#10;&#10;2. Open ChatGPT in that profile and sign in normally. Select the browser here, or use the extension popup's Use this browser action.&#10;&#10;3. Open an explicit Jarvis session, then use image_gen__imagegen. Jarvis creates a separate tab in an existing browser window without taking over the chat controlling it.&#10;&#10;4. To use an existing image-only conversation instead, open that tab and explicitly assign it to the Jarvis session in the extension popup." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,12,0,0"/>
+</StackPanel></Border>
+<Border Style="{StaticResource Card}" Padding="20" Margin="0,20,0,0"><StackPanel>
+<TextBlock Text="Original files and recoverable jobs" FontSize="17" FontWeight="SemiBold"/>
+<TextBlock Text="image_gen__read returns job status, original local paths and bounded previews. Use the same request_id to safely retry an identical start. After a connection loss, read the existing job; resume=true only reconciles the original request and never sends the prompt again.&#10;&#10;Cancel stops local work, but cannot promise cancellation or quota restoration on ChatGPT. Reference images stay in their own Jarvis session. Missing uploads stop an edit before Send.&#10;&#10;Originals are preserved under JarvisAgent/imagegen. This integration does not delete ChatGPT conversations or move your original files. ChatGPT page changes may require an adapter update; an unverified result is reported, not replaced with a screenshot." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,12,0,0"/>
+</StackPanel></Border>
+</StackPanel></ScrollViewer>
+</UserControl>

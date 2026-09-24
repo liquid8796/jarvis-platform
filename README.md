@@ -1,4 +1,8 @@
-# Jarvis Control - 1.0.86
+# Jarvis Control - 1.0.87
+
+## ChatGPT Web ImageGen (1.0.87)
+
+Four session-owned `image_gen.*` tools create/edit images through the user's explicitly selected **existing Chrome/Edge profile** and Jarvis Agent Browser **1.4.0**. No embedded browser, cookie import, API key, Codex runtime or paid API fallback is used. Durable jobs preserve uncertainty instead of replaying prompts; original images and separate bounded PNG previews are stored locally. Choose the exact extension instance in **ImageGen** settings or the extension popup. Normal Arm/Pause and tool approvals remain unchanged. See [ImageGen setup and recovery](docs/IMAGEGEN.md) and BUILD-STATUS for executed verification and live-browser limitations. Package **1.0.87**, assembly/file **1.0.87.0**.
 
 ## Blender MCP integration (1.0.86)
 

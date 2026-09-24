@@ -1,4 +1,6 @@
 using System.IO;
+using Jarvis.Agent.Core.ImageGeneration;
+using Jarvis.Agent.Windows.ImageGeneration;
 using System.Windows;
 using Jarvis.Agent.Core;
 using Jarvis.Agent.Core.Execution;
@@ -10,6 +12,8 @@ namespace Jarvis.Agent.Windows;
 public sealed class ToolInventory : IDisposable
 {
     private readonly IBrowserRuntimeClient _browser;
+    public IBrowserRuntimeClient BrowserRuntime => _browser;
+    private readonly ImageGenerationToolSet _imageGen;
     private readonly UnityMcpToolSet _unity;
     private readonly BlenderMcpToolSet _blender;
     private readonly SessionFileObservations _fileObservations = new();
@@ -44,6 +48,9 @@ public sealed class ToolInventory : IDisposable
         tools.Add(new ComputerStateTool(_computerStates, observer));
         _browserTools = new SessionBrowserToolSet(_browser, _computerStates);
         tools.AddRange(_browserTools.Tools);
+        _imageGen = new ImageGenerationToolSet(Path.Combine(root, "imagegen"),
+            new ChatGptExtensionImageBackend(_browser, new ImageGenBrowserBindingStore(root)), new ImageArtifactStore());
+        tools.AddRange(_imageGen.Tools);
         Add("visualize", VisualizeTools.Create());
         Add("filesystem", [new ReadFileTool(), new ReadDocumentTool(), new WriteFileTool(), new EditFileTool(),
             new ListDirectoryTool(), new GlobTool(), new GrepTool(), new NotebookEditTool()]);
@@ -58,6 +65,7 @@ public sealed class ToolInventory : IDisposable
     }
     public async Task StopSessionAsync(AgentSessionIdentity identity, bool close, CancellationToken ct)
     {
+        _imageGen.Jobs.StopSession(identity);
         _unity.StopSession(identity.SessionId);
         _blender.StopSession(identity.SessionId);
         _computerStates.Invalidate(identity.SessionId);
@@ -65,6 +73,6 @@ public sealed class ToolInventory : IDisposable
         try { await _browserTools.StopSessionAsync(identity, close, ct); }
         finally { if (close) _computerStates.InvalidateAll(); }
     }
-    public void Pause() { _unity.Pause(); _blender.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
-    public void Dispose() { Pause(); _unity.Dispose(); _blender.Dispose(); _browser.Dispose(); }
+    public void Pause() { _imageGen.Jobs.Pause(); _unity.Pause(); _blender.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
+    public void Dispose() { Pause(); _imageGen.Dispose(); _unity.Dispose(); _blender.Dispose(); _browser.Dispose(); }
 }

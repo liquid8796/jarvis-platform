@@ -9,7 +9,7 @@ const HOST = "com.jarvis.agent.browser";
 const NATIVE_HOST_PROTOCOL_VERSION = 2;
 const BROWSER_PROTOCOL_VERSION = 2;
 const EXTENSION_INSTANCE_STORAGE = "jarvis.extensionInstanceId.v1";
-const EXTENSION_CAPABILITIES = ["application-sessions-v1", "tab-ownership-v1", "cdp-v1", "browser-family-v1"];
+const EXTENSION_CAPABILITIES = ["application-sessions-v1", "tab-ownership-v1", "cdp-v1", "browser-family-v1", "imagegen-v1"];
 let port = null;
 let reconnectDelay = 1000;
 let extensionInstancePromise = null;
@@ -808,7 +808,10 @@ async function clearIndicators(mode, session) {
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message && message.type === "JARVIS_STOP" && sender.tab) {
     const sessionId = tabOwners.get(sender.tab.id);
-    if (sessionId) post({ event: "stop_requested", tabId: sender.tab.id, sessionId });
+    if (sessionId) {
+      if (globalThis.JarvisImageGen) JarvisImageGen.stopSession(sessionId).catch(() => {});
+      post({ event: "stop_requested", tabId: sender.tab.id, sessionId });
+    }
   }
 });
 
@@ -1085,6 +1088,7 @@ async function resize(args, session) {
 // ---- command dispatch ------------------------------------------------------
 
 async function handle(cmd, args, session) {
+  if (cmd.startsWith("imagegen_")) return await JarvisImageGen.handle(cmd, args, session);
   switch (cmd) {
     case "ping":
       return { pong: true };
@@ -1094,6 +1098,7 @@ async function handle(cmd, args, session) {
     case "session": {
       await clearIndicators(args.active === false ? "off" : "idle", session);
       if (args.close === true) {
+        if (globalThis.JarvisImageGen) await JarvisImageGen.closeSession(session);
         session.closed = true;
         session.closedAt ??= Date.now();
         const owned = [...tabOwners].filter(([, owner]) => owner === session.id).map(([id]) => id);
@@ -1400,4 +1405,5 @@ async function handle(cmd, args, session) {
   }
 }
 
+if (typeof importScripts === "function") importScripts("imagegen-page.js", "imagegen.js");
 connect();

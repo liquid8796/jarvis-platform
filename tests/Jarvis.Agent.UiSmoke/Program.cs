@@ -89,7 +89,7 @@ internal static class Program
 
             var navigation = window.FindName("WorkspaceNavigation") as ListBox
                 ?? throw new InvalidOperationException("Workspace navigation list is missing.");
-            if (navigation.Items.Count != 5) throw new InvalidOperationException("Workspace navigation must expose exactly five destinations.");
+            if (navigation.Items.Count != 6) throw new InvalidOperationException("Workspace navigation must expose exactly six destinations.");
             Set("SelectedTab", 1); window.UpdateLayout();
             if (navigation.SelectedIndex != 1) throw new InvalidOperationException("Sidebar selection did not follow SelectedTab.");
             navigation.SelectedIndex = 0; window.UpdateLayout();
@@ -122,6 +122,11 @@ internal static class Program
                 using var output = File.Create(Path.Combine(report, filename)); encoder.Save(output);
             }
             Capture("agent-connection.png");
+            Set("SelectedTab", 5); window.UpdateLayout();
+            if (navigation.SelectedIndex != 5 || Get("ImageGen") is null)
+                throw new InvalidOperationException("ImageGen navigation or settings model is missing.");
+            Capture("agent-imagegen.png");
+            Set("SelectedTab", 0); window.UpdateLayout();
             Command("ClearWorkspaceCommand");
             if ((string)Get("Workspace")! != "" || folders.Count != 0) throw new InvalidOperationException("Workspace default could not be left empty.");
 
@@ -261,7 +266,7 @@ internal static class Program
                 if (saved.RootElement.GetProperty("fullPermissionTools").GetArrayLength() != 0) throw new InvalidOperationException("Clear all did not revoke the saved selection.");
             var result = new { version = assembly.GetName().Version!.ToString(), windowRendered = true,
                 iconLoaded = true, makePrimaryPassed = true, removeDirectoryPassed = true,
-                settingsSidebarNavigationPassed = true, runtimeVersionLabelPassed = true,
+                settingsSidebarNavigationPassed = true, runtimeVersionLabelPassed = true, imageGenSettingsPassed = true,
                 installedTools = items.Length, permissionTabRendered = true, singleToolSave = true,
                 reloadPersistence = true, permissionSettingsV2 = true, alwaysApprovalReload = true, alwaysApprovalRevoke = true,
                 selectAllIncludesFilteredOut = true, draftDoesNotApplyBeforeSave = true,

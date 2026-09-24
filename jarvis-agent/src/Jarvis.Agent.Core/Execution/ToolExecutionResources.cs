@@ -17,6 +17,13 @@ public static class ToolExecutionResources
             return new(["*"], true); // Arbitrary commands are not assumed to remain inside cwd.
         if (tool.Category is "session" or "workspace" or "thread" or "workflow")
             return new(["coordination|" + tool.Category + "|" + context.IsolationScopeId], !tool.ReadOnly);
+        if (tool.Category == "image_gen")
+        {
+            var recovery = arguments.TryGetProperty("resume", out var resume) && resume.ValueKind == JsonValueKind.True;
+            return id == "image_gen.imagegen" || (id == "image_gen.read" && recovery)
+                ? new(["imagegen|" + context.IsolationScopeId, "browser|" + context.IsolationScopeId], true)
+                : new([], false); // Read/cancel remain available while an owned generation retains its browser lease.
+        }
         if (tool.Category == "computer") return new(["desktop"], true);
         if (tool.Category == "browser")
         {

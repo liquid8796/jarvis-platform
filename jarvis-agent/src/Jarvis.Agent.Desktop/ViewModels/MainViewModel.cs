@@ -20,6 +20,7 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
     private int _selectedTab;
     public int SelectedTab { get => _selectedTab; set { Set(ref _selectedTab, value); if (_sessionUiReady) RefreshSessionUi(); } }
     public ToolPermissionsViewModel Permissions { get; }
+    public ImageGenViewModel ImageGen { get; }
     private string _server = "https://jarvis.example.com", _device = "", _workspace = "", _status = "Not connected", _control = "Control paused", _error = "";
     private bool _loopback;
     public string ServerUrl { get => _server; set => Set(ref _server, value); }
@@ -52,6 +53,7 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
         _owner = owner;
         _settingsRoot = settingsRoot ?? AgentProfile.Root;
         InitializeSessionUi();
+        ImageGen = new ImageGenViewModel(_settingsRoot, () => _runtime?.BrowserRuntime);
         _permissionStore = new ToolPermissionStore(System.IO.Path.Combine(_settingsRoot, "tool-permissions.json"));
         try
         {

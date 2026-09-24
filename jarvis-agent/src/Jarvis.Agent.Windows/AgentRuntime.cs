@@ -26,6 +26,7 @@ public sealed class AgentRuntime : IAsyncDisposable
     private readonly ToolPermissionPolicy _permissions;
     public LocalControlGate Gate { get; } = new();
     public AgentConnection Connection { get; }
+    public IBrowserRuntimeClient BrowserRuntime => _inventory.BrowserRuntime;
     public PluginCatalogSnapshot PluginCatalog => _plugins.Snapshot;
     public PluginRuntimeBootstrap PluginRuntime => _plugins;
 

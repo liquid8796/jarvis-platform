@@ -1,1 +1,1 @@
-feat(sessions): show selectable session ids
+feat(imagegen): integrate ChatGPT Web through existing browser

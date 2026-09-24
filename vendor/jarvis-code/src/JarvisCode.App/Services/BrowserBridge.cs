@@ -102,6 +102,7 @@ public sealed class BrowserBridge : IDisposable
     private readonly AsyncLocal<string?> _applicationSession = new();
     private readonly Dictionary<string, string> _applicationSelections = new(StringComparer.Ordinal);
     public event Action<string>? ApplicationStopRequested;
+    public event Action<BrowserConnectionInfo, bool>? ImageGenerationBindingRequested;
 
     /// <summary>Scope selection and native envelopes without changing legacy desktop bridge clients.</summary>
     public IDisposable EnterApplicationSession(string sessionId)
@@ -366,6 +367,15 @@ public sealed class BrowserBridge : IDisposable
             return;
         }
 
+        if (message["event"]?.GetValue<string>() == "imagegen_bind_browser")
+        {
+            if (connection.Ready && connection.ExtensionInstanceId is not null && connection.Capabilities.Contains("imagegen-v1"))
+                ImageGenerationBindingRequested?.Invoke(new BrowserConnectionInfo(connection.Id, connection.Name, true, false,
+                    connection.BrowserProtocolVersion, connection.BrowserFamily, connection.Capabilities, connection.ExtensionInstanceId),
+                    message["enabled"]?.GetValue<bool>() == true);
+            return;
+        }
+
         if (message["event"]?.GetValue<string>() == "ready")
         {
             connection.BrowserProtocolVersion = message["browserProtocolVersion"]?.GetValue<int>() ?? 0;
@@ -448,6 +458,19 @@ public sealed class BrowserBridge : IDisposable
     {
         if (_remote is not null) return await _remote.RequestAsync(cmd, args, cancellationToken);
         return await RequestForBrowserAsync(null, cmd, args, cancellationToken);
+    }
+
+    /// <summary>Exact instance routing for ImageGen. Connection IDs are ephemeral and are never a fallback identity.</summary>
+    public Task<JsonObject> RequestForExtensionInstanceAsync(string instanceId, string cmd, JsonObject args, CancellationToken ct)
+    {
+        string id;
+        lock (_connections)
+        {
+            var matches = _connections.Where(c => c.Ready && c.ExtensionInstanceId == instanceId).ToArray();
+            if (matches.Length != 1) throw new InvalidOperationException("The selected browser instance is missing or ambiguous.");
+            id = matches[0].Id;
+        }
+        return RequestForBrowserAsync(id, cmd, args, ct);
     }
 
     internal async Task<JsonObject> RequestForBrowserAsync(string? browserId, string cmd, JsonObject? args, CancellationToken cancellationToken,

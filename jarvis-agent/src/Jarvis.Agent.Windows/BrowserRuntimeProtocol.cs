@@ -81,7 +81,8 @@ internal static class BrowserRuntimeProtocol
         "session-isolation-v1",
         "browser-family-routing-v1",
         "isolated-dev-profile-v1",
-        "frontend-verification-v1"
+        "frontend-verification-v1",
+        "chatgpt-extension-imagegen-v1"
     ];
 
     public static JsonSerializerOptions Json { get; } = new(WireJson.Options)

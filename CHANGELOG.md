@@ -1,3 +1,11 @@
+## 1.0.87 - 2026-09-24
+
+- Add four explicit-session ImageGen tools backed exclusively by ChatGPT Web in the user's selected Chrome/Edge extension instance. No standalone browser, cookie import, OpenAI API key or paid API fallback.
+- Add local Desktop/extension selection, exact-instance routing, account/conversation checks, strict reference uploads, durable idempotent jobs, cancellation and reconciliation without resubmitting prompts.
+- Save browser-attributed original downloads as immutable session artifacts with bounded transparent PNG previews and edit lineage. Refuse ambiguous results, missing inputs, unsafe paths and cross-session references.
+- Add ImageGen settings and extension popup; extension version 1.4.0 adds Downloads permission. Reload the extension and explicitly select the signed-in browser; existing permissions are not automatically enabled.
+- Bump package to 1.0.87 and assembly/file to 1.0.87.0. Verification and deployment evidence are recorded in docs/BUILD-STATUS.md; do not infer live ChatGPT end-to-end acceptance from unit tests.
+
 ## 1.0.86 - 2026-09-24
 
 - Add the Blender MCP Python/stdio integration observed in the local authoring pipeline: six sensitive `blender.*` tools with real downstream discovery, calls, resources, prompts, images and structured results.
