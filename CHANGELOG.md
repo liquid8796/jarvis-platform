@@ -1,3 +1,12 @@
+## 1.0.86 - 2026-09-24
+
+- Add the Blender MCP Python/stdio integration observed in the local authoring pipeline: six sensitive `blender.*` tools with real downstream discovery, calls, resources, prompts, images and structured results.
+- Share validated MCP config/transport lifecycle with Unity while preserving its IDs and behavior. Blender enforces loopback, Safe Mode and telemetry opt-out, serializes calls across this Agent's sessions, and never falls back to raw addon code execution.
+- Add explicit configuration/startup helpers, regression/smoke coverage and operator documentation. Preserve other MCP entries, fail on malformed JSON, and retain existing consent, enrollment and Arm/Pause controls. Cancellation never claims to undo or forcibly interrupt Blender Python.
+- Prefix Blender public catalog names (`blender_list_tools`, `blender_call_tool`, etc.) to avoid silently colliding with Unity under the existing gateway's global name uniqueness rule.
+- Fix MCP stdio deadlocks by continuously draining diagnostic stderr with a fixed-size buffer, including output without newlines. Keep diagnostics out of tool replies; verify the failure/fix with a native process regression and live Blender calls.
+- Bump package to **1.0.86**, assembly/file to **1.0.86.0**. No new gateway wire messages or permissions are introduced. Release verification passed **506 .NET + 8 Python tests** and real Blender smoke; the versioned server release was deployed and independently verified on OCI. See `docs/BUILD-STATUS.md` for evidence and the separate running-Agent upgrade requirement.
+
 ## 1.0.85 - 2026-09-24
 
 - Integrate the MCP for Unity Jarvis Agent client through the operator-owned `JarvisAgent/mcp.json` Unity entry. Add six sensitive `unity.*` tools for discovery, calls, resources, and prompts with stdio/Streamable HTTP support.

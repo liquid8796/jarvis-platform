@@ -11,6 +11,7 @@ public sealed class ToolInventory : IDisposable
 {
     private readonly IBrowserRuntimeClient _browser;
     private readonly UnityMcpToolSet _unity;
+    private readonly BlenderMcpToolSet _blender;
     private readonly SessionFileObservations _fileObservations = new();
     private readonly SessionBrowserToolSet _browserTools;
     private readonly PerSessionToolSet _computerTools;
@@ -51,16 +52,19 @@ public sealed class ToolInventory : IDisposable
         Add("workflow", [new TodoTool(), new AskUserQuestionTool()]);
         _unity = new UnityMcpToolSet(Path.Combine(root, UnityMcpConfig.FileName));
         tools.AddRange(_unity.Tools);
+        _blender = new BlenderMcpToolSet(Path.Combine(root, BlenderMcpConfig.FileName));
+        tools.AddRange(_blender.Tools);
         Tools = tools;
     }
     public async Task StopSessionAsync(AgentSessionIdentity identity, bool close, CancellationToken ct)
     {
         _unity.StopSession(identity.SessionId);
+        _blender.StopSession(identity.SessionId);
         _computerStates.Invalidate(identity.SessionId);
         if (close) { _computerTools.Forget(identity); _fileObservations.Forget(identity); }
         try { await _browserTools.StopSessionAsync(identity, close, ct); }
         finally { if (close) _computerStates.InvalidateAll(); }
     }
-    public void Pause() { _unity.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
-    public void Dispose() { Pause(); _unity.Dispose(); _browser.Dispose(); }
+    public void Pause() { _unity.Pause(); _blender.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
+    public void Dispose() { Pause(); _unity.Dispose(); _blender.Dispose(); _browser.Dispose(); }
 }

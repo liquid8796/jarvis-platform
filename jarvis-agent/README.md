@@ -1,4 +1,26 @@
-# Jarvis Agent - 1.0.85
+# Jarvis Agent - 1.0.86
+
+## Blender MCP bridge (1.0.86)
+
+This integration follows the observed `racing-bois-1` workflow: Python `-m blender_mcp.server` speaks real MCP stdio (`initialize`, `tools/list`, `tools/call`) and the upstream server connects to the Blender addon over `127.0.0.1:9876`. It is not UI automation or direct headless export. The observed source was `ahujasid/mcp-for-blender` 2.0.0 at commit `6f992ffbca3cb715d111fc640b737b808632273c`, with the existing disabled-telemetry compatibility patch. No Codex account configuration, conversations, or credentials are imported into Jarvis.
+
+From the repository root, configure a trusted, already-installed Blender MCP Python environment (substitute local paths):
+
+```powershell
+.\scripts\Configure-BlenderMcp.ps1 -PythonExe 'D:\Project\Unity\racing-bois\_local\blender-env\Scripts\python.exe'
+.\scripts\Start-BlenderMcp.ps1 -BlenderExe 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' -AddonPath 'D:\Project\Unity\racing-bois\_local\blender-mcp\addon.py'
+```
+
+Configuration writes only `mcpServers.blender` in `%LOCALAPPDATA%\JarvisAgent\mcp.json`. The setup script validates the Python package, takes an exclusive `mcp.json.lock` sidecar lock for concurrent runs of this setup helper, checks the original bytes before replacement, backs up an existing config, and replaces it atomically; malformed/oversized/ambiguous JSON is preserved, not reset. Other MCP servers and metadata are retained. Do not run Unity's Configure action or edit mcp.json concurrently: those writers do not honor this helper's lock. It does not install packages, change tool permissions, start the Agent, or alter Blender preferences. The separate start script launches a fresh task-owned Blender with factory startup and automatic .blend script execution disabled; an occupied port is rejected rather than reused or killed. A different `-Port` must be supplied consistently to both scripts.
+
+Restart the updated Agent, reconnect and import/enable the `blender` category in Jarvis Control. Agent IDs are `blender.list_tools`, `blender.call_tool`, `blender.list_resources`, `blender.read_resource`, `blender.list_prompts`, and `blender.get_prompt`. Their default public catalog names are `blender_list_tools`, `blender_call_tool`, and so on; the prefix prevents the gateway's globally unique name constraint from silently skipping them when Unity is already imported. Use `blender_list_tools` to discover exact downstream schemas, then `blender_call_tool` with a discovered name and arguments. The authoring tools include `get_addon_status`, `get_scene_info` (requires `user_prompt`), `get_object_info`, `execute_blender_code`, and `get_viewport_screenshot`. Images and structured results are forwarded. Resource/prompt list/read wrappers are also available when supported by the downstream server; reading a prompt does not execute it.
+
+Blender is deliberately limited to the observed local Python/stdio launcher. The parser rejects remote hosts, shell/HTTP launchers and explicit unsafe-mode/telemetry-enabled settings, and writes safe defaults into the child environment even when the Agent inherited different values. Upstream Safe Mode is defense in depth, **not an operating-system sandbox**; Blender Python and asset operations remain sensitive actions. No raw socket execution fallback is provided.
+
+Connections are lazy and per Agent session, and all Blender bridge requests within this Agent are serialized. This **does not isolate Blender scenes**: all sessions using the same addon/port share its scene, and other clients such as Codex are outside this Agent's queue. Inspect before changing, save valuable work first, and use separately configured addon ports/Agent profiles for independent scenes. Pause/stop closes owned MCP clients, not the Blender application; already-running Blender Python may continue and cannot be rolled back by cancellation. Failed/uncertain modifying calls are never automatically retried. Batch long authoring work into smaller requests (stdio tool-call deadline: 120 seconds).
+
+The MCP gateway wire protocol is unchanged; the existing dynamic catalog can import these new descriptors. Building does not replace a running Agent or grant/enable new tools. Deployment and verified test results are recorded in [BUILD-STATUS.md](../docs/BUILD-STATUS.md).
+
 
 ## Unity MCP bridge (1.0.85)
 

@@ -1,4 +1,8 @@
-# Jarvis Control - 1.0.85
+# Jarvis Control - 1.0.86
+
+## Blender MCP integration (1.0.86)
+
+The Agent adds six `blender.*` bridge tools using the same real Python/stdio MCP pipeline as the local Blender authoring workflow. Configure the existing Python environment with `scripts/Configure-BlenderMcp.ps1`; keep the addon listening on IPv4 loopback. Safe Mode remains enabled, telemetry disabled, and normal tool consent/Arm/Pause checks unchanged. Unity and Blender share tested transport plumbing but keep separate namespaces and connections. See [Blender setup](jarvis-agent/README.md#blender-mcp-bridge-1086). Package **1.0.86**, assembly/file **1.0.86.0**.
 
 ## Unity MCP integration (1.0.85)
 

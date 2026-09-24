@@ -24,6 +24,7 @@ public sealed class McpClient : IMcpClient
     private bool _dead;
     private string _deathReason = "the server was shut down";
     private Task? _readLoop;
+    private Task? _stderrLoop;
 
     public string ServerName { get; }
 
@@ -83,6 +84,8 @@ public sealed class McpClient : IMcpClient
 
         var client = new McpClient(config.Name, process, requestTimeout ?? DefaultRequestTimeout);
         client._readLoop = Task.Run(client.ReadLoopAsync, CancellationToken.None);
+        // MCP diagnostics must never block the server's protocol pipe, even without newlines.
+        client._stderrLoop = Task.Run(client.DrainStandardErrorAsync, CancellationToken.None);
         process.Exited += (_, _) => client.FailAllPending($"the '{config.Name}' server process exited");
 
         try
@@ -405,6 +408,21 @@ public sealed class McpClient : IMcpClient
         FailAllPending($"the '{ServerName}' server closed its output");
     }
 
+    private async Task DrainStandardErrorAsync()
+    {
+        // Discard diagnostics in a fixed-size buffer: they may contain secrets, and may
+        // have no line endings. ReadToEnd/ReadLine would retain unbounded output.
+        var buffer = new char[4096];
+        try
+        {
+            while (await _process.StandardError.ReadAsync(buffer.AsMemory()).ConfigureAwait(false) > 0) { }
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException)
+        {
+            // Diagnostic-stream teardown must not hide a protocol failure or cancellation.
+        }
+    }
+
     private void FailAllPending(string reason)
     {
         List<TaskCompletionSource<JsonNode>> pending;
@@ -440,7 +458,7 @@ public sealed class McpClient : IMcpClient
         {
             try
             {
-                await _readLoop.WaitAsync(TimeSpan.FromSeconds(3));
+                await Task.WhenAll(_readLoop, _stderrLoop ?? Task.CompletedTask).WaitAsync(TimeSpan.FromSeconds(3));
             }
             catch (Exception ex) when (ex is TimeoutException or McpException or IOException)
             {
