@@ -1,4 +1,21 @@
-# Jarvis Agent - 1.0.75
+# Jarvis Agent - 1.0.85
+
+## Unity MCP bridge (1.0.85)
+
+The Agent reads only `%LOCALAPPDATA%\JarvisAgent\mcp.json` (`mcpServers.unityMCP`), not a repository MCP file and not the separate JarvisCode profile. Install MCP for Unity 10.2.1-beta.7+, open **Window > MCP for Unity**, select **Jarvis Agent**, and click **Configure** (or select it in the first-run wizard). Keep the Unity MCP session active; HTTP also requires the shared HTTP server. Remote endpoints require HTTPS. Prefer HTTP for multiple assistants: Unity's legacy stdio/TCP connection is single-agent even though Agent-side sessions are isolated.
+
+Restart the updated Agent and reconnect. Import/enable its `unity` tool category in Jarvis Control if the server has not yet imported these descriptors. `unity.list_tools` returns the actual downstream schemas with paging/filtering. Use `unity.call_tool` with a discovered name and object arguments. `unity.list_resources`, `unity.read_resource`, `unity.list_prompts`, and `unity.get_prompt` expose the remaining surfaces. Reading a prompt does not execute its instructions.
+
+All six wrappers retain normal sensitive-tool approval and Arm/Pause checks, including discovery because opening stdio can launch a process. Configuration does not grant permissions or change enrollment. Connections open only on an approved tool call, are reused per session, and close on Pause/stop. The next call reloads local config; invalid/disabled config closes the corresponding session connection. Transport failures are not retried, so verify Unity state before manually repeating a modifying call. Discovery/results and config sizes are bounded; Agent plugin skills are not installed by Unity's client-skill button.
+
+Native Windows executable launch preserves literal `>=` package requirements rather than passing them through shell redirection. The platform package is **1.0.85** and assembly/file version **1.0.85.0**. The release history below describes earlier changes.
+
+
+### Verification for 1.0.85
+
+Release solution compilation succeeds. The Core suite passes 257/257 tests and the Windows Agent suite passes 107/107, including a real native-process regression for literal version requirements and shell metacharacters. The Unity configurator passes 17/17 EditMode tests; the bridge passes stdio/HTTP fixtures and a live read-only Editor query. Desktop and CLI self-contained win-x64 packages both pass `Verify-AgentOutput.ps1`, and `Verify-CurrentVersion.py` confirms 1.0.85 / 1.0.85.0. The full Server test run was interrupted while still running and is not claimed as passing. Release packaging was completed separately with `Build.ps1 -Component Agent -SkipTests` after the verified Agent/Core runs.
+
+The running Agent is not hot-patched by Unity configuration. Start the newly built 1.0.85 Agent to load the bridge; existing Arm/Pause, enrollment, and catalog/approval controls remain unchanged.
 
 Open `Jarvis Agent.slnx` with the entire repository present. Keep its Vendor projects loaded:
 those assemblies implement reused tools, while the standalone Jarvis Code application is excluded

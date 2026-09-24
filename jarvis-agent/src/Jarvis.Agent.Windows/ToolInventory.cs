@@ -10,6 +10,7 @@ namespace Jarvis.Agent.Windows;
 public sealed class ToolInventory : IDisposable
 {
     private readonly IBrowserRuntimeClient _browser;
+    private readonly UnityMcpToolSet _unity;
     private readonly SessionFileObservations _fileObservations = new();
     private readonly SessionBrowserToolSet _browserTools;
     private readonly PerSessionToolSet _computerTools;
@@ -48,15 +49,18 @@ public sealed class ToolInventory : IDisposable
         Add("git", [new GitStatusTool(), new GitDiffTool(), new GitLogTool(), new GitShowTool(), new GitBlameTool()]);
         Add("shell", [new ShellTool(), new ShellTool(ShellKind.Bash)]);
         Add("workflow", [new TodoTool(), new AskUserQuestionTool()]);
+        _unity = new UnityMcpToolSet(Path.Combine(root, UnityMcpConfig.FileName));
+        tools.AddRange(_unity.Tools);
         Tools = tools;
     }
     public async Task StopSessionAsync(AgentSessionIdentity identity, bool close, CancellationToken ct)
     {
+        _unity.StopSession(identity.SessionId);
         _computerStates.Invalidate(identity.SessionId);
         if (close) { _computerTools.Forget(identity); _fileObservations.Forget(identity); }
         try { await _browserTools.StopSessionAsync(identity, close, ct); }
         finally { if (close) _computerStates.InvalidateAll(); }
     }
-    public void Pause() { _computerStates.InvalidateAll(); _teach?.End(); }
-    public void Dispose() { Pause(); _browser.Dispose(); }
+    public void Pause() { _unity.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
+    public void Dispose() { Pause(); _unity.Dispose(); _browser.Dispose(); }
 }

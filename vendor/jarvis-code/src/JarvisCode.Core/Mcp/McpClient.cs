@@ -49,9 +49,14 @@ public sealed class McpClient : IMcpClient
             CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8,
         };
-        if (OperatingSystem.IsWindows())
+        var extension = Path.GetExtension(config.Command);
+        if (OperatingSystem.IsWindows() &&
+            !extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".com", StringComparison.OrdinalIgnoreCase))
         {
-            // cmd resolves .cmd/.bat launchers (npx, uvx, ...) that CreateProcess cannot.
+            // Keep the shell fallback for batch/extensionless launchers such as npx.
+            // Native executables must run directly: cmd interprets MCP arguments such
+            // as mcpforunityserver>=0.0.0a0 as redirection, even with ArgumentList.
             startInfo.FileName = "cmd.exe";
             startInfo.ArgumentList.Add("/c");
             startInfo.ArgumentList.Add(config.Command);

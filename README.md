@@ -1,4 +1,8 @@
-# Jarvis Control - 1.0.84
+# Jarvis Control - 1.0.85
+
+## Unity MCP integration (1.0.85)
+
+Jarvis Agent now consumes the **Jarvis Agent** client configuration written by MCP for Unity to `%LOCALAPPDATA%\JarvisAgent\mcp.json`. Supports stdio and Streamable HTTP with six `unity.*` bridge tools, lazy per-session connections, bounded discovery/results, and cancellation on Pause/session stop. See [the Agent guide](jarvis-agent/README.md#unity-mcp-bridge-1085) for setup and limitations. Assembly/file version: **1.0.85.0**.
 
 **Version 1.0.84 hardens per-chat default-workspace routing.** Newly opened explicit sessions keep the Agent's configured default workspace unless the current user request explicitly asks to select, change or clear it. Workspace tool guidance no longer treats prior chats, remembered project paths, session metadata or inferred project identity as authority for an override. See the [operator guide](docs/AGENT.md) for the session/workspace contract and [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed checks. Build/push does not itself update a running Agent or production MCP service.
 

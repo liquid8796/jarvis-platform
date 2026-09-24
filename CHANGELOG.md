@@ -1,3 +1,10 @@
+## 1.0.85 - 2026-09-24
+
+- Integrate the MCP for Unity Jarvis Agent client through the operator-owned `JarvisAgent/mcp.json` Unity entry. Add six sensitive `unity.*` tools for discovery, calls, resources, and prompts with stdio/Streamable HTTP support.
+- Keep connections lazy and isolated by Agent session. Configuration changes reconnect; missing/disabled/malformed configuration revokes that session's bridge. Pause/stop disposes owned connections; failed modifying requests are never automatically replayed. Existing approvals, Arm/Pause, enrollment, and tool permissions are unchanged.
+- Launch native Windows `.exe`/`.com` MCP servers directly rather than through `cmd.exe`, preserving `>=` version requirements and other literal shell metacharacters. Retain the existing batch/extensionless launcher fallback.
+- Add parser, lifecycle, schema, forwarding, and real Windows stdio process regressions. Document Unity Editor setup and catalog import. Bump package to **1.0.85**, assembly/file to **1.0.85.0**.
+
 ## 1.0.84 - 2026-09-24
 
 - Keep newly opened chat sessions on the Agent's configured default workspace unless the current user request explicitly asks for a workspace override. Workspace tool descriptions and schema guidance now reject inferred switches sourced from prior chats, remembered project paths, session labels/list results or unrelated project context.
