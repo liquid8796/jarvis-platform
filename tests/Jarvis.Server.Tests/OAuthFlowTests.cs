@@ -36,7 +36,11 @@ public sealed class OAuthFlowTests
             @params = new { protocolVersion = "2025-11-25", capabilities = new { }, clientInfo = new { name = "jarvis-test", version = "1.0" } }
         });
         initialized.EnsureSuccessStatusCode();
-        Assert.Contains("jarvis-mcp-server", await initialized.Content.ReadAsStringAsync());
+        var initializedText = await initialized.Content.ReadAsStringAsync();
+        Assert.Contains("jarvis-mcp-server", initializedText);
+        Assert.Contains("\"listChanged\":true", initializedText, StringComparison.Ordinal);
+        if (initialized.Headers.TryGetValues("Mcp-Session-Id", out var sessionIds))
+            client.DefaultRequestHeaders.Add("Mcp-Session-Id", sessionIds.Single());
         client.DefaultRequestHeaders.Add("MCP-Protocol-Version", "2025-11-25");
         var listed = await client.PostAsJsonAsync("/mcp", new { jsonrpc = "2.0", id = 2, method = "tools/list" });
         listed.EnsureSuccessStatusCode();

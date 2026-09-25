@@ -28,15 +28,15 @@ public sealed class BulkToolAvailabilityTests
         foreach (var original in tools.Take(2))
         {
             var changed = Assert.Single(current!, t => t.Id == original.Id);
-            Assert.Equal(enabled, changed.Enabled); Assert.NotEqual(original.Revision, changed.Revision);
+            Assert.Equal(enabled ? ToolPublicationMode.Published : ToolPublicationMode.Hidden, changed.PublicationMode); Assert.NotEqual(original.Revision, changed.Revision);
         }
         var untouched = Assert.Single(current!, t => t.Id == tools[2].Id);
-        Assert.Equal(!enabled, untouched.Enabled); Assert.Equal(tools[2].Revision, untouched.Revision);
+        Assert.Equal(!enabled ? ToolPublicationMode.Published : ToolPublicationMode.Hidden, untouched.PublicationMode); Assert.Equal(tools[2].Revision, untouched.Revision);
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var audits = await db.Audit.Where(a => a.Action.StartsWith("catalog.bulk-")).ToListAsync();
         Assert.Equal(2, audits.Count); Assert.Single(audits.Select(a => a.CorrelationId).Distinct());
-        Assert.All(audits, a => Assert.Equal(enabled ? "catalog.bulk-publish" : "catalog.bulk-disable", a.Action));
+        Assert.All(audits, a => Assert.Equal(enabled ? "catalog.bulk-publish" : "catalog.bulk-hide", a.Action));
     }
 
     [Theory]
@@ -58,7 +58,7 @@ public sealed class BulkToolAvailabilityTests
         var response = await admin.PostAsJsonAsync(Route, Request(tools.Take(2), true));
         Assert.Equal(expected, response.StatusCode);
         using var verify = app.Services.CreateScope(); var verifiedDb = verify.ServiceProvider.GetRequiredService<AppDbContext>();
-        Assert.False(await verifiedDb.Tools.AnyAsync(t => t.Enabled));
+        Assert.False(await verifiedDb.Tools.AnyAsync(t => t.PublicationMode != ToolPublicationMode.Hidden));
         Assert.False(await verifiedDb.Audit.AnyAsync(a => a.Action.StartsWith("catalog.bulk-")));
     }
 
@@ -86,7 +86,7 @@ public sealed class BulkToolAvailabilityTests
             var device = await db.Devices.SingleAsync(); device.CapabilitiesJson = "[]"; await db.SaveChangesAsync();
         }
         (await admin.PostAsJsonAsync(Route, Request(tools, false))).EnsureSuccessStatusCode();
-        Assert.All((await admin.GetFromJsonAsync<ToolEntry[]>("/api/admin/tools"))!, t => Assert.False(t.Enabled));
+        Assert.All((await admin.GetFromJsonAsync<ToolEntry[]>("/api/admin/tools"))!, t => Assert.Equal(ToolPublicationMode.Hidden, t.PublicationMode));
     }
 
     [Theory]
@@ -113,7 +113,7 @@ public sealed class BulkToolAvailabilityTests
             _ => new { tools = Enumerable.Range(0, 501).Select(i => new { id = "id" + i, revision = "r" }).ToArray(), enabled = true }
         };
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync(Route, body)).StatusCode);
-        Assert.All((await admin.GetFromJsonAsync<ToolEntry[]>("/api/admin/tools"))!, t => Assert.False(t.Enabled));
+        Assert.All((await admin.GetFromJsonAsync<ToolEntry[]>("/api/admin/tools"))!, t => Assert.Equal(ToolPublicationMode.Hidden, t.PublicationMode));
     }
 
     [Fact]
@@ -147,7 +147,8 @@ public sealed class BulkToolAvailabilityTests
             "fixture__tool" + i, "fixture", "Fixture tool " + i, WireJson.Element(new { type = "object" }), i == 1)).ToArray();
         device.CapabilitiesJson = JsonSerializer.Serialize(descriptors, WireJson.Options);
         var entries = descriptors.Select(t => new ToolEntry { Name = t.Name, AgentToolId = t.Id,
-            Description = t.Description, Category = t.Category, Enabled = enabled }).ToArray();
+            Description = t.Description, Category = t.Category,
+            PublicationMode = enabled ? ToolPublicationMode.Published : ToolPublicationMode.Hidden }).ToArray();
         db.Tools.AddRange(entries); await db.SaveChangesAsync(); return entries;
     }
 }

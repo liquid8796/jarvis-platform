@@ -53,13 +53,13 @@ Read the actual controller contracts for exact JSON fields. `/api` uses cookie a
 | `/api/overview`, `/api/activity` | GET metrics / latest 100 own metadata events |
 | `/api/admin/tools` | GET list / POST alias to an installed capability |
 | `/api/admin/tools/{id}` | GET detail+schema / PUT revision-aware metadata / DELETE |
-| `/api/admin/tools/bulk-availability` | POST `{ tools: [{ id, revision }], enabled }`; 1..500 unique selections; admin + CSRF; atomic changes and audits; stale revision 409, missing tool 404 |
-| `/api/admin/tools/import` | POST import discovered capabilities, disabled by default |
+| `/api/admin/tools/bulk-availability` | POST `{ tools: [{ id, revision }], publicationMode }` where mode is `Auto`, `Published` or `Hidden`; legacy `enabled` remains accepted; 1..500 unique selections; admin + CSRF; atomic changes and audits; stale revision 409, missing tool 404 |
+| `/api/admin/tools/import` | POST optional metadata mirror for discovered capabilities; newly mirrored tools use `Auto` policy and are already runtime-visible from the selected device unless explicitly `Hidden` |
 | `/api/admin/capabilities` | GET capabilities known from enrolled devices |
 | `/api/admin/users` | GET / POST administrator user management |
 | `/api/admin/users/{id}` | PUT name/email/role/status/password / DELETE; last-admin safeguards |
 | `/connect/authorize`, `/token`, `/revoke`, `/register` | OAuth endpoints; see OAUTH-MCP.md |
-| `/mcp` | Official MCP SDK Streamable HTTP endpoint; bearer OAuth required |
+| `/mcp` | Official MCP SDK Streamable HTTP endpoint; bearer OAuth required. Initialize-based clients keep a stateful session for `notifications/tools/list_changed`; newer stateless clients retain dynamic access through permanent `jarvis__tool_search` / `jarvis__tool_call` fallback tools. |
 | `/agent/connect` | WebSocket upgrade; enrollment Authorization header, no browser Origin |
 | `/health` | GET anonymous version/liveness; no private health details |
 

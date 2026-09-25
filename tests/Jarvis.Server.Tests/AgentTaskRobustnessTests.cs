@@ -113,7 +113,7 @@ public sealed class AgentTaskRobustnessTests
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/agent/tasks", peer.Input(Plan(LongStep()) with { ExecutionMode = "READ_ONLY" }))).StatusCode);
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db.Tools.SingleAsync(t => t.AgentToolId == "process.start")).Enabled = false;
+        (await db.Tools.SingleAsync(t => t.AgentToolId == "process.start")).PublicationMode = ToolPublicationMode.Hidden;
         await db.SaveChangesAsync();
         Assert.Equal(HttpStatusCode.Forbidden, (await admin.PostAsJsonAsync("/api/agent/tasks", peer.Input(Plan(LongStep())))).StatusCode);
         Assert.Null(peer.StartedJobId); Assert.Equal(0, peer.Approval.Calls);

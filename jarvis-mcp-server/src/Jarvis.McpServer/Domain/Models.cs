@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Jarvis.Protocol;
 namespace Jarvis.McpServer.Domain;
 
@@ -16,6 +17,28 @@ public sealed class Device
     public long LastSeenAt { get; set; }
     public string Revision { get; set; } = Guid.NewGuid().ToString("N");
 }
+[JsonConverter(typeof(JsonStringEnumConverter<ToolPublicationMode>))]
+public enum ToolPublicationMode
+{
+    Auto,
+    Published,
+    Hidden
+}
+
+public static class DynamicAgentToolNames
+{
+    public const string Search = "jarvis__tool_search";
+    public const string Call = "jarvis__tool_call";
+    public static bool IsReserved(string name) => name is Search or Call;
+}
+
+public static class ToolPublicationRules
+{
+    public static bool IsVisible(ToolPublicationMode mode) => mode != ToolPublicationMode.Hidden;
+    public static bool IsReservedPublicName(string name) =>
+        RemoteTaskRules.IsReservedName(name) || AgentSessionRules.IsPublicTool(name) || DynamicAgentToolNames.IsReserved(name);
+}
+
 public sealed class ToolEntry
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
@@ -23,7 +46,10 @@ public sealed class ToolEntry
     public string AgentToolId { get; set; } = "";
     public string Description { get; set; } = "";
     public string Category { get; set; } = "";
-    public bool Enabled { get; set; }
+    public ToolPublicationMode PublicationMode { get; set; } = ToolPublicationMode.Auto;
+    // Retained as a persisted compatibility column for schema-v1 databases and older admin clients.
+    // Runtime visibility is governed by PublicationMode; services keep this mirror synchronized.
+    public bool Enabled { get; set; } = true;
     public string Revision { get; set; } = Guid.NewGuid().ToString("N");
 }
 public sealed class AuditEvent

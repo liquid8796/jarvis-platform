@@ -10,7 +10,7 @@ namespace Jarvis.McpServer.Infrastructure;
 
 /// <summary>One broker process per deployment. Never retries a dispatched command after a lost connection.</summary>
 public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contexts, JarvisOptions options,
-    ILogger<WsAgentRouter> logger) : IAgentRouter
+    ILogger<WsAgentRouter> logger, ToolCatalogReconciler catalogReconciler, McpToolCatalogChangeHub changeHub) : IAgentRouter
 {
     private readonly ConcurrentDictionary<string, Peer> _peers = new();
     [GeneratedRegex("^[A-Za-z0-9_.-]{1,100}$")] private static partial Regex IdPattern();
@@ -70,6 +70,8 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                 Capabilities = peer.Capabilities,
                 ExecutionSettingsRevision = peer.SupportsExecutionSettings ? peer.ExecutionSettings.Revision : null
             }, stop.Token);
+            await catalogReconciler.ReconcileAsync(hello.Tools, stop.Token);
+            await changeHub.NotifyDeviceAsync(device.OwnerId, device.Id, stop.Token);
             var heartbeat = WatchAsync(peer, stop.Token);
             try
             {
@@ -133,6 +135,8 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
         device.LastSeenAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         await db.SaveChangesAsync(ct);
         peer.UpdateCatalog(generation.Value, digest);
+        await catalogReconciler.ReconcileAsync(tools, ct);
+        await changeHub.NotifyDeviceAsync(peer.OwnerId, peer.DeviceId, ct);
         await peer.Wire.SendAsync(new WireMessage("catalog.ack")
         {
             CatalogGeneration = generation.Value,

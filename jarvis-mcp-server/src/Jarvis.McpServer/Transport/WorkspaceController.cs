@@ -1,5 +1,6 @@
 using Jarvis.McpServer.Application;
 using Jarvis.McpServer.Infrastructure;
+using Jarvis.McpServer.Domain;
 using Jarvis.McpServer.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,7 +36,7 @@ public sealed class WorkspaceController(AppDbContext db, DeviceService devices) 
         var owner = await Owner(ct); var list = await devices.ListAsync(owner, ct);
         var today = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero).ToUnixTimeSeconds();
         return new { devices = list.Count, online = list.Count(d => d.Online),
-            tools = await db.Tools.CountAsync(t => t.Enabled, ct),
+            tools = await db.Tools.CountAsync(t => t.PublicationMode != ToolPublicationMode.Hidden, ct),
             callsToday = await db.Audit.CountAsync(a => a.UserId == owner && a.Time >= today && a.Outcome == "started" && a.Action.StartsWith("tool."), ct),
             version = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "unknown", transport = "MCP Streamable HTTP / agent WebSocket TLS" };
     }

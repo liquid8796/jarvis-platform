@@ -67,14 +67,14 @@ function render(){
   const m=state.overview;
   html=pageHeader(`Welcome back, ${esc(state.user.displayName.split(' ')[0])}.`,'Here’s what’s happening across your connected workspace.',addDevice)+
   `<section class="hero"><div class="hero-copy"><p class="eyebrow">YOUR NEXT WORKFLOW STARTS HERE</p><h2>Bring AI closer<br>to the work that matters.</h2><p>Connect your computer once. Access your tools through MCP — with secure routing and local consent.</p><div class="button-row"><button class="primary" data-action="connection-help">Connect ChatGPT &nbsp; ↗</button><button class="ghost" data-page="tools">Explore your tools</button></div></div><div class="orbit"><div class="brand-orb">J</div><div class="orbit-node">${icon('tools')}</div><div class="orbit-node bottom">${icon('device')}</div></div></section>`+
-  `<div class="metrics">${[[m.devices,'Enrolled devices','device','Connected to your account'],[m.online,'Online right now','pulse','Ready for local authorization'],[m.tools,'Published tools','tools','Enabled in the server catalog'],[m.callsToday,'Tool calls today','grid','Started calls · UTC day']].map(([n,l,i,c])=>`<div class="metric"><div class="metric-head">${l}${icon(i)}</div><div class="metric-value">${n??0}</div><div class="metric-caption">${c}</div></div>`).join('')}</div>`+
+  `<div class="metrics">${[[m.devices,'Enrolled devices','device','Connected to your account'],[m.online,'Online right now','pulse','Ready for local authorization'],[m.tools,'Visible policies','tools','Auto or Published in the server catalog'],[m.callsToday,'Tool calls today','grid','Started calls · UTC day']].map(([n,l,i,c])=>`<div class="metric"><div class="metric-head">${l}${icon(i)}</div><div class="metric-value">${n??0}</div><div class="metric-caption">${c}</div></div>`).join('')}</div>`+
   `<section class="panel"><header class="panel-header"><div><h2>Your devices</h2><p>The computers powering your workspace</p></div><button data-page="devices">View all &nbsp; →</button></header>${deviceTable(state.devices.slice(0,4),true)}</section>`+
   `<div class="split"><section class="panel"><header class="panel-header"><h2>Recent activity</h2><button data-page="activity">View log &nbsp; →</button></header>${activityFeed(5)}</section><section class="panel"><header class="panel-header"><div><h2>From connected to productive</h2><p>Three steps to your first tool call</p></div></header>${[['Enroll a device','Create its identity and copy the one-time token.'],['Connect Jarvis Agent','Choose a workspace, connect, and arm local control.'],['Authorize your MCP client','Select the device in OAuth consent and call an enabled tool.']].map(([h,p],i)=>`<div class="step"><span class="step-number">0${i+1}</span><div><h3>${h}</h3><p>${p}</p></div></div>`).join('')}</section></div>`;
  }
  if(state.page==='devices')html=pageHeader('Your devices.','Manage enrolled computers. Disabling a device immediately closes its connection.',addDevice)+`<section class="panel">${deviceTable(state.devices)}</section>`;
  if(state.page==='tools'){
   const admin=state.user.role==='admin';
-  html=pageHeader(admin?'Tools, under your control.':'Your agent capabilities.',admin?'Publish installed capabilities, edit their metadata and control availability.':'Capabilities installed on your devices. The administrator decides which are exposed over MCP.',admin?'<button data-action="import-tools">Import installed</button><button class="primary" data-action="add-tool">+ &nbsp; Add tool</button>':'')+
+  html=pageHeader(admin?'Tools, under your control.':'Your agent capabilities.',admin?'New capabilities are automatic by default. Override metadata, explicitly publish, or hide individual tools.':'Capabilities installed on your devices. New tools are exposed automatically unless an administrator explicitly hides them.',admin?'<button data-action="import-tools">Import installed</button><button class="primary" data-action="add-tool">+ &nbsp; Add tool</button>':'')+
   `<div class="toolbar"><div class="search">${icon('search')}<input id="tool-search" aria-label="Search tools" placeholder="Search tools, category or description…" value="${esc(state.query)}"></div><span class="muted small">${state.tools.length} ${admin?'registered tools':'installed capabilities'}</span></div>${admin?toolSelectionToolbar():''}<div id="tool-cards">${toolCards()}</div>`;
  }
  if(state.page==='users')html=pageHeader('People & permissions.','Approve registrations and manage access to the control plane.','<button class="primary" data-action="add-user">+ &nbsp; Add user</button>')+
@@ -96,9 +96,10 @@ function toolSelectionToolbar() {
   <div class="bulk-selection"><label class="tool-select-all"><input type="checkbox" id="select-all-tools"><span id="select-all-label">Select all</span></label>
    <span id="tool-selection-count" class="small muted" role="status" aria-live="polite"></span></div>
   <div class="button-row"><button data-action="clear-tool-selection">Clear selection</button>
-   <button data-action="bulk-disable-tools">Disable selected</button>
+   <button data-action="bulk-auto-tools">Use automatic</button>
+   <button data-action="bulk-hide-tools">Hide selected</button>
    <button class="primary" data-action="bulk-publish-tools">Publish selected</button></div>
-  <p class="bulk-hint small muted">Selection applies to the current search. Publishing exposes tools to authorized MCP clients; local approval still applies.</p>
+  <p class="bulk-hint small muted">Auto exposes capabilities whenever they exist on the selected device. Hidden is an explicit deny; local approval still applies to Auto and Published tools.</p>
  </section>`;
 }
 function syncToolSelection() {
@@ -109,7 +110,7 @@ function syncToolSelection() {
  master.disabled=state.bulkBusy || !visible.length;
  $('#select-all-label').textContent=state.query?'Select all filtered':'Select all';
  $('#tool-selection-count').textContent=`${count} selected / ${visible.length} shown`;
- for(const action of ['clear-tool-selection','bulk-disable-tools','bulk-publish-tools'])
+ for(const action of ['clear-tool-selection','bulk-auto-tools','bulk-hide-tools','bulk-publish-tools'])
   $(`[data-action="${action}"]`).disabled=state.bulkBusy || count===0;
  document.querySelectorAll('input[data-tool-select]').forEach(input=>{
   input.checked=state.selectedTools.has(input.dataset.toolSelect);
@@ -121,25 +122,29 @@ function toolCards() {
  const admin=state.user.role==='admin', list=visibleTools();
  return list.length?`<div class="cards">${list.map(t=>`<article class="tool-card ${admin&&state.selectedTools.has(t.id)?'is-selected':''}">
   <div class="tool-top"><span class="device-icon">${icon(t.category==='computer'?'device':'tools')}</span>
-   <div class="tool-card-actions">${pill(admin?(t.enabled?'active':'disabled'):'installed',admin?(t.enabled?'Published':'Disabled'):'Installed')}
+   <div class="tool-card-actions">${pill(admin?(String(t.publicationMode??'Auto').toLowerCase()==='hidden'?'disabled':String(t.publicationMode??'Auto').toLowerCase()==='published'?'active':'installed'):'installed',admin?(t.publicationMode??'Auto'):'Installed')}
    ${admin?`<input type="checkbox" class="tool-checkbox" data-tool-select="${esc(t.id)}" aria-label="Select ${esc(t.name)}" ${state.selectedTools.has(t.id)?'checked':''}>`:''}</div></div>
   <h3>${esc(t.name)}</h3><p>${esc(t.description)}</p><footer><span>${esc(t.category)}</span><button data-action="tool-detail" data-id="${esc(t.id)}">View details &nbsp; ↗</button></footer>
- </article>`).join('')}</div>`:empty('No tools to show.','Connect an agent, then import its capabilities. Imported tools start disabled.');
+ </article>`).join('')}</div>`:empty('No tools to show.','Connect an agent. New capabilities are automatically discoverable unless an administrator explicitly hides them.');
 }
-function reviewToolAvailability(enabled) {
+function reviewToolAvailability(publicationMode) {
  if(state.user?.role!=='admin' || state.bulkBusy)return;
  const tools=visibleTools().filter(t=>state.selectedTools.has(t.id));
  if(!tools.length)return;
- pendingToolAvailability={enabled,tools:tools.map(({id,revision})=>({id,revision}))};
- const verb=enabled?'Publish':'Disable';
- modal(`${verb} ${tools.length} selected tools?`, `<div class="modal-body">
-  <p>${enabled?'Authorized MCP clients will be able to discover and request these tools.':'These tools will be hidden from new tool lists and future calls will be rejected.'}</p>
-  <div class="notice">${enabled?'This selection may include file writes, terminal commands, browser and desktop actions. Agent approval rules are unchanged.':'This does not undo actions already completed. Use Pause in the Agent to cancel its active jobs.'}</div>
+ pendingToolAvailability={publicationMode,tools:tools.map(({id,revision})=>({id,revision}))};
+ const copy={
+  Auto:{verb:'Use automatic',body:'These tools will follow the selected device live capability set and appear automatically whenever installed.',notice:'Automatic publication changes discoverability only. Agent Arm, permission and approval rules are unchanged.',button:''},
+  Published:{verb:'Publish',body:'These tools will be explicitly published whenever the selected device provides them.',notice:'This selection may include file writes, terminal commands, browser and desktop actions. Agent approval rules are unchanged.',button:'primary'},
+  Hidden:{verb:'Hide',body:'These tools will be hidden from direct lists, live search and the generic call gateway.',notice:'This does not undo actions already completed. Use Pause in the Agent to cancel active jobs.',button:'danger'}
+ }[publicationMode];
+ modal(`${copy.verb} ${tools.length} selected tools?`, `<div class="modal-body">
+  <p>${copy.body}</p>
+  <div class="notice">${copy.notice}</div>
   <p class="small muted">All selected changes are applied together. A stale or missing tool rejects the whole batch.</p>
   <ul class="bulk-preview">${tools.slice(0,6).map(t=>`<li>${esc(t.name)}</li>`).join('')}</ul>
   ${tools.length>6?`<p class="small muted">And ${tools.length-6} more selected tools.</p>`:''}
   <div id="bulk-tool-error" class="form-error" role="alert"></div></div>`,
-  `<button data-action="close-modal">Cancel</button><button class="${enabled?'primary':'danger'}" data-action="confirm-tool-availability">${verb} ${tools.length} tools</button>`);
+  `<button data-action="close-modal">Cancel</button><button class="${copy.button}" data-action="confirm-tool-availability">${copy.verb} ${tools.length} tools</button>`);
 }
 async function applyToolAvailability() {
  if(!pendingToolAvailability || state.bulkBusy || state.user?.role!=='admin')return;
@@ -151,11 +156,11 @@ async function applyToolAvailability() {
   const result=await api('/api/admin/tools/bulk-availability','POST',request);
   state.selectedTools.clear(); pendingToolAvailability=null;
   $('#modal').close(); $('#modal-content').replaceChildren();
-  toast(`${result.updated} of ${result.selected} tools ${request.enabled?'published':'disabled'}. Refresh your MCP client’s tool list.`);
+  toast(`${result.updated} of ${result.selected} tools set to ${request.publicationMode}. Connected stateful MCP clients are asked to refresh automatically.`);
   await loadPage();
  } catch(e) {
   $('#bulk-tool-error').textContent=e.message;
-  button.disabled=false; button.textContent=request.enabled?'Retry publish':'Retry disable';
+  button.disabled=false; button.textContent='Retry '+({Auto:'automatic',Published:'publish',Hidden:'hide'}[request.publicationMode]??'change');
  } finally {
   state.bulkBusy=false; syncToolSelection();
   document.querySelectorAll('#modal-content [data-action="close-modal"]').forEach(b=>b.disabled=false);
@@ -180,8 +185,8 @@ function deviceEditor(device){
 }
 function toolEditor(tool){
  if(!state.capabilities.length){toast('Connect an agent first so its installed capabilities can be registered.');return;}
- formModal(tool?'Edit published tool':'Add a tool',textField('name','MCP tool name',tool?.name??'')+selectField('agentToolId','Installed capability',state.capabilities.map(t=>[t.id,t.name]),tool?.agentToolId??state.capabilities[0].id)+`<label>Description<textarea name="description" required maxlength="8000">${esc(tool?.description??'')}</textarea></label>`+selectField('enabled','Availability',[['false','Disabled'],['true','Published']],String(tool?.enabled??false))+'<p class="small muted">The argument schema and local consent rules are inherited from the installed agent tool and cannot be weakened here.</p>',async v=>{
- await api('/api/admin/tools'+(tool?'/'+tool.id:''),tool?'PUT':'POST',{...v,enabled:v.enabled==='true',revision:tool?.revision});toast('Tool saved. Reconnect or refresh the client’s tool list.');
+ formModal(tool?'Edit tool policy':'Add a tool policy',textField('name','MCP tool name',tool?.name??'')+selectField('agentToolId','Installed capability',state.capabilities.map(t=>[t.id,t.name]),tool?.agentToolId??state.capabilities[0].id)+`<label>Description<textarea name="description" required maxlength="8000">${esc(tool?.description??'')}</textarea></label>`+selectField('publicationMode','Availability',[['Auto','Automatic'],['Published','Published'],['Hidden','Hidden']],tool?.publicationMode??'Auto')+'<p class="small muted">Automatic follows the live Agent name/description/schema. Published can keep an explicit public name/description. Hidden blocks direct and generic gateway calls. Local consent rules cannot be weakened here.</p>',async v=>{
+ await api('/api/admin/tools'+(tool?'/'+tool.id:''),tool?'PUT':'POST',{...v,publicationMode:v.publicationMode,revision:tool?.revision});toast('Tool policy saved. Connected stateful MCP clients are asked to refresh automatically.');
  },tool?`<button class="danger" data-action="delete-tool" data-id="${tool.id}">Delete</button>`:'');
 }
 function userEditor(user){
@@ -228,19 +233,20 @@ document.addEventListener('click',async event=>{
    case 'rotate-device':if(confirm('Rotate this device token and disconnect it now?')){const result=await api(`/api/devices/${id}/rotate`,'POST',{});enrollment(result);await loadPage();}break;
    case 'copy-enrollment':await navigator.clipboard.writeText($('#enrollment-token').value);toast('Copied. Keep the token private.');break;
    case 'clear-tool-selection':state.selectedTools.clear();syncToolSelection();break;
-   case 'bulk-publish-tools':reviewToolAvailability(true);break;
-   case 'bulk-disable-tools':reviewToolAvailability(false);break;
+   case 'bulk-auto-tools':reviewToolAvailability('Auto');break;
+   case 'bulk-publish-tools':reviewToolAvailability('Published');break;
+   case 'bulk-hide-tools':reviewToolAvailability('Hidden');break;
    case 'confirm-tool-availability':await applyToolAvailability();break;
    case 'add-tool':toolEditor();break;
-   case 'import-tools':{const result=await api('/api/admin/tools/import','POST',{});toast(`${result.imported} capabilities imported. Review and enable the tools you need.`);await loadPage();break;}
+   case 'import-tools':{const result=await api('/api/admin/tools/import','POST',{});toast(`${result.imported} capabilities mirrored into Automatic policy. Live device capabilities are already discoverable unless hidden.`);await loadPage();break;}
    case 'tool-detail':{const tool=state.tools.find(t=>t.id===id),admin=state.user.role==='admin';const details=admin?await api(`/api/admin/tools/${id}`):{tool,capability:tool};modal(esc(tool.name),`<div class="modal-body"><p>${esc(tool.description)}</p><p>${pill(tool.category)} ${pill(details.capability?.readOnly?'read-only':'mutating')}</p><h3>Input schema</h3><pre>${esc(JSON.stringify(details.capability?.inputSchema??{},null,2))}</pre></div>`,`${admin?`<button class="primary" data-action="edit-tool" data-id="${id}">Edit tool</button>`:''}<button data-action="close-modal">Close</button>`);break;}
    case 'edit-tool':toolEditor(state.tools.find(t=>t.id===id));break;
    case 'delete-tool':await confirmDelete('tool',id);break;
    case 'add-user':userEditor();break;
    case 'edit-user':userEditor(state.users.find(u=>u.id===id));break;
    case 'delete-user':await confirmDelete('user',id);break;
-   case 'connection-help':modal('Connect your MCP client',`<div class="modal-body"><p>Register this HTTPS endpoint in your MCP client. Choose OAuth, sign in, and authorize one enrolled device.</p><pre>${esc(state.mcpEndpoint??location.origin+'/mcp')}</pre><div class="notice">Your administrator must allowlist the exact OAuth callback shown by the client. HTTPS and valid server certificates are required outside development.</div><p>Before the first call: connect the agent, import and publish its tools, then locally arm control. Each sensitive action still asks for your approval.</p></div>`);break;
-   case 'security':modal('You remain in control.',`<div class="modal-body"><h3>Three independent gates</h3><p>Your active account, a device-bound OAuth grant, and a locally armed agent. Published tools cannot bypass the agent’s consent prompts.</p><h3>Pause from your computer</h3><p>Use the tray menu or Ctrl + Alt + Pause. Only Jarvis-owned command processes are terminated.</p><div class="notice">Terminal, browser and desktop tools can access resources beyond a project folder. Use a dedicated Windows account for sensitive work. Never authorize an unknown client.</div><p>Revoke all MCP grants to force authorization again and disconnect your agents.</p></div>`,'<button class="danger" data-action="revoke">Revoke my grants</button><button data-action="close-modal">Close</button>');break;
+   case 'connection-help':modal('Connect your MCP client',`<div class="modal-body"><p>Register this HTTPS endpoint in your MCP client. Choose OAuth, sign in, and authorize one enrolled device.</p><pre>${esc(state.mcpEndpoint??location.origin+'/mcp')}</pre><div class="notice">Your administrator must allowlist the exact OAuth callback shown by the client. HTTPS and valid server certificates are required outside development.</div><p>Connect the agent and locally arm control. New Agent capabilities are automatically discoverable; stateful clients receive tool-list refresh notifications and every session also has permanent live search/call fallback tools. Each sensitive action still follows local approval.</p></div>`);break;
+   case 'security':modal('You remain in control.',`<div class="modal-body"><h3>Three independent gates</h3><p>Your active account, a device-bound OAuth grant, and a locally armed agent. Auto or Published tools cannot bypass the agent’s consent prompts.</p><h3>Pause from your computer</h3><p>Use the tray menu or Ctrl + Alt + Pause. Only Jarvis-owned command processes are terminated.</p><div class="notice">Terminal, browser and desktop tools can access resources beyond a project folder. Use a dedicated Windows account for sensitive work. Never authorize an unknown client.</div><p>Revoke all MCP grants to force authorization again and disconnect your agents.</p></div>`,'<button class="danger" data-action="revoke">Revoke my grants</button><button data-action="close-modal">Close</button>');break;
    case 'revoke':if(confirm('Revoke your current grants, disconnect agents and sign out?')){await api('/api/auth/revoke','POST',{});$('#modal').close();state.user=null;state.selectedTools.clear();pendingToolAvailability=null;await csrf();auth();}break;
   }
  }catch(e){toast(e.message);}

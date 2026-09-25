@@ -44,9 +44,9 @@ the exact resource `https://<origin>/mcp` remain mandatory. Tokens are bound to 
 Access lifetime is 10 minutes; refresh lifetime is seven days subject to rolling tokens and revocation.
 Neither query-string access tokens nor agent enrollment tokens authenticate MCP requests.
 
-Before scanning tools, connect the Agent, import its installed manifest and enable approved tools in
-Tool catalog. Imported tools remain disabled until an administrator enables them. Empty tools/list is not
-an OAuth client registration failure. Refresh the client's catalog after registry changes.
+Before scanning tools, connect the Agent and complete OAuth consent for the intended device. That selected device's live manifest is the discovery source: newly advertised capabilities default to **Auto** and do not require an Import/Enable pass. **Hidden** is the explicit deny state. Empty `tools/list` is not an OAuth client registration failure.
+
+Initialize-based clients advertise `tools.listChanged=true` and can refresh direct definitions when `notifications/tools/list_changed` arrives. Regardless of refresh support, the permanent `jarvis__tool_search` and `jarvis__tool_call` tools remain available so a session can discover and invoke capabilities added after it started.
 
 ## Verification
 
@@ -128,8 +128,8 @@ The separate integration tests exercise actual code/PKCE/token/MCP behavior in t
 
 CSP reference: https://www.w3.org/TR/CSP3/#directive-form-action
 
-## Bulk tool publication - 1.0.22
+## Tool publication policy - 1.0.88
 
-As an admin, import the installed manifest first. In Tool catalog, Select all selects the current search results (or all tools with an empty search). Checkboxes also support individual selection. Publish selected and Disable selected show an explicit confirmation before applying the batch. A changed/missing tool rejects the whole batch; refresh before trying again. Read-only users never see these controls. Refresh the MCP client catalog after changing availability.
+In Tool catalog, Select all selects the current search results (or all tools with an empty search). Checkboxes also support individual selection. **Use automatic** follows the selected device's live descriptor, **Publish selected** keeps explicit public metadata while the capability exists, and **Hide selected** blocks direct listing, generic gateway calls and task use. A changed/missing policy row rejects the whole batch; refresh the admin page before retrying. Read-only users never see these controls. `Import installed` is now only an optional metadata mirror for the admin UI, not a prerequisite for runtime discovery.
 
 Arm control on Agent 1.0.22 has no 30-minute expiry. The in-memory choice lasts until manual Pause/Disconnect/Exit, survives transient reconnects without replaying jobs, and is never persisted across application restarts. OAuth token lifetimes, device tokens and per-call deadlines are independent and unchanged.

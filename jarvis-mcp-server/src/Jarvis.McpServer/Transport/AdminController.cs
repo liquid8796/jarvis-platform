@@ -27,12 +27,12 @@ public sealed class AdminController(AppDbContext db, UserManager<AppUser> users,
     [HttpPut("tools/{id}")]
     public async Task<object> UpdateTool(string id, ToolRequest request, CancellationToken ct) => await Save(id, request, ct);
     private async Task<object> Save(string? id, ToolRequest request, CancellationToken ct) => await catalog.SaveAsync(await Admin(ct), id,
-        request.Name, request.AgentToolId, request.Description, request.Enabled, request.Revision, ct);
+        request.Name, request.AgentToolId, request.Description, request.RequestedPublicationMode, request.Revision, ct);
     [HttpPost("tools/bulk-availability")]
     public async Task<object> SetToolAvailability(BulkToolAvailabilityRequest request, CancellationToken ct) =>
-        await catalog.SetAvailabilityAsync(await Admin(ct),
+        await catalog.SetPublicationModeAsync(await Admin(ct),
             request.Tools.ToDictionary(t => t.Id, t => t.Revision, StringComparer.Ordinal),
-            request.Enabled!.Value, ct);
+            request.RequestedPublicationMode, ct);
     [HttpPost("tools/import")]
     public async Task<object> Import(CancellationToken ct) => new { imported = await catalog.ImportAsync(await Admin(ct), ct) };
     [HttpDelete("tools/{id}")]

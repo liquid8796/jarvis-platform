@@ -1,3 +1,11 @@
+## 1.0.88 - 2026-09-25
+
+- Make the OAuth-bound selected device's live Agent capability manifest the MCP runtime source of truth. Missing catalog-policy rows now mean Auto visibility; Published retains explicit public metadata and Hidden is the explicit deny state.
+- Add permanent `jarvis__tool_search` and `jarvis__tool_call` fallback tools so a ChatGPT/MCP session can discover and invoke capabilities added after its original direct tool list was built. Generic invocation still passes current schema, Agent catalog generation/digest, Arm/Pause, local permission/approval, session ownership and execution-resource checks.
+- Advertise MCP `tools.listChanged` for initialize-based stateful sessions and emit `notifications/tools/list_changed` after Agent `hello`/`catalog.changed` or administrator publication-policy changes. Newer stateless protocol paths remain usable through the permanent fallback pair.
+- Replace the old import-disabled catalog behavior with Auto/Published/Hidden policy, keep `Import installed` as an optional metadata mirror, update task-plan visibility to the same selected-device rules, and add an additive database schema-v2 migration that retains the legacy `Enabled` column as a compatibility mirror.
+- Add OAuth/notification/stale-session/Hidden/removal regression coverage and update operator/UI documentation. Bump package to **1.0.88**, assembly/file to **1.0.88.0**.
+
 ## 1.0.87 - 2026-09-24
 
 - Add four explicit-session ImageGen tools backed exclusively by ChatGPT Web in the user's selected Chrome/Edge extension instance. No standalone browser, cookie import, OpenAI API key or paid API fallback.

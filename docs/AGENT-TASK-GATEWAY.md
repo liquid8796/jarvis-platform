@@ -40,13 +40,13 @@ Task modes READ_ONLY, NORMAL and AUTONOMOUS never grant permissions. Each step u
 
 Limits: 2 running tasks per agent, 32 steps, 3 attempts only for safe reads, 1..1800 seconds per step, 1..3600 seconds per task, bounded arguments and artifact output. State and logs can contain private project information: keep the directory local and outside source exports and release packages.
 
-HTTP cookie APIs keep the existing CSRF protection. MCP task tools keep OAuth resource/scope/stamp/device checks. Per-task authorization is checked again on the local agent. New tasks cannot run unpublished tool capabilities, and nested task submission is not an installed tool.
+HTTP cookie APIs keep the existing CSRF protection. MCP task tools keep OAuth resource/scope/stamp/device checks. Per-task authorization is checked again on the local agent. New tasks can use selected-device capabilities in Auto or Published policy and cannot use Hidden or uninstalled capabilities; nested task submission is not an installed tool.
 
 Without an injected agentic coordinator this remains supervised client-planned execution. With one, Core supplies bounded planning/verification contracts but does not prove a particular model provider, autonomous coding quality, or superiority to Codex; production restart/deployment and live paid model configuration remain separate concerns.
 
 ## Running a task through MCP
 
-Use `agent_task_tools` first to obtain the enabled installed descriptors. `id` is the canonical step `toolId`; a catalog display alias is not a tool ID. The client chooses the project, steps and acceptance checks. For a long build prefer `process.spawn` with exact argv; use `process.start` only when shell syntax is intentionally required. The runner treats both as owned process jobs, polls `process.read` until exit and drains the final log pages.
+Use `agent_task_tools` first to obtain the visible installed descriptors for the OAuth-bound selected device. `id` is the canonical step `toolId`; a catalog display alias is not a tool ID. The client chooses the project, steps and acceptance checks. For a long build prefer `process.spawn` with exact argv; use `process.start` only when shell syntax is intentionally required. The runner treats both as owned process jobs, polls `process.read` until exit and drains the final log pages.
 
 Example arguments to `agent_task_create` (synthetic example, not an automatically executed command):
 
@@ -90,7 +90,7 @@ For the cookie HTTP APIs, include `deviceId` in create/plan bodies and in query/
 
 ## Structured MCP results - 1.0.62
 
-Every published tool has an object-root `outputSchema`, validated against `structuredContent` in OAuth/WebSocket integration tests. Ordinary installed tools use `{ "text": "...", "isError": false }`; image data remains exclusively in image content blocks, encoded using the SDK image factory. No local widget HTML is copied to structured output.
+Every advertised tool has an object-root `outputSchema`, validated against `structuredContent` in OAuth/WebSocket integration tests. Ordinary installed tools use `{ "text": "...", "isError": false }`; image data remains exclusively in image content blocks, encoded using the SDK image factory. No local widget HTML is copied to structured output.
 
 For `agent_task_create`, `agent_task_plan`, `agent_task_get` and `agent_task_cancel`, structured content is the existing task reply: `{ "task": { ... } }` on success, or `{ "error": "...", "errorCode": "..." }` for a remote failure. Gateway validation/exception errors may omit `errorCode` and retain their original plain text. A successful read of a FAILED task is not itself a tool-call error.
 
@@ -98,7 +98,7 @@ For `agent_task_create`, `agent_task_plan`, `agent_task_get` and `agent_task_can
 
 `agent_task_tools` returns `{ "tools": [ ... ] }` as structured content while its legacy text remains the original JSON descriptor array. Descriptor fields are `id`, `name`, `category`, `description`, `inputSchema`, `readOnly` and `sensitive`. They describe availability, not permission grants.
 
-Tool names, inputs, OAuth owner/device routing, local Arm/Pause/approval enforcement and the agent wire protocol are unchanged. The server must be deployed separately; refresh/review and republish client tool definitions where supported (some ChatGPT plans require recreating the app). A source push alone does not update an existing app snapshot. See [server README](../jarvis-mcp-server/README.md) for protocol and client-update references.
+Tool inputs, OAuth owner/device routing, local Arm/Pause/approval enforcement and the agent wire protocol are unchanged. Since 1.0.88, selected-device capabilities default to Auto, stateful MCP sessions can receive `tools/list_changed`, and permanent `jarvis__tool_search`/`jarvis__tool_call` tools cover stale direct surfaces. The server must still be deployed separately; a source push alone does not update a running service or Agent. See [server README](../jarvis-mcp-server/README.md) for the live-tool contract.
 
 ## Runtime, recovery and local controls
 

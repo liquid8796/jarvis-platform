@@ -52,7 +52,7 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
             foreach (var tool in tools)
                 if (!await db.Tools.AnyAsync(t => t.AgentToolId == tool.Descriptor.Id))
                     db.Tools.Add(new ToolEntry { AgentToolId = tool.Descriptor.Id, Name = tool.Descriptor.Name,
-                        Category = tool.Descriptor.Category, Description = "Synthetic test publication", Enabled = true });
+                        Category = tool.Descriptor.Category, Description = "Synthetic test publication", PublicationMode = ToolPublicationMode.Published });
             await db.SaveChangesAsync();
         }
         peer.Connection = new(tools, peer.Approval, peer.Gate, peer.Permissions, taskStorageRoot: peer.StorageRoot,

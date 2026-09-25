@@ -46,9 +46,9 @@ Use the local Pause button, tray menu, hotkey, disconnect, or process exit to st
 
 This source has not undergone a production penetration test, package vulnerability scan, Windows runtime smoke test, real ChatGPT OAuth integration or VM deployment test. Treat it as an implementation to build/review/test before handling sensitive projects. Do not use this release as a remote administrator on a machine containing banking/production secrets without an isolated acceptance environment.
 
-## Manual arm and bulk publishing - 1.0.22
+## Manual arm and tool publication policy - 1.0.88
 
-There is deliberately no maximum duration for an explicitly armed running Agent. Pause, manual Disconnect, Ctrl+C in CLI, or Exit clears the process-local grant. It is not saved in the profile and cannot be activated remotely. Transient transport loss cancels calls/jobs; reconnect preserves the choice but never replays an action. Per-action approval and command timeouts remain. Bulk publication is admin-only, CSRF-protected, revision-checked, and commits audit records in the same database transaction; importing or selecting tools alone never publishes them.
+There is deliberately no maximum duration for an explicitly armed running Agent. Pause, manual Disconnect, Ctrl+C in CLI, or Exit clears the process-local grant. It is not saved in the profile and cannot be activated remotely. Transient transport loss cancels calls/jobs; reconnect preserves the choice but never replays an action. Per-action approval and command timeouts remain. Bulk publication-policy changes are admin-only, CSRF-protected, revision-checked, and commit audit records in the same database transaction. New selected-device capabilities default to Auto visibility; Hidden is the explicit deny state. MCP `tools/list_changed` and the permanent generic search/call fallback affect discoverability only and never bypass local approval.
 
 ## Multi-directory update - 1.0.23
 

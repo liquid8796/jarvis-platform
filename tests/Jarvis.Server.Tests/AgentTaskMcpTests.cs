@@ -86,6 +86,11 @@ public sealed partial class AgentTaskMcpTests
     private static async Task<JsonElement> RpcAsync(HttpClient client, string method, object parameters)
     {
         var response = await client.PostAsJsonAsync("/mcp", new { jsonrpc = "2.0", id = Guid.NewGuid().ToString("N"), method, @params = parameters });
+        if (response.Headers.TryGetValues("Mcp-Session-Id", out var sessionIds))
+        {
+            client.DefaultRequestHeaders.Remove("Mcp-Session-Id");
+            client.DefaultRequestHeaders.Add("Mcp-Session-Id", sessionIds.Single());
+        }
         var text = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, text);
         if (text.TrimStart().StartsWith('{')) return JsonSerializer.Deserialize<JsonElement>(text);

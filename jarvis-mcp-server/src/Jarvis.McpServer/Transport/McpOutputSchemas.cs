@@ -23,6 +23,39 @@ internal static class McpOutputSchemas
         additionalProperties = false
     });
 
+    public static JsonElement DynamicToolSearch { get; } = WireJson.Element(new
+    {
+        type = "object",
+        description = "Live visible tools on the OAuth-bound selected device. Canonical IDs can be passed to jarvis__tool_call even when a direct MCP name is not currently cached by the client.",
+        properties = new
+        {
+            tools = new
+            {
+                type = "array",
+                items = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        id = Text("Canonical installed tool ID."),
+                        name = Text("Current public MCP name when direct publication is unambiguous."),
+                        category = Text("Tool category."),
+                        description = Text("Current tool description."),
+                        inputSchema = new { type = "object", description = "Live installed JSON Schema for tool arguments.", additionalProperties = true },
+                        readOnly = Boolean("Whether the installed tool is read-only."),
+                        sensitive = Boolean("Whether the installed tool is sensitive."),
+                        publicationMode = new { type = "string", @enum = new[] { "Auto", "Published" }, description = "Administrator publication policy." },
+                        direct = Boolean("Whether this public name is currently safe to call directly without ambiguity.")
+                    },
+                    required = new[] { "id", "name", "category", "description", "inputSchema", "readOnly", "sensitive", "publicationMode", "direct" },
+                    additionalProperties = false
+                }
+            }
+        },
+        required = new[] { "tools" },
+        additionalProperties = false
+    });
+
     private static readonly JsonElement TaskReply = CreateTaskReply(artifacts: false);
     private static readonly JsonElement ArtifactReply = CreateTaskReply(artifacts: true);
     private static readonly JsonElement ToolListReply = WireJson.Element(new

@@ -1,1 +1,1 @@
-feat(imagegen): integrate ChatGPT Web through existing browser
+feat(mcp): keep dynamic agent tools available

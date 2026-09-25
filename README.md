@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.87
+# Jarvis Control - 1.0.88
+
+## Live MCP tool availability (1.0.88)
+
+The selected Agent device's current capability manifest is now the runtime source of truth for MCP discovery. New capabilities default to **Auto** and become usable without an admin import/enable step; **Published** keeps an explicit public name/description, while **Hidden** is the explicit deny state. Stateful initialize-based MCP clients advertise `tools.listChanged=true` and receive `notifications/tools/list_changed` after Agent catalog or admin-policy changes.
+
+Every MCP session also receives permanent `jarvis__tool_search` and `jarvis__tool_call` tools. They resolve the selected device's live canonical tool IDs and schemas at call time, so a chat whose direct tool list is stale can still discover and invoke a tool added after the chat started. This fallback does not grant authority: Agent Arm/Pause, exact schema validation, local permission/approval, resource scheduling, session ownership and catalog-generation checks remain unchanged. Database schema v2 is an additive migration that retains the legacy `Enabled` column as a compatibility mirror. Package **1.0.88**, assembly/file **1.0.88.0**.
 
 ## ChatGPT Web ImageGen (1.0.87)
 
@@ -62,7 +68,7 @@ Script hỏi mật khẩu an toàn, không có admin mặc định. Mở `http:/
 
 Trong **Tool permissions**, Full permission vẫn áp dụng cho các tool thông thường. Riêng `process.start` và `process.spawn` là constrained exceptions: hộp thoại local có `Deny`, `Approve once` và `Always approve`. `Always approve` được lưu vĩnh viễn theo exact tool ID trên máy đó và có thể thu hồi bằng **Require approval again**; Arm/Pause và các boundary Windows hiện có vẫn áp dụng.
 
-Sau khi agent gửi manifest, admin vào **Tool catalog → Import installed**, kiểm tra rồi bật tool cần thiết. Tool mới import mặc định tắt. Catalog CRUD quản lý alias/metadata/availability của tool đã cài trên agent; **không upload script tùy ý để chạy trên máy người dùng**.
+Sau khi Agent gửi manifest, capability mới của **selected device** dùng chính manifest live và mặc định ở policy **Auto**: không cần Import/Enable để ChatGPT dùng. **Tool catalog → Import installed** chỉ còn là thao tác mirror metadata tùy chọn cho UI/admin. Admin có thể chuyển từng tool sang **Published** để giữ alias/description rõ ràng hoặc **Hidden** để chặn cả direct tool lẫn gateway generic. Catalog CRUD không upload script tùy ý để chạy trên máy người dùng.
 
 CLI:
 
@@ -119,7 +125,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.81**, assembly/file **1.0.81.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.88**, assembly/file **1.0.88.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 

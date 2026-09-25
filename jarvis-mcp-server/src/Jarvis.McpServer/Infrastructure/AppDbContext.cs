@@ -26,6 +26,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         model.Entity<Device>().HasOne<AppUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<ToolEntry>().HasKey(x => x.Id);
         model.Entity<ToolEntry>().HasIndex(x => x.Name).IsUnique();
+        model.Entity<ToolEntry>().Property(x => x.PublicationMode).HasConversion<string>().HasMaxLength(16);
         model.Entity<ToolEntry>().Property(x => x.Revision).IsConcurrencyToken();
         model.Entity<AuditEvent>().HasKey(x => x.Id);
         model.Entity<AuditEvent>().HasIndex(x => new { x.UserId, x.Time });

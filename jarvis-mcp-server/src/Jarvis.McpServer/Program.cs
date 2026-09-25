@@ -79,6 +79,9 @@ builder.Services.AddAuthorization(o => o.AddPolicy("mcp", p =>
     p.AddAuthenticationSchemes(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme).RequireAuthenticatedUser()));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllersWithViews().AddJsonOptions(o => o.JsonSerializerOptions.PropertyNameCaseInsensitive = true);
+builder.Services.AddSingleton<McpToolCatalogChangeHub>();
+builder.Services.AddSingleton<ToolCatalogReconciler>();
+builder.Services.AddScoped<DeviceToolCatalog>();
 builder.Services.AddSingleton<WsAgentRouter>();
 builder.Services.AddSingleton<IAgentRouter>(s => s.GetRequiredService<WsAgentRouter>());
 builder.Services.AddSingleton<IAgentTaskRouter>(s => s.GetRequiredService<WsAgentRouter>());
@@ -86,8 +89,19 @@ builder.Services.AddScoped<AgentTaskService>();
 builder.Services.AddSingleton<McpSessionContext>();
 builder.Services.AddSingleton<IAuditWriter, AuditWriter>();
 builder.Services.AddScoped<DeviceService>(); builder.Services.AddScoped<ToolCatalogService>(); builder.Services.AddScoped<McpGateway>();
-builder.Services.AddMcpServer(o => o.ServerInfo = new Implementation { Name = "jarvis-mcp-server", Version = releaseVersion })
-    .WithHttpTransport(o => o.Stateless = true)
+builder.Services.AddMcpServer(o =>
+    {
+        o.ServerInfo = new Implementation { Name = "jarvis-mcp-server", Version = releaseVersion };
+        o.Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = true } };
+    })
+    .WithHttpTransport(o =>
+    {
+        o.SessionMode = ModelContextProtocol.AspNetCore.HttpServerSessionMode.StatefulForInitializeClients;
+#pragma warning disable MCPEXP002 // Required to retain initialize-client sessions for tools/list_changed notifications.
+        o.RunSessionHandler = async (http, server, ct) =>
+            await http.RequestServices.GetRequiredService<McpToolCatalogChangeHub>().RunSessionAsync(http, server, ct);
+#pragma warning restore MCPEXP002
+    })
     .WithListToolsHandler(async (context, ct) => await context.Services!.GetRequiredService<McpGateway>().ListAsync(ct))
     .WithCallToolHandler(async (context, ct) => await context.Services!.GetRequiredService<McpGateway>().CallAsync(context.Params!, ct));
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
