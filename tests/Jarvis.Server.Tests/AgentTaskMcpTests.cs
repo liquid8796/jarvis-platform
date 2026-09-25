@@ -25,10 +25,10 @@ public sealed partial class AgentTaskMcpTests
             Assert.Contains("agent_task_" + operation, names);
         AssertToolMetadata(listed, "agent_task_artifacts", "Read Task Artifacts", readOnly: true, destructive: false, openWorld: true);
         AssertToolMetadata(listed, "session__open", "Session Open", readOnly: false, destructive: true, openWorld: true);
-        AssertToolMetadata(listed, "process__read", "Process Read", readOnly: true, destructive: false, openWorld: true);
+        AssertToolMetadata(listed, "write_stdin", "Write Stdin", readOnly: false, destructive: true, openWorld: true);
         AssertToolMetadata(listed, "workflow__AskUserQuestion", "Workflow Ask User Question", readOnly: true, destructive: false, openWorld: true);
         var tools = await CallAsync(client, "agent_task_tools", new { });
-        Assert.Contains("process.start", tools.GetProperty("content")[0].GetProperty("text").GetString());
+        Assert.Contains("unified_exec.exec_command", tools.GetProperty("content")[0].GetProperty("text").GetString());
         var create = await CallAsync(client, "agent_task_create", new { goal = "MCP integration fixture" });
         Assert.False(create.TryGetProperty("isError", out var error) && error.GetBoolean(), create.GetRawText());
         var reply = JsonSerializer.Deserialize<JsonElement>(create.GetProperty("content")[0].GetProperty("text").GetString()!);
@@ -45,8 +45,8 @@ public sealed partial class AgentTaskMcpTests
         var planned = await CallAsync(client, "agent_task_plan", new
         {
             taskId = id, goal = "MCP integration fixture",
-            steps = new[] { new { id = "echo", toolId = "process.start", stage = "VERIFY", timeoutSeconds = 15,
-                arguments = new { command = "echo MCP_FIXTURE_OK", timeoutSeconds = 15 }, expectedText = "MCP_FIXTURE_OK" } }
+            steps = new[] { new { id = "echo", toolId = "unified_exec.exec_command", stage = "VERIFY", timeoutSeconds = 15,
+                arguments = new { cmd = "echo MCP_FIXTURE_OK", tty = false, yield_time_ms = 50 }, expectedText = "MCP_FIXTURE_OK" } }
         });
         Assert.False(planned.TryGetProperty("isError", out var planError) && planError.GetBoolean(), planned.GetRawText());
         Assert.Equal("COMPLETED", (await peer.TerminalAsync(admin, id!)).Status);

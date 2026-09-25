@@ -410,11 +410,12 @@ public sealed partial class AgentConnection : IAsyncDisposable
             NotifySessionActivity();
         }
     }
-    private async Task CancelOwnedJobAsync(string jobId, AgentExecutionContext context)
+    private async Task CancelOwnedJobAsync(string sessionId, AgentExecutionContext context)
     {
-        if (!_registry.Snapshot.Tools.TryGetValue("process.cancel", out var cancel)) return;
+        if (!_registry.Snapshot.Tools.TryGetValue("unified_exec.write_stdin", out var stdin) ||
+            !long.TryParse(sessionId, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var id)) return;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        try { await cancel.ExecuteAsync(WireJson.Element(new { jobId }), context with { FullPermission = false }, timeout.Token); }
+        try { await stdin.ExecuteAsync(WireJson.Element(new { session_id = id, chars = "\u0003", yield_time_ms = 0 }), context with { FullPermission = false }, timeout.Token); }
         catch (Exception ex) { Emit("task", "Owned-job cleanup: " + ex.GetType().Name); }
     }
     private void DispatchTask(WireSocket wire, WireMessage message, CancellationToken sessionToken)

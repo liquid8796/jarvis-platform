@@ -125,3 +125,7 @@ This does not change goal creation: Jarvis still does not ship or silently confi
 `agent_task_create` may include optional `parentTaskId`. Child creation remains device-bound and owner-bound by the existing router and additionally requires the parent to exist in that same local task store. The child inherits the parent's resolved project, may only keep or narrow `executionMode`, has maximum lineage depth 3, and each parent can have at most 8 direct children.
 
 Snapshots expose `parentTaskId`, `rootTaskId` and `depth`; these fields survive agent restart because they are part of the durable snapshot. A child task is still an ordinary task for Arm/Pause, schema/permission checks, cancellation, process ownership and no-replay behavior.
+
+## Task plans with the consolidated process surface
+
+Remote task plans start commands with `unified_exec.exec_command`. When a command remains active, the runner observes it through `unified_exec.write_stdin` until an exit code is known; cancellation sends Ctrl+C through the same owned session. Plans referencing the retired `process.start`, `process.spawn`, `process.read`, or `process.cancel` IDs are rejected by live-schema validation. Empty polling does not open an approval prompt, but input and cancellation keep the normal mutation gate.

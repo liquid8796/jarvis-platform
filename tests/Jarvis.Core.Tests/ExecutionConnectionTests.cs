@@ -17,7 +17,7 @@ public sealed class ExecutionConnectionTests
         try
         {
             await held.FiveStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
-            var status = await Invoke(connection, "process.read", "observer").WaitAsync(TimeSpan.FromSeconds(2));
+            var status = await Invoke(connection, "unified_exec.write_stdin", "observer").WaitAsync(TimeSpan.FromSeconds(2));
             Assert.Equal("status-still-responsive", status.Text);
             Assert.Equal(5, Volatile.Read(ref held.Started));
         }
@@ -46,7 +46,7 @@ public sealed class ExecutionConnectionTests
     }
     private sealed class StatusTool : IAgentTool
     {
-        public ToolDescriptor Descriptor { get; } = new("process.read", "process__read", "process", "Status fixture", WireJson.Element(new { type = "object" }), true);
+        public ToolDescriptor Descriptor { get; } = new("unified_exec.write_stdin", "write_stdin", "process", "Status fixture", WireJson.Element(new { type = "object" }), true);
         public Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context, CancellationToken cancellationToken) => Task.FromResult(new ToolReply("status-still-responsive"));
     }
     private sealed class Approve : IApprovalService

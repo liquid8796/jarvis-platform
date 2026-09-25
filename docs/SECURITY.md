@@ -100,6 +100,10 @@ Compaction and rollback never erase journal rows. This avoids presenting a compa
 
 ## Owned interactive process boundary - 1.0.57
 
-`process.spawn` never inserts a shell: executable and arguments are passed separately. Environment overrides are bounded and cannot contain invalid environment names. `process.write_stdin`, `process.resize_pty`, `process.read` and `process.cancel` resolve only opaque IDs in the Agent-owned registry; there is no PID attach surface.
+The owned-process runtime never exposes PID attach. Version 1.0.89 no longer advertises the former `process.spawn`, `process.start`, `process.read`, `process.write_stdin`, `process.resize_pty`, or `process.cancel` descriptors; `exec_command` creates an owned process and `write_stdin` addresses only the numeric session returned by that call. Command text is still passed through the explicitly selected shell, while ownership, environment bounds, session isolation and process-count limits remain enforced by the same Agent registry.
 
 Windows ConPTY children are created suspended, attached to a kill-on-close Job Object, then resumed. This closes the pre-ownership spawn window for PTY descendants. ConPTY is still code execution under the logged-in user's OS authority, not a sandbox. Local Arm, schema validation, scoped capability leases, Pause/disconnect cleanup and owned-process cancellation remain the security boundary.
+
+## Security invariants for Codex-compatible tools
+
+The compact surface does not widen authority. `apply_patch` is limited to the selected workspace, rejects the private Agent profile, validates observed file fingerprints before overwriting existing files, and rolls back a multi-file patch on failure. `view_image` rejects the private profile and applies byte/pixel bounds. `exec_command` retains command approval, wildcard execution-resource locking, process count/deadline limits, descendant-tree cancellation, and owner/device/session binding. `write_stdin` can only address a numeric session owned by the same identity. `computer_use` retains application allowlists, denied-application rules, input-scope grants, Arm/Pause, and Windows integrity restrictions. Legacy permission entries are migrated rather than silently granting unrelated new tools.

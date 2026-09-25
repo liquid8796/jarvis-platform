@@ -63,8 +63,8 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
         var field = typeof(AgentRuntime).GetField("_permissions", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         Assert.NotNull(field);
         var policy = Assert.IsType<ToolPermissionPolicy>(field.GetValue(runtime));
-        Assert.True(policy.HasFullPermission("process.start"));
-        Assert.True(policy.HasAlwaysApprovedConstrainedTool("process.start"));
+        Assert.False(policy.HasFullPermission("process.start"));
+        Assert.True(policy.HasAlwaysApprovedConstrainedTool("unified_exec.exec_command"));
     }
 
     [Fact]

@@ -1,1 +1,1 @@
-feat(mcp): keep dynamic agent tools available
+feat(agent): replace legacy tools with Codex-compatible surface

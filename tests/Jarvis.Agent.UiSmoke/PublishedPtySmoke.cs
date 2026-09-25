@@ -38,20 +38,30 @@ internal static class PublishedPtySmoke
             if ((bool)reply.GetType().GetProperty("IsError")!.GetValue(reply)!) throw new InvalidOperationException(text);
             return JsonDocument.Parse(text);
         }
-        using var started = await Invoke("process.spawn", new { argv = new[] { "cmd.exe", "/d", "/c", "echo jarvis-published-pty-ok" }, pty = true, timeoutSeconds = 10 });
-        var id = started.RootElement.GetProperty("jobId").GetString()!;
-        while (true)
+        var output = new System.Text.StringBuilder();
+        int? exitCode = null;
+        long? sessionId;
+        using (var started = await Invoke("unified_exec.exec_command", new
         {
-            using var status = await Invoke("process.read", new { jobId = id, cursor = 0 });
-            if (status.RootElement.GetProperty("done").GetBoolean())
-            {
-                if (status.RootElement.GetProperty("exitCode").GetInt32() != 0 ||
-                    !status.RootElement.GetProperty("output").GetString()!.Contains("jarvis-published-pty-ok"))
-                    throw new InvalidOperationException("Published PTY did not return final output and successful exit: " + status.RootElement);
-                break;
-            }
-            await Task.Delay(30, deadline.Token).ConfigureAwait(false);
+            cmd = "echo jarvis-published-pty-ok",
+            shell = "cmd.exe",
+            tty = true,
+            yield_time_ms = 10_000
+        }))
+        {
+            output.Append(started.RootElement.GetProperty("output").GetString());
+            exitCode = started.RootElement.TryGetProperty("exit_code", out var exit) ? exit.GetInt32() : null;
+            sessionId = started.RootElement.TryGetProperty("session_id", out var session) ? session.GetInt64() : null;
         }
+        while (sessionId is not null)
+        {
+            using var status = await Invoke("unified_exec.write_stdin", new { session_id = sessionId.Value, chars = "", yield_time_ms = 100 });
+            output.Append(status.RootElement.GetProperty("output").GetString());
+            exitCode = status.RootElement.TryGetProperty("exit_code", out var exit) ? exit.GetInt32() : exitCode;
+            sessionId = status.RootElement.TryGetProperty("session_id", out var session) ? session.GetInt64() : null;
+        }
+        if (exitCode != 0 || !output.ToString().Contains("jarvis-published-pty-ok", StringComparison.Ordinal))
+            throw new InvalidOperationException("Published PTY did not return final output and successful exit: " + output);
         File.WriteAllText(Path.Combine(report, "published-pty-smoke.json"), JsonSerializer.Serialize(new {
             version = core.GetName().Version!.ToString(), publishedNativeHostStarted = true, finalOutputCaptured = true,
             exitCode = 0, liveAgentConnected = false }, new JsonSerializerOptions { WriteIndented = true }));

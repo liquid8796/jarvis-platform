@@ -166,7 +166,7 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
     private void Arm()
     {
         if (_runtime?.Connection.IsConnected != true) { Error = "Connect the agent before arming control."; return; }
-        if (MessageBox.Show(_owner, "Allow your authorized MCP client to request actions until you pause or disconnect?\n\nThere is no automatic expiry. Temporary network reconnects keep this choice; restarting the app starts paused. Tools selected in Tool permissions run without asking again, except process.start and process.spawn unless you explicitly choose Always approve for that tool. Other sensitive actions still require approval. Project directories are working context, not a sandbox. Windows permissions still apply.\n\nPause any time with Ctrl + Alt + Pause.",
+        if (MessageBox.Show(_owner, "Allow your authorized MCP client to request actions until you pause or disconnect?\n\nThere is no automatic expiry. Temporary network reconnects keep this choice; restarting the app starts paused. Tools selected in Tool permissions run without asking again, except unified_exec.exec_command unless you explicitly choose Always approve for that tool. Other sensitive actions still require approval. Project directories are working context, not a sandbox. Windows permissions still apply.\n\nPause any time with Ctrl + Alt + Pause.",
             "Arm local control", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
         _runtime.Arm(); Control = "Armed · until you pause"; Error = "";
     }

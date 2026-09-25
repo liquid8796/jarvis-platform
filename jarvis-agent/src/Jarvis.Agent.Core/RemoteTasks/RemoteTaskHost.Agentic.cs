@@ -83,7 +83,7 @@ internal sealed partial class RemoteTaskHost
                     RemoteStepResult result;
                     try
                     {
-                        if (step.ToolId is "process.start" or "process.spawn")
+                        if (step.ToolId == "unified_exec.exec_command")
                             result = await RemoteProcessRunner.RunAsync(step, context, _invoke, _cancelJob, stepStop.Token).ConfigureAwait(false);
                         else
                         {

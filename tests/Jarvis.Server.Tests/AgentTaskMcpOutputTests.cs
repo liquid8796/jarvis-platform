@@ -125,7 +125,7 @@ public sealed partial class AgentTaskMcpTests
         var legacy = JsonSerializer.Deserialize<JsonElement>(result.GetProperty("content")[0].GetProperty("text").GetString()!);
         Assert.Equal(JsonValueKind.Array, legacy.ValueKind);
         Assert.True(JsonElement.DeepEquals(legacy, structured.GetProperty("tools")));
-        Assert.Contains(legacy.EnumerateArray(), t => t.GetProperty("id").GetString() == "process.start");
+        Assert.Contains(legacy.EnumerateArray(), t => t.GetProperty("id").GetString() == "unified_exec.exec_command");
         var bad = JsonNode.Parse(structured.GetRawText())!;
         bad["tools"]![0]!["readOnly"] = "false";
         Assert.False(SchemaGuard.Matches(SchemaGuard.Compile(OutputSchema(listed, "agent_task_tools")), WireJson.Element(bad)));
@@ -181,7 +181,7 @@ public sealed partial class AgentTaskMcpTests
         ], ["ResponsiveMobile"], ["Overflow"]);
         var task = new RemoteTaskSnapshot(Guid.NewGuid().ToString("N"), "fixture", "project", "FAILED", "verify", 0, 1,
             DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, "failed", RootTaskId: Guid.NewGuid().ToString("N"), Verification: verification);
-        var reply = WireJson.Element(new RemoteTaskReply(Task: task, Artifacts: [new(0, "verify", "VERIFY", "process.start", 5,
+        var reply = WireJson.Element(new RemoteTaskReply(Task: task, Artifacts: [new(0, "verify", "VERIFY", "unified_exec.exec_command", 5,
             false, "retained partial output", true, -1, DateTimeOffset.UtcNow, "nonzero exit")], NextOffset: 1));
         var schema = SchemaGuard.Compile(OutputSchema(listed, "agent_task_artifacts"));
         Assert.True(SchemaGuard.Matches(schema, reply));

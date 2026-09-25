@@ -15,10 +15,10 @@ public sealed class AgentTaskRobustnessTests
 {
     private static RemoteTaskStep LongStep(int timeout = 30) => new()
     {
-        Id = "wait", ToolId = "process.start", TimeoutSeconds = timeout,
-        Arguments = WireJson.Element(new { command = OperatingSystem.IsWindows()
-            ? "Write-Output PARTIAL_OUTPUT_MARKER; Start-Sleep -Seconds 30; Write-Output SHOULD_NOT_COMPLETE"
-            : "echo PARTIAL_OUTPUT_MARKER; sleep 30; echo SHOULD_NOT_COMPLETE", timeoutSeconds = 60 })
+        Id = "wait", ToolId = "unified_exec.exec_command", TimeoutSeconds = timeout,
+        Arguments = WireJson.Element(new { cmd = OperatingSystem.IsWindows()
+            ? "[Console]::Out.WriteLine('PARTIAL_OUTPUT_MARKER'); [Console]::Out.Flush(); Start-Sleep -Seconds 30; [Console]::Out.WriteLine('SHOULD_NOT_COMPLETE')"
+            : "echo PARTIAL_OUTPUT_MARKER; sleep 30; echo SHOULD_NOT_COMPLETE", tty = false, login = false, yield_time_ms = 50 })
     };
     private static RemoteTaskPlan Plan(RemoteTaskStep step) => new() { Goal = "Robustness fixture", Steps = [step] };
 
@@ -108,12 +108,12 @@ public sealed class AgentTaskRobustnessTests
     {
         using var app = new ServerFixture(); using var admin = await app.Admin();
         await using var peer = await TaskAgentPeer.ConnectAsync(app, admin);
-        var forged = LongStep() with { Arguments = WireJson.Element(new { command = "echo x", fullPermission = true }) };
+        var forged = LongStep() with { Arguments = WireJson.Element(new { cmd = "echo x", fullPermission = true }) };
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/agent/tasks", peer.Input(Plan(forged)))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/agent/tasks", peer.Input(Plan(LongStep()) with { ExecutionMode = "READ_ONLY" }))).StatusCode);
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db.Tools.SingleAsync(t => t.AgentToolId == "process.start")).PublicationMode = ToolPublicationMode.Hidden;
+        (await db.Tools.SingleAsync(t => t.AgentToolId == "unified_exec.exec_command")).PublicationMode = ToolPublicationMode.Hidden;
         await db.SaveChangesAsync();
         Assert.Equal(HttpStatusCode.Forbidden, (await admin.PostAsJsonAsync("/api/agent/tasks", peer.Input(Plan(LongStep())))).StatusCode);
         Assert.Null(peer.StartedJobId); Assert.Equal(0, peer.Approval.Calls);
@@ -128,8 +128,8 @@ public sealed class AgentTaskRobustnessTests
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var owner = (await db.Devices.AsNoTracking().SingleAsync(d => d.Id == peer.DeviceId)).OwnerId;
         var taskId = Guid.NewGuid().ToString("N");
-        var prefix = OperatingSystem.IsWindows() ? "Write-Output" : "echo";
-        peer.Permissions.GrantLease(new ToolCapabilityLease("task-process", "process.start", ToolCapabilityScope.Session,
+        var prefix = OperatingSystem.IsWindows() ? "[Console]::Out.WriteLine('PARTIAL_OUTPUT_MARKER');" : "echo";
+        peer.Permissions.GrantLease(new ToolCapabilityLease("task-process", "unified_exec.exec_command", ToolCapabilityScope.Session,
             "task:" + owner + ":" + taskId, null, DateTimeOffset.UtcNow.AddMinutes(5), [peer.Workspace], [prefix]));
         var task = await peer.CreateAsync(admin, Plan(LongStep()), taskId);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));

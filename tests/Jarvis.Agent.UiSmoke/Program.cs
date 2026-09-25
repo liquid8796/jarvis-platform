@@ -237,20 +237,20 @@ internal static class Program
                 savedFullPermissions = saved.RootElement.GetProperty("fullPermissionTools").EnumerateArray().Select(value => value.GetString()!).ToArray();
             }
             File.WriteAllText(permissionFile, JsonSerializer.Serialize(new { version = 2, fullPermissionTools = savedFullPermissions,
-                alwaysApprovedConstrainedTools = new[] { "process.start" } }, new JsonSerializerOptions { WriteIndented = true }));
+                alwaysApprovedConstrainedTools = new[] { "unified_exec.exec_command" } }, new JsonSerializerOptions { WriteIndented = true }));
             // Reload the real view model using isolated settings only, never the current user's profile.
             var reloaded = Activator.CreateInstance(modelType, [window, settingsRoot, false])!;
             var reloadedPermissions = modelType.GetProperty("Permissions")!.GetValue(reloaded)!;
             var reloadedItems = ((IEnumerable)reloadedPermissions.GetType().GetProperty("Items")!.GetValue(reloadedPermissions)!).Cast<object>().ToArray();
             if (reloadedItems.Count(Selected) != 1) throw new InvalidOperationException("Permission persistence reload failed.");
-            var processStart = reloadedItems.Single(item => (string)item.GetType().GetProperty("Id")!.GetValue(item)! == "process.start");
-            if (!(bool)processStart.GetType().GetProperty("AlwaysApproved")!.GetValue(processStart)!) throw new InvalidOperationException("Persistent process approval did not reload into Tool permissions.");
-            ((ICommand)processStart.GetType().GetProperty("RevokeAlwaysApprovalCommand")!.GetValue(processStart)!).Execute(null);
-            if ((bool)processStart.GetType().GetProperty("AlwaysApproved")!.GetValue(processStart)!) throw new InvalidOperationException("Require approval again did not clear UI state.");
+            var execCommand = reloadedItems.Single(item => (string)item.GetType().GetProperty("Id")!.GetValue(item)! == "unified_exec.exec_command");
+            if (!(bool)execCommand.GetType().GetProperty("AlwaysApproved")!.GetValue(execCommand)!) throw new InvalidOperationException("Persistent exec_command approval did not reload into Tool permissions.");
+            ((ICommand)execCommand.GetType().GetProperty("RevokeAlwaysApprovalCommand")!.GetValue(execCommand)!).Execute(null);
+            if ((bool)execCommand.GetType().GetProperty("AlwaysApproved")!.GetValue(execCommand)!) throw new InvalidOperationException("Require approval again did not clear UI state.");
             using (var revoked = JsonDocument.Parse(File.ReadAllText(permissionFile)))
                 if (revoked.RootElement.GetProperty("alwaysApprovedConstrainedTools").GetArrayLength() != 0) throw new InvalidOperationException("Require approval again did not persist revocation.");
             ((IAsyncDisposable)reloaded).DisposeAsync().AsTask().GetAwaiter().GetResult();
-            permissionsType.GetProperty("Search")!.SetValue(permissions, "PowerShell");
+            permissionsType.GetProperty("Search")!.SetValue(permissions, "exec_command");
             PermissionCommand("SelectAllCommand");
             if (items.Count(Selected) != items.Length) throw new InvalidOperationException("Select all did not include filtered-out tools.");
             // Draft changes have not changed the persisted selection.

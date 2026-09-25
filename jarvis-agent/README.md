@@ -82,3 +82,19 @@ The UI smoke harness verifies sidebar/content selection synchronization, absence
 Desktop supports multi-select in the folder picker, adding/removing additional project folders and choosing the primary working folder. CLI configure accepts multiple folders. The saved profile remains compatible with old single-directory profiles. Managed jobs accept an optional workingDirectory. The supplied Jarvis MCP icon is integrated in the executable, window, sidebar, tray and dialogs.
 
 This update does not remove the file workspace guard and does not add full-permission configuration; these requested edits were blocked. Existing sensitive-action approvals remain in place. See docs/AGENT.md and docs/BUILD-STATUS.md in the platform root for operator details and executed verification.
+
+## Codex-compatible public tools (1.0.89)
+
+Jarvis Agent now advertises the same compact public primitives used by the installed Codex Desktop instead of the former category-specific mutation fleet:
+
+| Capability | New public tool | Replaces the former public tools |
+|---|---|---|
+| Source changes | `apply_patch` (`source.apply_patch`) | `filesystem.Write`, `filesystem.Edit`, `filesystem.NotebookEdit` |
+| Local image inspection | `view_image` (`image.view_image`) | fragmented local screenshot/image-path workflows |
+| Command execution | `exec_command` (`unified_exec.exec_command`) | `shell.PowerShell`, `shell.Bash`, `process.start`, `process.spawn` |
+| Interactive process I/O | `write_stdin` (`unified_exec.write_stdin`) | `process.read`, `process.write_stdin`, `process.resize_pty`, `process.cancel` |
+| Desktop control | `computer_use` (`computer_use.computer_use`) | the former public `computer.*` tool fleet |
+
+`computer_use` supports `list_windows`, `get_window`, `list_apps`, `launch_app`, `get_window_state`, `click`, `press_key`, `type_text`, `scroll`, `set_value`, `drag`, `perform_secondary_action`, and `activate_window`.
+
+The replacement is surface-level, not a security bypass. Workspace containment, optimistic file checks, owner/session process isolation, Arm/Pause, application grants, Full permission, approvals, resource locks, and task deadlines remain enforced locally. Empty `write_stdin` input only polls an owned session; text input and Ctrl+C still require mutation authority. Legacy saved permission IDs are migrated to the corresponding new capability IDs when loaded.

@@ -11,9 +11,9 @@ public static class ToolExecutionResources
     {
         var id = tool.Id.ToLowerInvariant();
         if (AgentSessionRules.IsControlTool(tool.Id)) return new([], false);
-        if (id is "process.write_stdin" or "process.resize_pty")
-            return new(["job|" + Text(arguments, "jobId")], true);
-        if (id is "process.start" or "process.spawn" || tool.Category == "shell")
+        if (id == "unified_exec.write_stdin")
+            return new(["job|" + Number(arguments, "session_id")], true);
+        if (id == "unified_exec.exec_command")
             return new(["*"], true); // Arbitrary commands are not assumed to remain inside cwd.
         if (tool.Category is "session" or "workspace" or "thread" or "workflow")
             return new(["coordination|" + tool.Category + "|" + context.IsolationScopeId], !tool.ReadOnly);
@@ -102,4 +102,6 @@ public static class ToolExecutionResources
     }
     private static string? Text(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
         ? value.GetString() : null;
+    private static string Number(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
+        ? value.GetInt64().ToString(System.Globalization.CultureInfo.InvariantCulture) : "missing";
 }

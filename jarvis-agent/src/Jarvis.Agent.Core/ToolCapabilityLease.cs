@@ -51,7 +51,7 @@ public sealed record ToolCapabilityLease(
         if (WorkspaceRoots is { Count: > 0 })
         {
             var requested = context.Workspace;
-            if (arguments.ValueKind == JsonValueKind.Object && arguments.TryGetProperty("workingDirectory", out var cwd) && cwd.ValueKind == JsonValueKind.String)
+            if (arguments.ValueKind == JsonValueKind.Object && (arguments.TryGetProperty("workingDirectory", out var cwd) || arguments.TryGetProperty("workdir", out cwd)) && cwd.ValueKind == JsonValueKind.String)
             {
                 var text = cwd.GetString();
                 if (string.IsNullOrWhiteSpace(text)) return false;
@@ -64,7 +64,7 @@ public sealed record ToolCapabilityLease(
         if (CommandPrefixes is { Count: > 0 })
         {
             if (arguments.ValueKind != JsonValueKind.Object) return false;
-            if (arguments.TryGetProperty("command", out var commandElement) && commandElement.ValueKind == JsonValueKind.String)
+            if ((arguments.TryGetProperty("command", out var commandElement) || arguments.TryGetProperty("cmd", out commandElement)) && commandElement.ValueKind == JsonValueKind.String)
             {
                 var command = commandElement.GetString() ?? "";
                 if (!CommandPrefixes.Any(prefix => CommandHasPrefix(command, prefix))) return false;

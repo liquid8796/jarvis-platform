@@ -68,7 +68,7 @@ public sealed class InvocationPermissionTests
     }
     [Fact] public async Task Permanent_constrained_process_approval_bypasses_future_prompt_for_exact_tool()
     {
-        var tool = new Tool("process.start"); var approval = new Approval(false); var gate = new LocalControlGate(); gate.Arm();
+        var tool = new Tool("unified_exec.exec_command"); var approval = new Approval(false); var gate = new LocalControlGate(); gate.Arm();
         var policy = new ToolPermissionPolicy([tool.Descriptor.Id]);
         var replace = typeof(ToolPermissionPolicy).GetMethod("ReplaceAlwaysApprovedConstrainedTools", BindingFlags.Public | BindingFlags.Instance);
         Assert.NotNull(replace); replace.Invoke(policy, [new[] { tool.Descriptor.Id }]);

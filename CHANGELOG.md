@@ -1,3 +1,12 @@
+## 1.0.89 - 2026-09-25
+
+- Replaced the legacy public source-mutation tools with Codex-compatible `apply_patch`, including workspace containment, optimistic file validation, V4A Add/Update/Move/Delete support, and atomic rollback.
+- Added Codex-compatible `view_image` for bounded local-image inspection with high-detail preview and original modes.
+- Replaced public shell/process-job tools with `exec_command` and `write_stdin`, preserving PTY support, partial output, owner/session isolation, Ctrl+C cancellation, task integration, and command approval.
+- Replaced the public `computer.*` fleet with one `computer_use` tool covering 13 window/application/accessibility actions while preserving local application grants and Windows security gates.
+- Migrated stored permissions and task/runtime tests to the consolidated capability IDs; removed all retired IDs from the advertised Agent catalog.
+- Bump package to **1.0.89**, assembly/file to **1.0.89.0**.
+
 ## 1.0.88 - 2026-09-25
 
 - Make the OAuth-bound selected device's live Agent capability manifest the MCP runtime source of truth. Missing catalog-policy rows now mean Auto visibility; Published retains explicit public metadata and Hidden is the explicit deny state.

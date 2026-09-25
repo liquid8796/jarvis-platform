@@ -1,4 +1,20 @@
-# Jarvis Control - 1.0.88
+# Jarvis Control - 1.0.89
+
+## Codex-compatible agent tool surface (1.0.89)
+
+Jarvis Agent now advertises the same compact public primitives used by the installed Codex Desktop instead of the former category-specific mutation fleet:
+
+| Capability | New public tool | Replaces the former public tools |
+|---|---|---|
+| Source changes | `apply_patch` (`source.apply_patch`) | `filesystem.Write`, `filesystem.Edit`, `filesystem.NotebookEdit` |
+| Local image inspection | `view_image` (`image.view_image`) | fragmented local screenshot/image-path workflows |
+| Command execution | `exec_command` (`unified_exec.exec_command`) | `shell.PowerShell`, `shell.Bash`, `process.start`, `process.spawn` |
+| Interactive process I/O | `write_stdin` (`unified_exec.write_stdin`) | `process.read`, `process.write_stdin`, `process.resize_pty`, `process.cancel` |
+| Desktop control | `computer_use` (`computer_use.computer_use`) | the former public `computer.*` tool fleet |
+
+`computer_use` supports `list_windows`, `get_window`, `list_apps`, `launch_app`, `get_window_state`, `click`, `press_key`, `type_text`, `scroll`, `set_value`, `drag`, `perform_secondary_action`, and `activate_window`.
+
+The replacement is surface-level, not a security bypass. Workspace containment, optimistic file checks, owner/session process isolation, Arm/Pause, application grants, Full permission, approvals, resource locks, and task deadlines remain enforced locally. Empty `write_stdin` input only polls an owned session; text input and Ctrl+C still require mutation authority. Legacy saved permission IDs are migrated to the corresponding new capability IDs when loaded.
 
 ## Live MCP tool availability (1.0.88)
 
@@ -270,4 +286,3 @@ Registry replacements now emit `catalog.changed`; the server validates and persi
 Agent Core now publishes `developer.symbol_search` and `developer.test` alongside `tool_program.run`. Symbol search is read-only, workspace-scoped and bounded; test execution is intentionally marked mutating+sensitive because `dotnet test` may build/write project artifacts, so it still requires the ordinary local policy path. The DAP launcher is a Core contract rather than a remotely exposed attach/injection tool: it starts one validated adapter executable, owns that process and can stop only that owned process.
 
 Run `powershell -ExecutionPolicy Bypass -File scripts/Run-HarnessEvaluation.ps1` to execute Harness V2. It runs named regression groups against the real Core/Windows/Server test projects, including shipping runtime bootstrap rather than Core seams alone, and writes schema-v2 JSON with targeted-test totals, throughput and p95 scenario duration to `artifacts/evaluation/harness-eval.json`. This benchmark is deterministic and requires no model/API credentials.
-

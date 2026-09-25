@@ -11,9 +11,12 @@ using Microsoft.Win32.SafeHandles;
 namespace Jarvis.Agent.Core;
 
 /// <summary>Owned build/test and interactive process jobs. Never attaches to unrelated machine processes.</summary>
-public sealed class ProcessToolSet : IDisposable
+public sealed partial class ProcessToolSet : IDisposable
 {
     private readonly ConcurrentDictionary<string, ManagedJob> _jobs = new();
+    private readonly ConcurrentDictionary<long, string> _codexSessions = new();
+    private readonly ConcurrentDictionary<long, long> _codexReadCursors = new();
+    private long _nextCodexSessionId;
     private readonly object _startLock = new();
     private readonly Func<AgentExecutionSettings> _settings;
     private bool _disposed;
@@ -27,12 +30,8 @@ public sealed class ProcessToolSet : IDisposable
 
     public IEnumerable<IAgentTool> Tools =>
     [
-        new ProcessTool(this, "start"),
-        new ProcessTool(this, "spawn"),
-        new ProcessTool(this, "read"),
-        new ProcessTool(this, "write_stdin"),
-        new ProcessTool(this, "resize_pty"),
-        new ProcessTool(this, "cancel")
+        new CodexProcessTool(this, "exec_command"),
+        new CodexProcessTool(this, "write_stdin")
     ];
 
     public void StopAll()
@@ -395,9 +394,8 @@ public sealed class ProcessToolSet : IDisposable
 
         private async Task PumpAsync(StreamReader stream, string name)
         {
-            var chunk = new char[2048];
-            int n;
-            while ((n = await stream.ReadAsync(chunk.AsMemory())) > 0) Add(name, new string(chunk, 0, n));
+            while (await stream.ReadLineAsync() is { } line)
+                Add(name, line + Environment.NewLine);
         }
 
         public override async Task WriteStdinAsync(string text, bool close, CancellationToken ct)

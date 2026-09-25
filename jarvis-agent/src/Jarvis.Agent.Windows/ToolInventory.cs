@@ -18,7 +18,6 @@ public sealed class ToolInventory : IDisposable
     private readonly BlenderMcpToolSet _blender;
     private readonly SessionFileObservations _fileObservations = new();
     private readonly SessionBrowserToolSet _browserTools;
-    private readonly PerSessionToolSet _computerTools;
     public event Action<string>? BrowserSessionStopRequested;
     private readonly TeachController? _teach;
     private readonly ComputerStateTracker _computerStates = new();
@@ -40,22 +39,24 @@ public sealed class ToolInventory : IDisposable
         var tools = new List<IAgentTool>();
         void Add(string category, IEnumerable<ITool> source) => tools.AddRange(source.Select(t => new LegacyToolAdapter(t, category, questions, artifacts, root, category == "filesystem" ? _fileObservations : null)));
 
-        var observer = new WindowsComputerObservationProvider();
-        _computerTools = new PerSessionToolSet(() => ComputerUseTools.Create(settings, _teach)
-            .Select(tool => (IAgentTool)new LegacyToolAdapter(tool, "computer", questions, artifacts, root))
-            .Select(tool => (IAgentTool)new StatefulComputerToolAdapter(tool, _computerStates, observer)).ToArray());
-        tools.AddRange(_computerTools.Tools);
-        tools.Add(new ComputerStateTool(_computerStates, observer));
+        var vendorComputerTools = ComputerUseTools.Create(settings, _teach);
+        IAgentTool InternalComputer(string name) => new LegacyToolAdapter(
+            vendorComputerTools.Single(tool => tool.Name == name), "computer", questions, artifacts, root);
+        tools.Add(new CodexComputerUseTool(
+            settings,
+            new ComputerUseService(() => settings.Current),
+            InternalComputer("request_access"),
+            InternalComputer("open_application")));
         _browserTools = new SessionBrowserToolSet(_browser, _computerStates);
         tools.AddRange(_browserTools.Tools);
         _imageGen = new ImageGenerationToolSet(Path.Combine(root, "imagegen"),
             new ChatGptExtensionImageBackend(_browser, new ImageGenBrowserBindingStore(root)), new ImageArtifactStore());
         tools.AddRange(_imageGen.Tools);
         Add("visualize", VisualizeTools.Create());
-        Add("filesystem", [new ReadFileTool(), new ReadDocumentTool(), new WriteFileTool(), new EditFileTool(),
-            new ListDirectoryTool(), new GlobTool(), new GrepTool(), new NotebookEditTool()]);
+        Add("filesystem", [new ReadFileTool(), new ReadDocumentTool(), new ListDirectoryTool(), new GlobTool(), new GrepTool()]);
+        tools.Add(new CodexApplyPatchTool(_fileObservations, root));
+        tools.Add(new CodexViewImageTool(root));
         Add("git", [new GitStatusTool(), new GitDiffTool(), new GitLogTool(), new GitShowTool(), new GitBlameTool()]);
-        Add("shell", [new ShellTool(), new ShellTool(ShellKind.Bash)]);
         Add("workflow", [new TodoTool(), new AskUserQuestionTool()]);
         _unity = new UnityMcpToolSet(Path.Combine(root, UnityMcpConfig.FileName));
         tools.AddRange(_unity.Tools);
@@ -69,7 +70,7 @@ public sealed class ToolInventory : IDisposable
         _unity.StopSession(identity.SessionId);
         _blender.StopSession(identity.SessionId);
         _computerStates.Invalidate(identity.SessionId);
-        if (close) { _computerTools.Forget(identity); _fileObservations.Forget(identity); }
+        if (close) _fileObservations.Forget(identity);
         try { await _browserTools.StopSessionAsync(identity, close, ct); }
         finally { if (close) _computerStates.InvalidateAll(); }
     }

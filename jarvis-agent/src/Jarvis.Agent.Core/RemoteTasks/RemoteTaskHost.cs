@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Jarvis.Agent.Core.Plugins;
 using Jarvis.Protocol;
 
@@ -179,8 +179,8 @@ internal sealed partial class RemoteTaskHost : IAsyncDisposable
                 throw new ArgumentException("Step arguments do not match installed schema: " + step.Id);
             if ((plan.ExecutionMode == "READ_ONLY" || step.MaxAttempts > 1) && (!tool.Descriptor.ReadOnly || tool.Descriptor.Sensitive))
                 throw new ArgumentException("Read-only mode and retries cannot invoke mutating or sensitive tools: " + step.Id);
-            if ((step.ToolId is "process.start" or "process.spawn") && (!snapshot.Tools.ContainsKey("process.read") || !snapshot.Tools.ContainsKey("process.cancel")))
-                throw new ArgumentException("Owned process read/cancel tools are required.");
+            if ((step.ToolId == "unified_exec.exec_command") && !snapshot.Tools.ContainsKey("unified_exec.write_stdin"))
+                throw new ArgumentException("The unified_exec.write_stdin companion tool is required.");
         }
     }
     private void Start(StoredRemoteTask task, CancellationToken sessionToken, CancellationToken ownerSessionToken)

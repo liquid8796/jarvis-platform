@@ -18,9 +18,9 @@ public static class AgentSessionRules
         "session.send_message" or "session.read_events" or "session.stop_work" or "session.close" or "workspace.get" or "workspace.set";
     public static bool IsPublicTool(string name) => name is "session__open" or "session__get" or "session__list" or
         "session__send_message" or "session__read_events" or "session__stop_work" or "session__close" or "workspace__get" or "workspace__set";
-    public static bool IsControlTool(string toolId) => IsTool(toolId) || toolId is "process.read" or "process.cancel";
+    public static bool IsControlTool(string toolId) => IsTool(toolId) || toolId == "unified_exec.write_stdin";
     public static bool AllowedWhilePaused(string toolId) => toolId is "session.get" or "session.list" or
-        "session.read_events" or "session.stop_work" or "session.close" or "workspace.get" or "process.read" or "process.cancel";
+        "session.read_events" or "session.stop_work" or "session.close" or "workspace.get";
 }
 
 public sealed record AgentSessionSnapshot(

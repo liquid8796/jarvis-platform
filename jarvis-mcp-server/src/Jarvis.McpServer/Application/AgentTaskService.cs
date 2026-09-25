@@ -46,9 +46,9 @@ public sealed class AgentTaskService(
                     throw new ArgumentException("Task step arguments do not match the installed schema: " + step.Id);
                 if ((plan.ExecutionMode == "READ_ONLY" || step.MaxAttempts > 1) && (!tool.ReadOnly || tool.Sensitive))
                     throw new ArgumentException("Read-only mode and retries cannot invoke mutating/sensitive tools.");
-                if ((step.ToolId is "process.start" or "process.spawn") &&
-                    (!available.ContainsKey("process.read") || !available.ContainsKey("process.cancel")))
-                    throw new UnauthorizedAccessException("Process task plans require visible installed process.read and process.cancel capabilities.");
+                if ((step.ToolId == "unified_exec.exec_command") &&
+                    !available.ContainsKey("unified_exec.write_stdin"))
+                    throw new UnauthorizedAccessException("exec_command task plans require the visible installed unified_exec.write_stdin capability.");
             }
         }
 

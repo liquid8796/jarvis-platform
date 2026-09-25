@@ -38,9 +38,9 @@ public sealed class ExecutionSettingsBridgeTests
         Assert.All(calls, call => Assert.Equal(owner, call.OwnerId));
         var full = await Assert.ThrowsAsync<AgentRequestException>(() => router.CallAsync(owner, device, "test.read", WireJson.Element(new { }), AgentSessionRules.NewSessionId(), timeout.Token));
         Assert.Equal("QUEUE_FULL", full.Code);
-        var control = router.CallAsync(owner, device, "process.read", WireJson.Element(new { }), AgentSessionRules.NewSessionId(), timeout.Token);
+        var control = router.CallAsync(owner, device, "unified_exec.write_stdin", WireJson.Element(new { }), AgentSessionRules.NewSessionId(), timeout.Token);
         var controlCall = await wire.ReceiveAsync(timeout.Token);
-        Assert.Equal("process.read", controlCall!.ToolId);
+        Assert.Equal("unified_exec.write_stdin", controlCall!.ToolId);
         await wire.SendAsync(new("result") { Id = controlCall.Id, Result = new("status-ready") }, timeout.Token);
         Assert.Equal("status-ready", (await control).Text);
         foreach (var call in calls) await wire.SendAsync(new("result") { Id = call.Id, Result = new("done") }, timeout.Token);

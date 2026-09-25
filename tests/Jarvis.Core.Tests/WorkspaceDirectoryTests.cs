@@ -57,27 +57,23 @@ public sealed class WorkspaceDirectoryTests : IDisposable
         var copy = JsonSerializer.Deserialize<AgentOptions>(JsonSerializer.Serialize(options, WireJson.Options), WireJson.Options)!;
         Assert.Equal(options.Workspace, copy.Workspace); Assert.Equal(options.AdditionalDirectories, copy.AdditionalDirectories);
     }
-    [Fact] public async Task Managed_job_can_choose_an_explicit_starting_directory()
+    [Fact] public async Task Exec_command_can_choose_an_explicit_starting_directory()
     {
         using var tools = new ProcessToolSet();
         var context = new AgentExecutionContext(Primary, "cwd-test", "test");
-        var start = tools.Tools.Single(t => t.Descriptor.Id == "process.start");
+        var exec = tools.Tools.Single(t => t.Descriptor.Id == "unified_exec.exec_command");
         var command = OperatingSystem.IsWindows() ? "(Get-Location).Path" : "pwd";
-        var reply = await start.ExecuteAsync(WireJson.Element(new { command, workingDirectory = Secondary, timeoutSeconds = 10 }), context, CancellationToken.None);
-        using var initial = JsonDocument.Parse(reply.Text);
-        var id = initial.RootElement.GetProperty("jobId").GetString();
-        var reader = tools.Tools.Single(t => t.Descriptor.Id == "process.read");
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        while (true)
+        var reply = await exec.ExecuteAsync(WireJson.Element(new
         {
-            using var result = JsonDocument.Parse((await reader.ExecuteAsync(WireJson.Element(new { jobId = id, cursor = 0 }), context, timeout.Token)).Text);
-            if (result.RootElement.GetProperty("done").GetBoolean())
-            {
-                Assert.Contains(Secondary, result.RootElement.GetProperty("output").GetString());
-                Assert.Equal(0, result.RootElement.GetProperty("exitCode").GetInt32()); break;
-            }
-            await Task.Delay(50, timeout.Token);
-        }
+            cmd = command,
+            workdir = Secondary,
+            tty = false,
+            yield_time_ms = 10_000
+        }), context, CancellationToken.None);
+        Assert.False(reply.IsError, reply.Text);
+        using var result = JsonDocument.Parse(reply.Text);
+        Assert.Contains(Secondary, result.RootElement.GetProperty("output").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, result.RootElement.GetProperty("exit_code").GetInt32());
     }
     [Fact] public void Filesystem_root_selection_accepts_descendants()
     {

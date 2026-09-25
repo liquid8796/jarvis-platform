@@ -9,8 +9,8 @@ namespace Jarvis.Server.Tests;
 public sealed class AgentTaskExecutionTests
 {
     private static RemoteTaskStep Command(string id, string command, string stage = "EXECUTE", int timeout = 30) =>
-        new() { Id = id, ToolId = "process.start", Stage = stage, TimeoutSeconds = timeout,
-            Arguments = WireJson.Element(new { command, timeoutSeconds = timeout }) };
+        new() { Id = id, ToolId = "unified_exec.exec_command", Stage = stage, TimeoutSeconds = timeout,
+            Arguments = WireJson.Element(new { cmd = command, tty = false, yield_time_ms = 50, max_output_tokens = 10_000 }) };
     private static RemoteTaskPlan Plan(params RemoteTaskStep[] steps) => new() { Goal = "Task integration fixture", Steps = steps };
 
     [Fact]

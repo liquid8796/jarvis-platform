@@ -22,7 +22,7 @@ public sealed class ToolPermissionPolicy
         ReplaceAlwaysApprovedConstrainedTools(alwaysApprovedConstrainedTools ?? []);
     }
 
-    public static bool SupportsPermanentApproval(string toolId) => toolId is "process.start" or "process.spawn";
+    public static bool SupportsPermanentApproval(string toolId) => toolId == "unified_exec.exec_command";
     public bool HasFullPermission(string toolId) => Volatile.Read(ref _grants).Contains(toolId);
     public bool HasAlwaysApprovedConstrainedTool(string toolId) => Volatile.Read(ref _alwaysApprovedConstrained).Contains(toolId);
     public IReadOnlyList<string> FullPermissionTools => Volatile.Read(ref _grants).Order(StringComparer.Ordinal).ToArray();
@@ -45,8 +45,14 @@ public sealed class ToolPermissionPolicy
         !(SupportsPermanentApproval(tool.Id) ? HasAlwaysApprovedConstrainedTool(tool.Id) : HasFullPermission(tool.Id)) &&
         (!tool.ReadOnly || tool.Sensitive);
 
-    public bool RequiresApproval(ToolDescriptor tool, JsonElement arguments, AgentExecutionContext context) =>
-        !HasFullPermission(tool.Id, arguments, context) && (!tool.ReadOnly || tool.Sensitive);
+    public bool RequiresApproval(ToolDescriptor tool, JsonElement arguments, AgentExecutionContext context)
+    {
+        // Empty write_stdin is a read-only poll of an already owner/session-bound process. Input and Ctrl+C still require approval.
+        if (tool.Id == "unified_exec.write_stdin" &&
+            (!arguments.TryGetProperty("chars", out var chars) || chars.ValueKind == JsonValueKind.String && chars.GetString() == ""))
+            return false;
+        return !HasFullPermission(tool.Id, arguments, context) && (!tool.ReadOnly || tool.Sensitive);
+    }
 
     public void Replace(IEnumerable<string> toolIds)
     {
@@ -140,7 +146,7 @@ public sealed class ToolPermissionPolicy
 
     private static string ValidateAlwaysApprovedId(string id) =>
         SupportsPermanentApproval(ValidateId(id))
-            ? id : throw new ArgumentException("Permanent approval is supported only for process.start and process.spawn.");
+            ? id : throw new ArgumentException("Permanent approval is supported only for unified_exec.exec_command.");
 }
 
 public sealed record ToolPermissionSettings(IReadOnlyList<string> FullPermissionTools, IReadOnlyList<string> AlwaysApprovedConstrainedTools);
@@ -161,8 +167,9 @@ public sealed class ToolPermissionStore(string filePath)
             throw new InvalidDataException("Unsupported tool permission settings.");
         if (document.Version == 2 && document.AlwaysApprovedConstrainedTools is null)
             throw new InvalidDataException("Unsupported tool permission settings.");
-        var policy = new ToolPermissionPolicy(document.FullPermissionTools,
+        var migrated = Migrate(document.FullPermissionTools,
             document.Version == 1 ? [] : document.AlwaysApprovedConstrainedTools!);
+        var policy = new ToolPermissionPolicy(migrated.FullPermissionTools, migrated.AlwaysApprovedConstrainedTools);
         return new(policy.FullPermissionTools, policy.AlwaysApprovedConstrainedTools);
     }
 
@@ -171,7 +178,8 @@ public sealed class ToolPermissionStore(string filePath)
     public void Save(ToolPermissionSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var policy = new ToolPermissionPolicy(settings.FullPermissionTools, settings.AlwaysApprovedConstrainedTools);
+        var migrated = Migrate(settings.FullPermissionTools, settings.AlwaysApprovedConstrainedTools);
+        var policy = new ToolPermissionPolicy(migrated.FullPermissionTools, migrated.AlwaysApprovedConstrainedTools);
         var grants = policy.FullPermissionTools.ToArray();
         var always = policy.AlwaysApprovedConstrainedTools.ToArray();
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
@@ -184,4 +192,45 @@ public sealed class ToolPermissionStore(string filePath)
         }
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
+
+    private static ToolPermissionSettings Migrate(IEnumerable<string> fullPermissions,
+        IEnumerable<string> alwaysApproved)
+    {
+        var full = new HashSet<string>(StringComparer.Ordinal);
+        var always = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var id in alwaysApproved) always.Add(MigrateAlwaysApproved(id));
+        foreach (var id in fullPermissions)
+        {
+            switch (id)
+            {
+                case "shell.PowerShell":
+                case "shell.Bash":
+                case "process.start":
+                case "process.spawn":
+                    always.Add("unified_exec.exec_command");
+                    break;
+                case "process.read":
+                case "process.write_stdin":
+                case "process.resize_pty":
+                case "process.cancel":
+                    full.Add("unified_exec.write_stdin");
+                    break;
+                case "filesystem.Write":
+                case "filesystem.Edit":
+                case "filesystem.NotebookEdit":
+                    full.Add("source.apply_patch");
+                    break;
+                default:
+                    full.Add(id.StartsWith("computer.", StringComparison.Ordinal)
+                        ? "computer_use.computer_use"
+                        : id);
+                    break;
+            }
+        }
+        return new(full.Order(StringComparer.Ordinal).ToArray(), always.Order(StringComparer.Ordinal).ToArray());
+    }
+
+    private static string MigrateAlwaysApproved(string id) => id is "process.start" or "process.spawn"
+        ? "unified_exec.exec_command"
+        : id;
 }

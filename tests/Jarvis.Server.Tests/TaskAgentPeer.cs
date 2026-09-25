@@ -24,6 +24,7 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
     public ProcessToolSet Processes { get; } = new();
     public string? StartedJobId;
     public AgentExecutionContext? StartedJobContext;
+    private JsonElement? _lastJobSnapshot;
     private readonly CancellationTokenSource _stop = new();
     private Task _run = Task.CompletedTask;
     public static async Task<TaskAgentPeer> ConnectAsync(ServerFixture app, HttpClient admin,
@@ -44,7 +45,7 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
         Directory.CreateDirectory(peer.Workspace);
         peer.Approval.Answer = approve;
         if (arm) peer.Gate.Arm();
-        var tools = peer.Processes.Tools.Select(t => t.Descriptor.Id == "process.start" ? (IAgentTool)new StartProbe(t, peer) : t).ToList();
+        var tools = peer.Processes.Tools.Select(t => t.Descriptor.Id == "unified_exec.exec_command" ? (IAgentTool)new StartProbe(t, peer) : t).ToList();
         if (extra is not null) tools.Add(extra);
         using (var scope = app.Services.CreateScope())
         {
@@ -92,10 +93,23 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
     }
     public async Task<JsonElement> JobAsync()
     {
-        var reply = await Processes.Tools.Single(t => t.Descriptor.Id == "process.read").ExecuteAsync(
-            WireJson.Element(new { jobId = StartedJobId!, cursor = 0 }), StartedJobContext ?? throw new InvalidOperationException("The fixture has not started an owned process."), CancellationToken.None);
+        if (StartedJobId is null || !long.TryParse(StartedJobId, out var sessionId))
+            throw new InvalidOperationException("The fixture has not started an owned process.");
+        var reply = await Processes.Tools.Single(t => t.Descriptor.Id == "unified_exec.write_stdin").ExecuteAsync(
+            WireJson.Element(new { session_id = sessionId, chars = "", yield_time_ms = 50 }),
+            StartedJobContext ?? throw new InvalidOperationException("The fixture has not started an owned process."), CancellationToken.None);
+        if (reply.IsError && _lastJobSnapshot is { } cached) return cached;
         Assert.False(reply.IsError, reply.Text);
-        return JsonSerializer.Deserialize<JsonElement>(reply.Text);
+        using var json = JsonDocument.Parse(reply.Text);
+        var root = json.RootElement;
+        var snapshot = WireJson.Element(new
+        {
+            done = !root.TryGetProperty("session_id", out _),
+            output = root.TryGetProperty("output", out var output) ? output.GetString() ?? "" : "",
+            exitCode = root.TryGetProperty("exit_code", out var exit) ? exit.GetInt32() : (int?)null
+        });
+        _lastJobSnapshot = snapshot;
+        return snapshot;
     }
     public async ValueTask DisposeAsync()
     {
@@ -112,8 +126,12 @@ internal sealed class TaskAgentPeer : IAsyncDisposable
             var reply = await inner.ExecuteAsync(args, context, ct);
             if (!reply.IsError)
             {
-                peer.StartedJobContext = context;
-                peer.StartedJobId = JsonSerializer.Deserialize<JsonElement>(reply.Text).GetProperty("jobId").GetString();
+                using var json = JsonDocument.Parse(reply.Text);
+                if (json.RootElement.TryGetProperty("session_id", out var session))
+                {
+                    peer.StartedJobContext = context;
+                    peer.StartedJobId = session.GetInt64().ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
             }
             return reply;
         }

@@ -1,159 +1,193 @@
 using System.Text.Json;
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Execution;
 using Jarvis.Protocol;
+
 namespace Jarvis.Core.Tests;
+
 public sealed class ProcessTests
 {
-    [Fact] public async Task Owned_process_returns_output_and_status()
+    [Fact]
+    public void Codex_process_surface_exposes_only_exec_command_and_write_stdin()
     {
-        var root = Path.Combine(Path.GetTempPath(), "jarvis-job-" + Guid.NewGuid()); Directory.CreateDirectory(root);
+        using var tools = new ProcessToolSet();
+        var ids = tools.Tools.Select(tool => tool.Descriptor.Id).ToArray();
+        Assert.Equal(["unified_exec.exec_command", "unified_exec.write_stdin"], ids);
+        Assert.Equal("exec_command", tools.Tools.First().Descriptor.Name);
+        Assert.Equal("write_stdin", tools.Tools.Last().Descriptor.Name);
+    }
+
+    [Fact]
+    public async Task Exec_command_returns_output_and_exit_code()
+    {
+        using var tools = new ProcessToolSet();
+        var context = Context("quick");
+        var reply = await Exec(tools, context, Echo("codex-exec-output"), yieldMs: 10_000);
+        Assert.False(reply.IsError, reply.Text);
+        using var result = JsonDocument.Parse(reply.Text);
+        Assert.Contains("codex-exec-output", result.RootElement.GetProperty("output").GetString());
+        Assert.Equal(0, result.RootElement.GetProperty("exit_code").GetInt32());
+        Assert.False(result.RootElement.TryGetProperty("session_id", out _));
+    }
+
+    [Fact]
+    public async Task Exec_command_streams_partial_output_before_completion()
+    {
+        using var tools = new ProcessToolSet();
+        var context = Context("partial");
+        var command = OperatingSystem.IsWindows()
+            ? "[Console]::Out.WriteLine('PARTIAL_OUTPUT_MARKER'); [Console]::Out.Flush(); Start-Sleep -Seconds 5; [Console]::Out.WriteLine('DONE')"
+            : "echo PARTIAL_OUTPUT_MARKER; sleep 5; echo DONE";
+        var started = await Exec(tools, context, command, yieldMs: 2_000, tty: false);
+        Assert.False(started.IsError, started.Text);
+        using var json = JsonDocument.Parse(started.Text);
+        Assert.Contains("PARTIAL_OUTPUT_MARKER", json.RootElement.GetProperty("output").GetString());
+        var sessionId = json.RootElement.GetProperty("session_id").GetInt64();
+        await Write(tools, context, sessionId, "\u0003", 0);
+    }
+
+    [Fact]
+    public async Task Write_stdin_polls_and_writes_to_owned_process()
+    {
+        using var tools = new ProcessToolSet();
+        var context = Context("stdin");
+        var command = OperatingSystem.IsWindows()
+            ? "$line=[Console]::In.ReadLine(); Write-Output ('stdin:'+$line)"
+            : "read line; echo stdin:$line";
+        var started = await Exec(tools, context, command, yieldMs: 20, tty: false);
+        var sessionId = SessionId(started);
+
+        var written = await Write(tools, context, sessionId, "hello-from-stdin\n", 100);
+        Assert.False(written.IsError, written.Text);
+        var completed = await PollUntilDone(tools, context, sessionId, written.Text);
+        Assert.Contains("stdin:hello-from-stdin", completed.Output);
+        Assert.Equal(0, completed.ExitCode);
+    }
+
+    [Fact]
+    public async Task Write_stdin_rejects_an_unowned_session()
+    {
+        using var tools = new ProcessToolSet();
+        var owner = Context("owner");
+        var foreign = Context("foreign");
+        var started = await Exec(tools, owner, BlockingCommand(), yieldMs: 20, tty: false);
+        var sessionId = SessionId(started);
+        var reply = await Write(tools, foreign, sessionId, "", 0);
+        Assert.True(reply.IsError);
+        Assert.Contains("owned", reply.Text, StringComparison.OrdinalIgnoreCase);
+        await Write(tools, owner, sessionId, "\u0003", 0);
+    }
+
+    [Fact]
+    public async Task Ctrl_c_cancels_an_owned_exec_session()
+    {
+        using var tools = new ProcessToolSet();
+        var context = Context("cancel");
+        var started = await Exec(tools, context, BlockingCommand(), yieldMs: 20, tty: false);
+        var sessionId = SessionId(started);
+        var cancelled = await Write(tools, context, sessionId, "\u0003", 100);
+        Assert.False(cancelled.IsError, cancelled.Text);
+        await PollUntilDone(tools, context, sessionId, cancelled.Text);
+        Assert.Equal(0, tools.RunningCount);
+    }
+
+    [Fact]
+    public async Task Background_exec_keeps_its_resource_lease_until_process_finishes()
+    {
+        using var resources = new ExecutionResourceCoordinator(4);
+        using var tools = new ProcessToolSet();
+        using var callLease = (IExecutionResourceLease)await resources.AcquireAsync(
+            "owner", ["*"], true, CancellationToken.None);
+        var context = Context("lease") with { RetainResources = callLease.Retain };
+        var started = await Exec(tools, context, BlockingCommand(), yieldMs: 20, tty: false);
+        var sessionId = SessionId(started);
+        callLease.Dispose();
+
+        var waiting = resources.AcquireAsync("other", ["fs|other"], false, CancellationToken.None);
+        Assert.False(waiting.IsCompleted);
+        var cancelled = await Write(tools, context, sessionId, "\u0003", 100);
+        await PollUntilDone(tools, context, sessionId, cancelled.Text);
+        (await waiting.WaitAsync(TimeSpan.FromSeconds(5))).Dispose();
+    }
+
+    [Fact]
+    public async Task Exec_command_honors_an_explicit_workdir()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "jarvis-exec-workdir-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
         try
         {
-            using var tools = new ProcessToolSet(); var context = new AgentExecutionContext(root, "call-1", "test");
-            var start = tools.Tools.Single(t => t.Descriptor.Id == "process.start");
-            var reply = await start.ExecuteAsync(WireJson.Element(new { command = "echo jarvis-test-output", timeoutSeconds = 10 }), context, CancellationToken.None);
-            using var initial = JsonDocument.Parse(reply.Text); var id = initial.RootElement.GetProperty("jobId").GetString();
-            var read = tools.Tools.Single(t => t.Descriptor.Id == "process.read");
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            while (true)
-            {
-                using var result = JsonDocument.Parse((await read.ExecuteAsync(WireJson.Element(new { jobId = id, cursor = 0 }), context, timeout.Token)).Text);
-                if (result.RootElement.GetProperty("done").GetBoolean())
-                { Assert.Contains("jarvis-test-output", result.RootElement.GetProperty("output").GetString()); Assert.Equal(0, result.RootElement.GetProperty("exitCode").GetInt32()); break; }
-                await Task.Delay(50, timeout.Token);
-            }
+            using var tools = new ProcessToolSet();
+            var reply = await Tool(tools, "unified_exec.exec_command").ExecuteAsync(
+                WireJson.Element(new { cmd = CurrentDirectoryCommand(), workdir = root, tty = false, yield_time_ms = 10_000 }),
+                Context("workdir"), CancellationToken.None);
+            Assert.False(reply.IsError, reply.Text);
+            using var result = JsonDocument.Parse(reply.Text);
+            Assert.Contains(Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar),
+                result.RootElement.GetProperty("output").GetString(), StringComparison.OrdinalIgnoreCase);
         }
-        finally { Directory.Delete(root, true); }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
-    [Fact] public async Task Read_cannot_attach_to_an_unowned_job()
-    {
-        using var tools = new ProcessToolSet();
-        var result = await tools.Tools.Single(t => t.Descriptor.Id == "process.read").ExecuteAsync(WireJson.Element(new { jobId = "other-process" }), new(Path.GetTempPath(),"c","s"),CancellationToken.None);
-        Assert.True(result.IsError);
-    }
+    private static AgentExecutionContext Context(string suffix) =>
+        new(Path.GetTempPath(), "call-" + suffix, "session-" + suffix)
+        { OwnerId = "owner", AgentDeviceId = "device" };
 
-    [Fact] public void Process_v2_exposes_argv_and_interactive_tools()
-    {
-        using var tools = new ProcessToolSet();
-        var ids = tools.Tools.Select(t => t.Descriptor.Id).ToHashSet(StringComparer.Ordinal);
-        Assert.Contains("process.spawn", ids);
-        Assert.Contains("process.write_stdin", ids);
-        Assert.Contains("process.resize_pty", ids);
-    }
+    private static IAgentTool Tool(ProcessToolSet tools, string id) =>
+        tools.Tools.Single(tool => tool.Descriptor.Id == id);
 
-    [Fact] public async Task Spawn_uses_argv_environment_and_structured_stream_events()
-    {
-        using var tools = new ProcessToolSet();
-        var context = new AgentExecutionContext(Path.GetTempPath(), "spawn-env", "test");
-        var spawn = tools.Tools.Single(t => t.Descriptor.Id == "process.spawn");
-        var argv = OperatingSystem.IsWindows()
-            ? new[] { "cmd.exe", "/d", "/c", "echo %JARVIS_PROCESS_TEST%" }
-            : new[] { "/bin/sh", "-lc", "echo \"$JARVIS_PROCESS_TEST\"" };
-        var reply = await spawn.ExecuteAsync(WireJson.Element(new
-        {
-            argv,
-            environment = new Dictionary<string, string> { ["JARVIS_PROCESS_TEST"] = "argv-env-ok" },
-            timeoutSeconds = 10
-        }), context, CancellationToken.None);
-        using var initial = JsonDocument.Parse(reply.Text);
-        var id = initial.RootElement.GetProperty("jobId").GetString();
-        using var result = await ReadUntilDone(tools, context, id!);
-        Assert.Equal(0, result.RootElement.GetProperty("exitCode").GetInt32());
-        Assert.Contains("argv-env-ok", result.RootElement.GetProperty("output").GetString());
-        Assert.Contains(result.RootElement.GetProperty("events").EnumerateArray(), e =>
-            e.GetProperty("stream").GetString() == "stdout" && e.GetProperty("text").GetString()!.Contains("argv-env-ok"));
-    }
-
-    [Fact] public async Task Spawn_accepts_stdin_for_owned_processes()
-    {
-        using var tools = new ProcessToolSet();
-        var context = new AgentExecutionContext(Path.GetTempPath(), "spawn-stdin", "test");
-        var spawn = tools.Tools.Single(t => t.Descriptor.Id == "process.spawn");
-        var argv = OperatingSystem.IsWindows()
-            ? new[] { "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "$line=[Console]::In.ReadLine(); Write-Output ('stdin:'+$line)" }
-            : new[] { "/bin/sh", "-c", "read line; echo stdin:$line" };
-        using var initial = JsonDocument.Parse((await spawn.ExecuteAsync(WireJson.Element(new { argv, timeoutSeconds = 10 }), context, CancellationToken.None)).Text);
-        var id = initial.RootElement.GetProperty("jobId").GetString();
-        var write = tools.Tools.Single(t => t.Descriptor.Id == "process.write_stdin");
-        var writeReply = await write.ExecuteAsync(WireJson.Element(new { jobId = id, text = "hello-from-stdin\n" }), context, CancellationToken.None);
-        Assert.False(writeReply.IsError);
-        using var result = await ReadUntilDone(tools, context, id!);
-        Assert.Contains("stdin:hello-from-stdin", result.RootElement.GetProperty("output").GetString());
-    }
-
-    [Fact] public async Task Windows_pty_process_can_be_resized_and_cancelled()
-    {
-        if (!OperatingSystem.IsWindows()) return;
-        using var tools = new ProcessToolSet();
-        var context = new AgentExecutionContext(Path.GetTempPath(), "spawn-pty", "test");
-        var spawn = tools.Tools.Single(t => t.Descriptor.Id == "process.spawn");
-        using var initial = JsonDocument.Parse((await spawn.ExecuteAsync(WireJson.Element(new
-        {
-            argv = new[] { "powershell.exe", "-NoProfile", "-NoExit", "-Command", "Write-Output 'pty-ready'" },
-            pty = true,
-            columns = 80,
-            rows = 24,
-            timeoutSeconds = 20
-        }), context, CancellationToken.None)).Text);
-        var id = initial.RootElement.GetProperty("jobId").GetString();
-        var resize = tools.Tools.Single(t => t.Descriptor.Id == "process.resize_pty");
-        var resized = await resize.ExecuteAsync(WireJson.Element(new { jobId = id, columns = 120, rows = 40 }), context, CancellationToken.None);
-        Assert.False(resized.IsError);
-        var cancel = tools.Tools.Single(t => t.Descriptor.Id == "process.cancel");
-        Assert.False((await cancel.ExecuteAsync(WireJson.Element(new { jobId = id }), context, CancellationToken.None)).IsError);
-    }
-
-    [Theory]
-    [InlineData("cmd.exe", "/d", "/c", "echo diagnostic-pty & ping -n 2 127.0.0.1 >nul")]
-    [InlineData("cmd.exe", "/d", "/c", "echo diagnostic-pty > CONOUT$")]
-    [InlineData("powershell.exe", "-NoProfile", "-Command", "Write-Output 'diagnostic-pty'; Start-Sleep -Milliseconds 500")]
-    public async Task Pty_captures_output_while_its_client_is_alive(string exe, string a, string b, string command)
-    {
-        if (!OperatingSystem.IsWindows()) return;
-        using var tools = new ProcessToolSet();
-        var context = new AgentExecutionContext(Path.GetTempPath(), "capture-pty", "capture-owner");
-        var reply = await tools.Tools.Single(t => t.Descriptor.Id == "process.spawn").ExecuteAsync(
-            WireJson.Element(new { argv = new[] { exe, a, b, command }, pty = true, timeoutSeconds = 10 }), context, default);
-        using var initial = JsonDocument.Parse(reply.Text);
-        using var done = await ReadUntilDone(tools, context, initial.RootElement.GetProperty("jobId").GetString()!);
-        Assert.Contains("diagnostic-pty", done.RootElement.GetProperty("output").GetString()!);
-    }
-
-    [Fact] public async Task Completed_pty_publishes_exit_status_and_releases_resource_budget()
-    {
-        if (!OperatingSystem.IsWindows()) return;
-        using var resources = new Jarvis.Agent.Core.Execution.ExecutionResourceCoordinator(4);
-        using var tools = new ProcessToolSet();
-        using var lease = (Jarvis.Agent.Core.Execution.IExecutionResourceLease)await resources.AcquireAsync(
-            "pty-owner", new[] { "*" }, true, CancellationToken.None);
-        var context = new AgentExecutionContext(Path.GetTempPath(), "pty-completion", "pty-owner")
-        { RetainResources = lease.Retain };
-        var reply = await tools.Tools.Single(t => t.Descriptor.Id == "process.spawn").ExecuteAsync(
-            WireJson.Element(new { argv = new[] { "cmd.exe", "/d", "/c", "echo pty-completed" }, pty = true, timeoutSeconds = 10 }),
+    private static Task<ToolReply> Exec(ProcessToolSet tools, AgentExecutionContext context, string cmd,
+        int yieldMs, bool tty = false) =>
+        Tool(tools, "unified_exec.exec_command").ExecuteAsync(
+            WireJson.Element(new { cmd, tty, login = false, yield_time_ms = yieldMs, max_output_tokens = 10_000 }),
             context, CancellationToken.None);
+
+    private static Task<ToolReply> Write(ProcessToolSet tools, AgentExecutionContext context, long sessionId,
+        string chars, int yieldMs) =>
+        Tool(tools, "unified_exec.write_stdin").ExecuteAsync(
+            WireJson.Element(new { session_id = sessionId, chars, yield_time_ms = yieldMs, max_output_tokens = 10_000 }),
+            context, CancellationToken.None);
+
+    private static long SessionId(ToolReply reply)
+    {
         Assert.False(reply.IsError, reply.Text);
-        using var initial = JsonDocument.Parse(reply.Text);
-        lease.Dispose();
-        using var completed = await ReadUntilDone(tools, context, initial.RootElement.GetProperty("jobId").GetString()!);
-        Assert.Equal(0, completed.RootElement.GetProperty("exitCode").GetInt32());
-        var output = completed.RootElement.GetProperty("output").GetString()!;
-        Assert.True(output.Contains("pty-completed", StringComparison.Ordinal), JsonSerializer.Serialize(output));
-        Assert.Equal(0, tools.RunningCount);
-        using var next = await resources.AcquireAsync("next-owner", new[] { "fs|another-file" }, false, CancellationToken.None)
-            .WaitAsync(TimeSpan.FromSeconds(5));
+        using var json = JsonDocument.Parse(reply.Text);
+        return json.RootElement.GetProperty("session_id").GetInt64();
     }
 
-    private static async Task<JsonDocument> ReadUntilDone(ProcessToolSet tools, AgentExecutionContext context, string jobId)
+    private static async Task<(string Output, int? ExitCode)> PollUntilDone(
+        ProcessToolSet tools, AgentExecutionContext context, long sessionId, string? initial = null)
     {
-        var read = tools.Tools.Single(t => t.Descriptor.Id == "process.read");
+        var output = new System.Text.StringBuilder();
+        int? exitCode = null;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var next = initial;
         while (true)
         {
-            var result = JsonDocument.Parse((await read.ExecuteAsync(WireJson.Element(new { jobId, cursor = 0 }), context, timeout.Token)).Text);
-            if (result.RootElement.GetProperty("done").GetBoolean()) return result;
-            result.Dispose();
-            await Task.Delay(50, timeout.Token);
+            if (next is null)
+            {
+                var reply = await Tool(tools, "unified_exec.write_stdin").ExecuteAsync(
+                    WireJson.Element(new { session_id = sessionId, chars = "", yield_time_ms = 100 }), context, timeout.Token);
+                Assert.False(reply.IsError, reply.Text);
+                next = reply.Text;
+            }
+            using var json = JsonDocument.Parse(next);
+            output.Append(json.RootElement.GetProperty("output").GetString());
+            if (json.RootElement.TryGetProperty("exit_code", out var exit)) exitCode = exit.GetInt32();
+            if (!json.RootElement.TryGetProperty("session_id", out _)) return (output.ToString(), exitCode);
+            next = null;
         }
     }
+
+    private static string Echo(string value) => OperatingSystem.IsWindows()
+        ? $"Write-Output '{value}'"
+        : $"printf '%s\\n' '{value}'";
+
+    private static string BlockingCommand() => OperatingSystem.IsWindows()
+        ? "[Console]::In.ReadLine() | Out-Null"
+        : "read line";
+
+    private static string CurrentDirectoryCommand() => OperatingSystem.IsWindows()
+        ? "[Environment]::CurrentDirectory"
+        : "pwd";
 }

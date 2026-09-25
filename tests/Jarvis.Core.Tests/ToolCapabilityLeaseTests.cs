@@ -5,18 +5,19 @@ namespace Jarvis.Core.Tests;
 
 public sealed class ToolCapabilityLeaseTests
 {
-    private static ToolDescriptor ProcessStart => new ProcessToolSet().Tools.Single(x => x.Descriptor.Id == "process.start").Descriptor;
+    private static ToolDescriptor ExecCommand => new ProcessToolSet().Tools
+        .Single(tool => tool.Descriptor.Id == "unified_exec.exec_command").Descriptor;
 
     [Fact]
-    public void Legacy_process_full_permission_requires_scoped_lease_at_invocation()
+    public void Exec_command_full_permission_still_requires_scoped_or_permanent_approval_at_invocation()
     {
-        var policy = new ToolPermissionPolicy(["process.start"]);
+        var policy = new ToolPermissionPolicy(["unified_exec.exec_command"]);
         var context = new AgentExecutionContext(Path.GetTempPath(), "call-1", "session-1") { TurnId = "turn-1" };
-        var arguments = WireJson.Element(new { command = "dotnet test" });
+        var arguments = WireJson.Element(new { cmd = "dotnet test" });
 
-        Assert.True(policy.HasFullPermission("process.start"));
-        Assert.False(policy.HasFullPermission("process.start", arguments, context));
-        Assert.True(policy.RequiresApproval(ProcessStart, arguments, context));
+        Assert.True(policy.HasFullPermission("unified_exec.exec_command"));
+        Assert.False(policy.HasFullPermission("unified_exec.exec_command", arguments, context));
+        Assert.True(policy.RequiresApproval(ExecCommand, arguments, context));
     }
 
     [Fact]
@@ -28,33 +29,39 @@ public sealed class ToolCapabilityLeaseTests
         {
             var policy = new ToolPermissionPolicy();
             policy.GrantLease(new ToolCapabilityLease(
-                "lease-1", "process.start", ToolCapabilityScope.Turn, "session-1", "turn-1",
+                "lease-1", "unified_exec.exec_command", ToolCapabilityScope.Turn, "session-1", "turn-1",
                 DateTimeOffset.UtcNow.AddMinutes(1), [root], ["dotnet test"], false));
             var context = new AgentExecutionContext(root, "call-1", "session-1") { TurnId = "turn-1" };
 
-            Assert.True(policy.HasFullPermission("process.start", WireJson.Element(new { command = "dotnet test --no-restore" }), context));
-            Assert.False(policy.HasFullPermission("process.start", WireJson.Element(new { command = "git status" }), context));
-            Assert.False(policy.HasFullPermission("process.start", WireJson.Element(new { command = "dotnet test", workingDirectory = ".." }), context));
-            Assert.False(policy.HasFullPermission("process.start", WireJson.Element(new { command = "dotnet test" }), context with { TurnId = "turn-2" }));
+            Assert.True(policy.HasFullPermission("unified_exec.exec_command",
+                WireJson.Element(new { cmd = "dotnet test --no-restore" }), context));
+            Assert.False(policy.HasFullPermission("unified_exec.exec_command",
+                WireJson.Element(new { cmd = "git status" }), context));
+            Assert.False(policy.HasFullPermission("unified_exec.exec_command",
+                WireJson.Element(new { cmd = "dotnet test", workdir = ".." }), context));
+            Assert.False(policy.HasFullPermission("unified_exec.exec_command",
+                WireJson.Element(new { cmd = "dotnet test" }), context with { TurnId = "turn-2" }));
         }
         finally { Directory.Delete(root, true); }
     }
 
     [Fact]
-    public void Spawn_lease_matches_argv_prefix_without_shell_text()
+    public void Session_lease_matches_exec_command_prefix_without_authorizing_other_commands()
     {
-        var root = Path.Combine(Path.GetTempPath(), "jarvis-spawn-lease-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(Path.GetTempPath(), "jarvis-exec-lease-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try
         {
             var policy = new ToolPermissionPolicy();
             policy.GrantLease(new ToolCapabilityLease(
-                "spawn-lease", "process.spawn", ToolCapabilityScope.Session, "session-1", null,
+                "exec-lease", "unified_exec.exec_command", ToolCapabilityScope.Session, "session-1", null,
                 DateTimeOffset.UtcNow.AddMinutes(1), [root], ["dotnet test"], false));
             var context = new AgentExecutionContext(root, "call-1", "session-1");
 
-            Assert.True(policy.HasFullPermission("process.spawn", WireJson.Element(new { argv = new[] { "dotnet", "test", "--no-restore" } }), context));
-            Assert.False(policy.HasFullPermission("process.spawn", WireJson.Element(new { argv = new[] { "dotnet", "build" } }), context));
+            Assert.True(policy.HasFullPermission("unified_exec.exec_command",
+                WireJson.Element(new { cmd = "dotnet test --no-restore" }), context));
+            Assert.False(policy.HasFullPermission("unified_exec.exec_command",
+                WireJson.Element(new { cmd = "dotnet build" }), context));
         }
         finally { Directory.Delete(root, true); }
     }
@@ -66,12 +73,13 @@ public sealed class ToolCapabilityLeaseTests
         var revoked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         policy.PermissionsRevoked += () => revoked.TrySetResult();
         policy.GrantLease(new ToolCapabilityLease(
-            "lease-expiring", "process.start", ToolCapabilityScope.Session, "session-1", null,
+            "lease-expiring", "unified_exec.exec_command", ToolCapabilityScope.Session, "session-1", null,
             DateTimeOffset.UtcNow.AddMilliseconds(100), [Path.GetTempPath()], ["dotnet"], false));
 
         await revoked.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         var context = new AgentExecutionContext(Path.GetTempPath(), "call-1", "session-1");
-        Assert.False(policy.HasFullPermission("process.start", WireJson.Element(new { command = "dotnet --info" }), context));
+        Assert.False(policy.HasFullPermission("unified_exec.exec_command",
+            WireJson.Element(new { cmd = "dotnet --info" }), context));
     }
 }

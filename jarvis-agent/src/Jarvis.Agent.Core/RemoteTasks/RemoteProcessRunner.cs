@@ -7,46 +7,35 @@ namespace Jarvis.Agent.Core.RemoteTasks;
 internal sealed record RemoteStepResult(bool Success, string Output, bool Truncated = false, int? ExitCode = null,
     string? Error = null);
 
-/// <summary>Waits for owned process completion; a jobId alone is never a successful build.</summary>
+/// <summary>Waits for an owned exec_command session; a session_id alone is never a successful build.</summary>
 internal static class RemoteProcessRunner
 {
     public static async Task<RemoteStepResult> RunAsync(RemoteTaskStep step, AgentExecutionContext context,
         Func<string, JsonElement, AgentExecutionContext, CancellationToken, Task<ToolReply>> invoke,
         Func<string, AgentExecutionContext, Task> cancelOwnedJob, CancellationToken ct)
     {
-        var start = await invoke(step.ToolId, step.Arguments, context, ct);
-        if (start.IsError) return new(false, start.Text, Error: start.Text);
-        using var started = JsonDocument.Parse(start.Text);
-        var jobId = started.RootElement.GetProperty("jobId").GetString()
-            ?? throw new InvalidDataException("Process did not return a job ID.");
+        var started = await invoke(step.ToolId, step.Arguments, context, ct);
+        if (started.IsError) return new(false, started.Text, Error: started.Text);
         var output = new StringBuilder();
         var truncated = false;
         var completed = false;
-        long cursor = 0;
+        long? sessionId = null;
         int? exitCode = null;
         try
         {
-            while (true)
+            using var initial = JsonDocument.Parse(started.Text);
+            Consume(initial.RootElement, output, ref truncated, ref sessionId, ref exitCode);
+            while (sessionId is not null)
             {
                 ct.ThrowIfCancellationRequested();
-                var reply = await invoke("process.read", WireJson.Element(new { jobId, cursor }), context, ct);
+                var reply = await invoke("unified_exec.write_stdin",
+                    WireJson.Element(new { session_id = sessionId.Value, chars = "", yield_time_ms = 100, max_output_tokens = 10000 }), context, ct);
                 if (reply.IsError) throw new InvalidOperationException(reply.Text);
                 using var json = JsonDocument.Parse(reply.Text);
-                var root = json.RootElement;
-                var text = root.GetProperty("output").GetString() ?? "";
-                output.Append(text);
-                if (output.Length > RemoteTaskRules.OutputLimit)
-                { output.Remove(0, output.Length - RemoteTaskRules.OutputLimit); truncated = true; }
-                truncated |= root.GetProperty("truncated").GetBoolean();
-                cursor = root.GetProperty("cursor").GetInt64();
-                if (root.GetProperty("done").GetBoolean())
-                {
-                    if (root.TryGetProperty("exitCode", out var code) && code.ValueKind == JsonValueKind.Number) exitCode = code.GetInt32();
-                    // A snapshot returns at most 32K characters: drain the final pages before finishing.
-                    if (text.Length == 0) { completed = true; break; }
-                }
-                else await Task.Delay(100, ct);
+                sessionId = null;
+                Consume(json.RootElement, output, ref truncated, ref sessionId, ref exitCode);
             }
+            completed = true;
             return new(exitCode == 0, output.ToString(), truncated, exitCode,
                 exitCode == 0 ? null : "Process failed or completion is unknown (exit code " + exitCode + ").");
         }
@@ -58,8 +47,22 @@ internal static class RemoteProcessRunner
         }
         finally
         {
-            // This cleanup can only cancel the job ID returned by this invocation, even after pause.
-            if (!completed) await cancelOwnedJob(jobId, context);
+            if (!completed && sessionId is not null) await cancelOwnedJob(sessionId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), context);
         }
+    }
+
+    private static void Consume(JsonElement root, StringBuilder output, ref bool truncated, ref long? sessionId, ref int? exitCode)
+    {
+        if (root.TryGetProperty("output", out var outputNode)) output.Append(outputNode.GetString() ?? "");
+        if (output.Length > RemoteTaskRules.OutputLimit)
+        {
+            output.Remove(0, output.Length - RemoteTaskRules.OutputLimit);
+            truncated = true;
+        }
+        truncated |= root.TryGetProperty("original_token_count", out _);
+        if (root.TryGetProperty("session_id", out var sessionNode) && sessionNode.ValueKind == JsonValueKind.Number)
+            sessionId = sessionNode.GetInt64();
+        if (root.TryGetProperty("exit_code", out var exitNode) && exitNode.ValueKind == JsonValueKind.Number)
+            exitCode = exitNode.GetInt32();
     }
 }
