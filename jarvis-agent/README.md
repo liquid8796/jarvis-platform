@@ -1,4 +1,10 @@
-# Jarvis Agent - 1.0.92
+# Jarvis Agent - 1.0.93
+
+## Collaboration Workers (1.0.93)
+
+Use `worker_spawn` inside an explicit Jarvis session to start a bounded concurrent JavaScript actor. The worker exposes `tools.<publicName>(args)`, `receive(timeoutMs)`, `text(value)`, `table(value)`, and `sleep(milliseconds)`. Continue with `worker_wait`, send later instructions or data with `worker_send`, inspect all session-owned workers with `worker_list`, and cancel a single worker with `worker_stop`.
+
+Workers are deterministic local actors, not additional language-model sessions. They cannot access Node, CLR, raw filesystem/process/network/environment APIs, cannot recursively start composite/session tools, and cannot swallow a rejected nested tool call to report success. All nested effects re-enter normal Agent security, scheduling, ownership, and approval checks. Details and examples are in [Collaboration Workers](../docs/COLLABORATION-WORKERS.md).
 
 ## Computer Use Observation V2 (1.0.92)
 

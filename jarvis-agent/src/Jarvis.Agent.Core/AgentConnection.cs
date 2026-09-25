@@ -21,6 +21,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
     private readonly AgentLifecycleHub _lifecycle;
     private readonly IRemoteTaskAdaptiveCoordinator? _adaptiveCoordinator;
     private readonly SessionToolReplHost _toolRepl;
+    private readonly CollaborationWorkerHost _collaborationWorkers;
     private readonly LocalControlGate _gate;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _running = new();
     private readonly ConcurrentDictionary<string, Task> _tasks = new();
@@ -67,6 +68,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
         _lifecycle = lifecycle ?? new AgentLifecycleHub();
         _adaptiveCoordinator = adaptiveCoordinator;
         _toolRepl = new SessionToolReplHost(InvokeInstalledToolAsync, () => _registry.Snapshot);
+        _collaborationWorkers = new CollaborationWorkerHost(InvokeInstalledToolAsync, () => _registry.Snapshot);
         _gate.Changed += OnGateChanged;
         _permissions = permissions ?? new ToolPermissionPolicy();
         _permissions.PermissionsRevoked += CancelInFlight;
@@ -77,7 +79,8 @@ public sealed partial class AgentConnection : IAsyncDisposable
     private void EnsureCompositeTools()
     {
         var snapshot = _registry.Snapshot;
-        var additions = AgentCoreHostTools.Create(InvokeInstalledToolAsync, SessionServices(), _toolRepl, () => _registry.Snapshot)
+        var additions = AgentCoreHostTools.Create(InvokeInstalledToolAsync, SessionServices(), _toolRepl,
+                () => _registry.Snapshot, _collaborationWorkers)
             .Where(tool => !snapshot.Tools.ContainsKey(tool.Descriptor.Id))
             .ToArray();
         if (additions.Length > 0) _registry.Replace(snapshot.Tools.Values.Concat(additions));
@@ -146,11 +149,13 @@ public sealed partial class AgentConnection : IAsyncDisposable
         if (armed) return;
         _remoteTasks?.CancelAll("CANCELLED");
         _toolRepl.CancelAll("Local control paused.");
+        _collaborationWorkers.CancelAll("Local control paused.");
     }
     private void CancelInFlight()
     {
         _remoteTasks?.CancelAll("CANCELLED");
         _toolRepl.CancelAll("Tool permissions changed or were revoked.");
+        _collaborationWorkers.CancelAll("Tool permissions changed or were revoked.");
         foreach (var cancellation in _running.Values)
             try { cancellation.Cancel(); } catch (ObjectDisposedException) { }
         Emit("security", "Standing tool permission revoked; in-flight calls cancelled.");
@@ -487,6 +492,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
         try { await Task.WhenAll(_tasks.Values).WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
         if (_remoteTasks is not null) await _remoteTasks.DisposeAsync();
         await _toolRepl.DisposeAsync();
+        await _collaborationWorkers.DisposeAsync();
         _execution.Dispose(); _controlExecution.Dispose(); _resources.Dispose();
         DisposeSessions();
         _lifetime.Dispose();

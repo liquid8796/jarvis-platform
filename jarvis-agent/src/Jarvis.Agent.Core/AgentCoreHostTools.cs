@@ -12,16 +12,20 @@ namespace Jarvis.Agent.Core;
 public static class AgentCoreHostTools
 {
     public static IReadOnlyList<IAgentTool> Create(GuardedToolInvoker guardedInvoker, SessionToolServices? sessionServices = null,
-        SessionToolReplHost? repl = null, Func<DynamicToolSnapshot>? catalog = null)
+        SessionToolReplHost? repl = null, Func<DynamicToolSnapshot>? catalog = null,
+        CollaborationWorkerHost? workers = null)
     {
         ArgumentNullException.ThrowIfNull(guardedInvoker);
         repl ??= new SessionToolReplHost(guardedInvoker,
+            catalog ?? (() => new DynamicToolRegistry([]).Snapshot));
+        workers ??= new CollaborationWorkerHost(guardedInvoker,
             catalog ?? (() => new DynamicToolRegistry([]).Snapshot));
         return
         [
             new ToolProgramTool(new ToolProgramEngine(guardedInvoker)),
             new SafeScriptTool(new SafeScriptEngine(guardedInvoker)),
             .. repl.CreateTools(),
+            .. workers.CreateTools(),
             new DeveloperSymbolSearchTool(),
             new DeveloperTestTool(),
             .. SessionToolSet.Create(sessionServices)

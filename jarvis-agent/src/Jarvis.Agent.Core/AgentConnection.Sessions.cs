@@ -138,6 +138,7 @@ public sealed partial class AgentConnection
                 try { call.Cancel(); } catch (ObjectDisposedException) { }
         _remoteTasks?.CancelSession(identity);
         _toolRepl.Reset(identity);
+        _collaborationWorkers.Reset(identity);
         foreach (var handler in SessionStopped?.GetInvocationList() ?? [])
             try { ((Action<AgentSessionIdentity>)handler)(identity); } catch (Exception ex) { Emit("session", "Owned session cleanup: " + ex.GetType().Name); }
         NotifySessionActivity();

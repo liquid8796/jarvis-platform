@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.92
+# Jarvis Control - 1.0.93
+
+## Collaboration Workers (1.0.93)
+
+Jarvis Agent now publishes five explicit-session collaboration tools: `worker_spawn`, `worker_send`, `worker_wait`, `worker_list`, and `worker_stop`. A worker is a bounded concurrent JavaScript actor—not an undisclosed model call—that can receive mailbox messages, emit incremental text/tables, and invoke current non-composite Agent tools through the same guarded dispatcher. Multiple workers can run concurrently for independent inspection or verification work, while each worker remains isolated to the authenticated owner, enrolled device, and Jarvis session that created it.
+
+Workers receive no Node, CLR, direct filesystem, process, environment, or network APIs. Nested calls retain schema validation, Arm/Pause, local permission and approval, execution-resource scheduling, workspace/application boundaries, cancellation, and audit behavior. Mailboxes, output, images, execution time, memory, statements, worker count, and nested calls are bounded; Pause, permission revocation, session stop/close, explicit stop, or Agent shutdown cancels owned workers. See [Collaboration Workers](docs/COLLABORATION-WORKERS.md).
 
 ## Computer Use Observation V2 (1.0.92)
 
@@ -158,7 +164,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.90**, assembly/file **1.0.90.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.93**, assembly/file **1.0.93.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 

@@ -1,3 +1,11 @@
+## 1.0.93 - 2026-09-26
+
+- Add session-scoped `worker_spawn`, `worker_send`, `worker_wait`, `worker_list`, and `worker_stop` tools for concurrent local collaboration actors. Workers run bounded Jint JavaScript, receive bounded mailbox messages, stream output incrementally, and forward nested images/widgets without introducing a hidden model or paid-provider dependency.
+- Rebuild each worker's `tools` object from the current Agent catalog and route every nested request back through the existing schema, Arm/Pause, permission, approval, resource, workspace/application, owner/device/session, cancellation, and audit path. Composite/session recursion and swallowed nested failures are rejected.
+- Add active/retained worker, mailbox, code, time, statement, memory, tool-call, output, image, and argument limits; cancel owned workers on Pause, permission revocation, session stop/close, explicit stop, or Agent disposal.
+- Add regression coverage for catalog exposure, mailbox delivery, concurrent nested calls, image forwarding, fail-closed denial, targeted stop, session isolation, explicit-session enforcement, and active-worker limits.
+- Update Agent/operator documentation and bump package to **1.0.93**, assembly/file to **1.0.93.0**.
+
 ## 1.0.92 - 2026-09-26
 
 - Upgrade `computer_use` to observation-bound V2: `get_window_state` now returns `observation_id`, generation, observed bounds, optional `screenshot_id`, optional screenshot, and optional accessibility context including focused element, selected text/elements and bounded document text.
