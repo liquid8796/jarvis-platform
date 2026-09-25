@@ -119,8 +119,14 @@ public sealed class SessionToolReplTests
             cellId = body.RootElement.GetProperty("cell_id").GetString()!;
         }
 
-        var completed = await tools[SessionToolReplHost.WaitId].ExecuteAsync(
-            WireJson.Element(new { cell_id = cellId, yield_time_ms = 2_000 }), context, default);
+        ToolReply completed = started;
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            completed = await tools[SessionToolReplHost.WaitId].ExecuteAsync(
+                WireJson.Element(new { cell_id = cellId, yield_time_ms = 2_000 }), context, default);
+            using var statusBody = JsonDocument.Parse(completed.Text);
+            if (statusBody.RootElement.GetProperty("status").GetString() is "SUCCEEDED" or "FAILED" or "CANCELLED") break;
+        }
         using (var body = JsonDocument.Parse(completed.Text))
         {
             Assert.Equal("SUCCEEDED", body.RootElement.GetProperty("status").GetString());

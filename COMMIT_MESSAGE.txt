@@ -1,1 +1,1 @@
-feat(agent): add persistent session tool repl
+feat(agent): bind computer actions to observations

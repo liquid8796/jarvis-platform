@@ -1,4 +1,8 @@
-# Jarvis Agent - 1.0.91
+# Jarvis Agent - 1.0.92
+
+## Computer Use Observation V2 (1.0.92)
+
+Call `computer_use` with `action: "get_window_state"` before each desktop input. Keep the returned `observation_id`; coordinate, scroll and drag calls must also keep the matching `screenshot_id`. An observation is single-use for actions and becomes stale when a newer state is captured, the window moves/resizes, it expires, or an action begins. Use `return_state` on an action to receive the next observation without a separate round trip. Full details and examples are in [Computer Use Observation V2](../docs/COMPUTER-USE-OBSERVATION-V2.md).
 
 ## Session Tool REPL (1.0.91)
 

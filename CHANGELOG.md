@@ -1,3 +1,12 @@
+## 1.0.92 - 2026-09-26
+
+- Upgrade `computer_use` to observation-bound V2: `get_window_state` now returns `observation_id`, generation, observed bounds, optional `screenshot_id`, optional screenshot, and optional accessibility context including focused element, selected text/elements and bounded document text.
+- Require every desktop input action to consume the current observation. Coordinate click, scroll and drag also require the matching screenshot ID. New observations, moved/resized windows, expiration and first dispatch attempts invalidate earlier state and reject replay with `STALE_OBSERVATION`.
+- Add `include_screenshot`, `include_text`, `max_nodes`, and post-action `return_state` modes (`none`, `accessibility`, `screenshot`, `full`) so one action can immediately return a new verified observation.
+- Prefer occlusion-capable `PrintWindow(PW_RENDERFULLCONTENT)` window capture with blank/failure detection and a desktop-copy fallback; expose the selected backend in screenshot metadata.
+- Add bounded observation storage plus regression coverage for session/window/bounds/screenshot binding, generation replacement, expiration, scope invalidation and one-use consumption.
+- Update Agent/operator documentation and bump package to **1.0.92**, assembly/file to **1.0.92.0**.
+
 ## 1.0.91 - 2026-09-26
 
 - Add the persistent, authenticated Session Tool REPL with public `exec`, `wait`, `sleep`, and `repl_reset` tools. Successful cells retain `globalThis` state, dynamically expose the current non-composite Agent catalog through `tools`, support parallel promises, and stream bounded cell output/images through `wait`.

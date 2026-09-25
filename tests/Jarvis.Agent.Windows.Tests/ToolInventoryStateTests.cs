@@ -72,8 +72,15 @@ public sealed class ToolInventoryStateTests : IDisposable
         {
             action = "click",
             window = new { app = "notepad", id = 123L },
+            observation_id = "obs_0123456789abcdef0123456789abcdef",
+            screenshot_id = "shot_0123456789abcdef0123456789abcdef",
             coordinate = new[] { 10, 20 }
         })));
+        var properties = schema.GetProperty("properties");
+        Assert.True(properties.TryGetProperty("observation_id", out _));
+        Assert.True(properties.TryGetProperty("screenshot_id", out _));
+        Assert.True(properties.TryGetProperty("return_state", out _));
+        Assert.True(properties.TryGetProperty("include_text", out _));
         Assert.False(SchemaGuard.Matches(compiled, WireJson.Element(new { action = "legacy_computer_batch" })));
     }
 

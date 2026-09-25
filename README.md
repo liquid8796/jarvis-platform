@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.91
+# Jarvis Control - 1.0.92
+
+## Computer Use Observation V2 (1.0.92)
+
+`computer_use` now binds every desktop input to one exact `get_window_state` observation. A state response carries an opaque `observation_id`, generation, observed window bounds and, when requested, a `screenshot_id`. Element actions must present the current observation; coordinate, scroll and drag actions must also present the matching screenshot. A new observation, changed window bounds, expiration or the first action attempt invalidates the old IDs, so stale pixels and accessibility indexes cannot be replayed.
+
+`get_window_state` can independently request screenshot and accessibility text, returns focused/selected/document context, and uses an occlusion-capable `PrintWindow` capture before falling back to desktop copy. Input actions support `return_state: accessibility | screenshot | full` to return a fresh post-action observation in the same call. See [Computer Use Observation V2](docs/COMPUTER-USE-OBSERVATION-V2.md).
 
 ## Session Tool REPL (1.0.91)
 
