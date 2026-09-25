@@ -1,1 +1,1 @@
-feat(mcp): prune stale tool catalog records
+feat(agent): add persistent session tool repl

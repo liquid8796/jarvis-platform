@@ -14,7 +14,8 @@ public sealed class SafeScriptToolTests
     {
         var ids = AgentCoreHostTools.Descriptors.Select(descriptor => descriptor.Id).ToArray();
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
-        foreach (var id in new[] { "tool_program.run", "tool_script.run", "developer.symbol_search", "developer.test" })
+        foreach (var id in new[] { "tool_program.run", "tool_script.run", "tool_repl.exec", "tool_repl.wait",
+                     "tool_repl.sleep", "tool_repl.reset", "developer.symbol_search", "developer.test" })
             Assert.Contains(id, ids);
     }
 

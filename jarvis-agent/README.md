@@ -1,4 +1,8 @@
-# Jarvis Agent - 1.0.87
+# Jarvis Agent - 1.0.91
+
+## Session Tool REPL (1.0.91)
+
+Use `exec` inside an explicit Jarvis session to compose the Agent's current tools with persistent JavaScript state. The runtime exposes `tools.<publicName>(args)`, `text(value)`, `table(value)`, `image(value)` and `sleep(milliseconds)`. Store cross-cell values on `globalThis`. If a cell remains active, continue with `wait`; use `repl_reset` to cancel cells and discard the session's REPL state. The REPL never receives Node, CLR, filesystem, process or network globals. Nested tool calls still pass all normal local security and ownership gates. See [the complete contract](../docs/SESSION-TOOL-REPL.md).
 
 ## ChatGPT Web ImageGen (1.0.87)
 

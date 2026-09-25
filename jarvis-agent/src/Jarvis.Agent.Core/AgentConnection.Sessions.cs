@@ -137,6 +137,7 @@ public sealed partial class AgentConnection
                 pair.Value.AgentDeviceId == identity.DeviceId && _running.TryGetValue(pair.Key, out var call))
                 try { call.Cancel(); } catch (ObjectDisposedException) { }
         _remoteTasks?.CancelSession(identity);
+        _toolRepl.Reset(identity);
         foreach (var handler in SessionStopped?.GetInvocationList() ?? [])
             try { ((Action<AgentSessionIdentity>)handler)(identity); } catch (Exception ex) { Emit("session", "Owned session cleanup: " + ex.GetType().Name); }
         NotifySessionActivity();

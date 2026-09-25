@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.90
+# Jarvis Control - 1.0.91
+
+## Session Tool REPL (1.0.91)
+
+Jarvis Agent now publishes four session-bound orchestration tools: `exec` (`tool_repl.exec`), `wait` (`tool_repl.wait`), `sleep` (`tool_repl.sleep`) and `repl_reset` (`tool_repl.reset`). `exec` runs bounded JavaScript in a persistent Jint runtime scoped to one authenticated owner/device/Jarvis session. Successful cells retain `globalThis` state, rebuild a dynamic `tools` object from the current Agent catalog, support `Promise.all` parallel requests, and can emit text, JSON tables, images and widgets. Long-running cells return a `cell_id`; `wait` streams unread output and can terminate the cell.
+
+The REPL has no direct Node, CLR, filesystem, process or network globals. Every `tools.<publicName>(args)` call re-enters the ordinary Agent dispatcher and keeps schema validation, Arm/Pause, local permissions, approval, resource scheduling, workspace and application restrictions, owner/device/session isolation, cancellation and audit behavior. Composite/session-control recursion is rejected, failures cannot be swallowed to report success, state is discarded after a failed/cancelled cell, and Pause, permission revocation, session stop or `repl_reset` cancels owned work. See [Session Tool REPL](docs/SESSION-TOOL-REPL.md).
 
 ## Automatic Tool Catalog cleanup and policy filters (1.0.90)
 

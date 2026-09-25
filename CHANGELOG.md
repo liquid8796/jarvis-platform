@@ -1,3 +1,10 @@
+## 1.0.91 - 2026-09-26
+
+- Add the persistent, authenticated Session Tool REPL with public `exec`, `wait`, `sleep`, and `repl_reset` tools. Successful cells retain `globalThis` state, dynamically expose the current non-composite Agent catalog through `tools`, support parallel promises, and stream bounded cell output/images through `wait`.
+- Keep the REPL effect-free by itself: no Node/CLR/filesystem/process/network globals are injected, and every nested tool request re-enters the existing schema, Arm/Pause, permission, approval, resource, workspace, application and owner/device/session gates. Composite recursion and swallowed nested failures are rejected.
+- Add per-session lifecycle cleanup, bounded cell/session/memory/statement/tool-call/output/image limits, reset/cancellation behavior, and regression coverage for persistent state, isolation, dynamic tool calls, parallel calls, image forwarding, denial handling, streaming and reset.
+- Update Agent/operator documentation and bump package to **1.0.91**, assembly/file to **1.0.91.0**.
+
 ## 1.0.90 - 2026-09-26
 
 - Reconcile the persisted Tool Catalog against the union of enrolled Agent manifests at startup, Agent hello/catalog changes, device deletion, user deletion, and manual Sync catalog. Rows for capabilities no enrolled device advertises are deleted instead of remaining as stale Hidden/Published cards.
