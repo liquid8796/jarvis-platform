@@ -1,5 +1,10 @@
-# Jarvis Control - 1.0.89
+# Jarvis Control - 1.0.90
 
+## Automatic Tool Catalog cleanup and policy filters (1.0.90)
+
+The MCP server now reconciles its persisted Tool Catalog with all enrolled Agent manifests whenever the server starts, an Agent connects or changes its catalog, a device/user is deleted, or an administrator selects **Sync catalog**. A policy row is retained only while at least one enrolled device still advertises that canonical capability. Removed capabilities, duplicate policy rows, and explicitly retired legacy IDs are deleted from the database rather than lingering as stale cards.
+
+The Tool Catalog toolbar includes an **Availability** filter with **All**, **Auto**, **Hidden**, and **Published** modes. Text search, shown counts, select-all, and bulk policy actions share the same filtered scope. The server also centrally retires the old mutation/shell/process/public-computer IDs replaced by `apply_patch`, `exec_command`, `write_stdin`, and `computer_use`, so an older connected Agent cannot reintroduce those records.
 ## Codex-compatible agent tool surface (1.0.89)
 
 Jarvis Agent now advertises the same compact public primitives used by the installed Codex Desktop instead of the former category-specific mutation fleet:
@@ -141,7 +146,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.88**, assembly/file **1.0.88.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.90**, assembly/file **1.0.90.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 

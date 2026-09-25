@@ -1,4 +1,9 @@
 # Build / test status
+## 1.0.90 Tool Catalog lifecycle - executed verification (2026-09-26)
+
+- Implemented union-of-manifests catalog reconciliation at startup and on Agent/device/user lifecycle changes. Current capabilities retain policy, newly observed capabilities receive `Auto`, and duplicate, retired or no-longer-advertised rows are deleted. The retired registry covers all legacy filesystem mutation, shell, process-job and public `computer.*` IDs replaced in 1.0.89; runtime device/MCP/task views apply the same filter.
+- Added the administrator **All / Auto / Hidden / Published** filter. The real browser fixture passed all 19 checks, including each policy mode, combined search/selection scope, atomic publish/hide requests, mobile width, error retention, non-admin hiding and zero uncaught exceptions. Receipt: `artifacts/verification/tool-catalog-1.0.90/filter-and-bulk.json`.
+- New reconciliation and dynamic-removal regressions passed. The maintained Release suites passed **549/549**, with no failed or skipped tests: Core **280**, Windows Agent **155**, Server **114**. The full solution build completed with **0 errors** and five pre-existing Core test/analyzer warnings; package/assembly/file version verification passed at **1.0.90 / 1.0.90.0**. Source verification does not itself prove the OCI service was promoted; production health is checked separately after the source commit is pushed.
 
 ## 1.0.89 Codex-compatible Agent tool surface - executed release verification (2026-09-25)
 

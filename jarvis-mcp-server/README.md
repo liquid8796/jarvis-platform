@@ -1,7 +1,12 @@
 # jarvis-mcp-server
 
-See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.88**, assembly/file: **1.0.88.0**. Source publication and local packaging do not deploy or restart the live service.
+See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.90**, assembly/file: **1.0.90.0**. Source publication and local packaging do not deploy or restart the live service.
 
+## Catalog lifecycle and availability filters (1.0.90)
+
+The persisted `Tools` table is now a policy mirror, not an append-only history. Startup and every relevant manifest/account lifecycle event reconcile it against the union of enrolled device manifests: current capabilities are added or refreshed, while capabilities absent from every device are deleted. A central retired-ID list additionally removes the mutation/shell/process/public-computer tools replaced in 1.0.89, even if an older Agent still advertises them. Add future intentionally removed canonical IDs to `AgentToolCatalogRules` so deployment startup cleans their rows before serving the admin UI.
+
+The admin Tool Catalog supports **All / Auto / Hidden / Published** filtering. Search, counts, checkbox selection and bulk policy actions operate on the combined visible scope. **Sync catalog** reports added, refreshed and removed counts; normal synchronization also runs automatically and emits the existing MCP tool-list change notification when needed.
 ## Live dynamic tool surface (1.0.88)
 
 The selected OAuth-bound device's live capability manifest is the runtime source of truth. Missing policy rows mean **Auto**, so newly added Agent tools become discoverable without an Import/Enable pass. **Published** retains an explicit public name/description; **Hidden** blocks direct discovery, live search, generic invocation and task-plan use.

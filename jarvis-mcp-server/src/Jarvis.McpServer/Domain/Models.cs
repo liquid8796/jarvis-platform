@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Jarvis.Protocol;
 namespace Jarvis.McpServer.Domain;
@@ -37,6 +38,34 @@ public static class ToolPublicationRules
     public static bool IsVisible(ToolPublicationMode mode) => mode != ToolPublicationMode.Hidden;
     public static bool IsReservedPublicName(string name) =>
         RemoteTaskRules.IsReservedName(name) || AgentSessionRules.IsPublicTool(name) || DynamicAgentToolNames.IsReserved(name);
+}
+/// <summary>
+/// Server-side lifecycle rules for Agent capabilities that have been intentionally replaced.
+/// A newer server never republishes these IDs even when an older enrolled Agent still advertises them.
+/// ToolCatalogReconciler also removes their persisted policy rows.
+/// </summary>
+public static class AgentToolCatalogRules
+{
+    private static readonly HashSet<string> RetiredIds = new(StringComparer.Ordinal)
+    {
+        "filesystem.Write", "filesystem.Edit", "filesystem.NotebookEdit",
+        "shell.PowerShell", "shell.Bash",
+        "process.start", "process.spawn", "process.read", "process.write_stdin", "process.resize_pty", "process.cancel",
+        "computer.get_state", "computer.screenshot", "computer.computer_batch", "computer.open_application",
+        "computer.request_access", "computer.request_teach_access", "computer.teach_step", "computer.teach_batch",
+        "computer.list_granted_applications", "computer.switch_display", "computer.read_clipboard", "computer.write_clipboard"
+    };
+
+    public static bool IsRetired(string toolId) => RetiredIds.Contains(toolId);
+
+    public static IReadOnlyList<ToolDescriptor> Installed(IEnumerable<string> manifests) =>
+        manifests
+            .SelectMany(json => JsonSerializer.Deserialize<ToolDescriptor[]>(json, WireJson.Options) ?? [])
+            .Where(tool => !IsRetired(tool.Id))
+            .DistinctBy(tool => tool.Id, StringComparer.Ordinal)
+            .OrderBy(tool => tool.Category, StringComparer.Ordinal)
+            .ThenBy(tool => tool.Name, StringComparer.Ordinal)
+            .ToArray();
 }
 
 public sealed class ToolEntry

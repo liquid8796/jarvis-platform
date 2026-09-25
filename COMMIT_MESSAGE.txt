@@ -1,1 +1,1 @@
-feat(agent): replace legacy tools with Codex-compatible surface
+feat(mcp): prune stale tool catalog records

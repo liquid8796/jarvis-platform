@@ -1,3 +1,9 @@
+## 1.0.90 - 2026-09-26
+
+- Reconcile the persisted Tool Catalog against the union of enrolled Agent manifests at startup, Agent hello/catalog changes, device deletion, user deletion, and manual Sync catalog. Rows for capabilities no enrolled device advertises are deleted instead of remaining as stale Hidden/Published cards.
+- Add a central retired-capability registry for the filesystem mutation, shell, process-job, and public `computer.*` IDs replaced in 1.0.89. Retired IDs are filtered from device views, MCP discovery, task tools, policy editing, and database reconciliation even when an older Agent still reports them.
+- Add an administrator Tool Catalog availability filter for All, Auto, Hidden, and Published; search, result counts, select-all, and bulk actions now operate on the combined filter scope.
+- Add catalog lifecycle and browser UI regressions, update operator/API/security documentation, and bump package to **1.0.90**, assembly/file to **1.0.90.0**.
 ## 1.0.89 - 2026-09-25
 
 - Replaced the legacy public source-mutation tools with Codex-compatible `apply_patch`, including workspace containment, optimistic file validation, V4A Add/Update/Move/Delete support, and atomic rollback.

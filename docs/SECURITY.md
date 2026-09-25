@@ -107,3 +107,9 @@ Windows ConPTY children are created suspended, attached to a kill-on-close Job O
 ## Security invariants for Codex-compatible tools
 
 The compact surface does not widen authority. `apply_patch` is limited to the selected workspace, rejects the private Agent profile, validates observed file fingerprints before overwriting existing files, and rolls back a multi-file patch on failure. `view_image` rejects the private profile and applies byte/pixel bounds. `exec_command` retains command approval, wildcard execution-resource locking, process count/deadline limits, descendant-tree cancellation, and owner/device/session binding. `write_stdin` can only address a numeric session owned by the same identity. `computer_use` retains application allowlists, denied-application rules, input-scope grants, Arm/Pause, and Windows integrity restrictions. Legacy permission entries are migrated rather than silently granting unrelated new tools.
+
+## Retired capability and stale-policy boundary - 1.0.90
+
+A persisted publication row cannot keep an uninstalled capability callable. The server now deletes rows that are absent from every enrolled manifest and excludes centrally retired canonical IDs before device views, MCP discovery, generic invocation and task-plan validation. The explicit retired set covers the legacy filesystem mutation, shell, process-job and public `computer.*` IDs replaced by the 1.0.89 compact surface. This prevents an older Agent manifest or stale Hidden/Published row from reintroducing a removed public tool.
+
+Catalog reconciliation changes metadata only. It does not install replacement tools, migrate Agent binaries, Arm local control, grant Full permission, or bypass local approval. A newly advertised replacement still follows the selected-device schema, catalog generation/digest, permission, session ownership and resource gates.

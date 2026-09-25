@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using Jarvis.McpServer.Domain;
 using Jarvis.McpServer.Infrastructure;
@@ -13,21 +12,28 @@ namespace Jarvis.McpServer.Application;
 public sealed partial class ToolCatalogService(
     AppDbContext db,
     IAuditWriter audit,
-    McpToolCatalogChangeHub changeHub)
+    McpToolCatalogChangeHub changeHub,
+    ToolCatalogReconciler reconciler)
 {
     [GeneratedRegex("^[A-Za-z0-9_-]{1,64}$", RegexOptions.CultureInvariant)]
     private static partial Regex NamePattern();
 
-    public Task<List<ToolEntry>> ListAsync(CancellationToken ct) =>
-        db.Tools.AsNoTracking().OrderBy(t => t.Category).ThenBy(t => t.Name).ToListAsync(ct);
+    public async Task<List<ToolEntry>> ListAsync(CancellationToken ct)
+    {
+        await ReconcileAsync(ct);
+        return await db.Tools.AsNoTracking().OrderBy(t => t.Category).ThenBy(t => t.Name).ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<ToolDescriptor>> InstalledAsync(CancellationToken ct) =>
-        (await db.Devices.AsNoTracking().Select(d => d.CapabilitiesJson).ToListAsync(ct))
-            .SelectMany(json => JsonSerializer.Deserialize<ToolDescriptor[]>(json, WireJson.Options) ?? [])
-            .DistinctBy(t => t.Id)
-            .OrderBy(t => t.Category)
-            .ThenBy(t => t.Name)
-            .ToArray();
+        AgentToolCatalogRules.Installed(
+            await db.Devices.AsNoTracking().Select(d => d.CapabilitiesJson).ToListAsync(ct));
+
+    public async Task<ToolCatalogReconcileResult> ReconcileAsync(CancellationToken ct)
+    {
+        var result = await reconciler.ReconcileAsync(ct);
+        if (result.Changed) await changeHub.NotifyAllAsync(ct);
+        return result;
+    }
 
     public async Task<ToolEntry> SaveAsync(
         string actor,
@@ -137,46 +143,19 @@ public sealed partial class ToolCatalogService(
         ToolPublicationMode PublicationMode);
 
     /// <summary>
-    /// Mirrors capabilities into the admin catalog. Imported tools use Auto policy and are already discoverable
-    /// from their selected device even before this metadata mirror exists.
+    /// Synchronizes the persisted policy mirror with all enrolled manifests. New rows use Auto;
+    /// duplicate, retired and no-longer-advertised rows are removed.
     /// </summary>
-    public async Task<int> ImportAsync(string actor, CancellationToken ct)
+    public async Task<ToolCatalogReconcileResult> ImportAsync(string actor, CancellationToken ct)
     {
-        var installed = await InstalledAsync(ct);
-        var existing = (await db.Tools.Select(t => t.AgentToolId).ToListAsync(ct))
-            .ToHashSet(StringComparer.Ordinal);
-        var names = (await db.Tools.Select(t => t.Name).ToListAsync(ct))
-            .ToHashSet(StringComparer.Ordinal);
-        var count = 0;
-
-        foreach (var tool in installed.Where(t => !existing.Contains(t.Id)))
-        {
-            if (ToolPublicationRules.IsReservedPublicName(tool.Name) ||
-                !NamePattern().IsMatch(tool.Name) ||
-                !names.Add(tool.Name))
-                continue;
-
-            db.Tools.Add(new()
-            {
-                Name = tool.Name,
-                AgentToolId = tool.Id,
-                Description = tool.Description,
-                Category = tool.Category,
-                PublicationMode = ToolPublicationMode.Auto,
-                Enabled = true
-            });
-            count++;
-        }
-
-        await db.SaveChangesAsync(ct);
+        var result = await ReconcileAsync(ct);
         await audit.WriteAsync(new()
         {
             UserId = actor,
             Action = "catalog.import",
-            Outcome = count + " auto tools imported"
+            Outcome = $"{result.Added} auto tools imported; {result.Removed} stale tools removed"
         }, ct);
-        if (count > 0) await changeHub.NotifyAllAsync(ct);
-        return count;
+        return result;
     }
 
     public async Task DeleteAsync(string actor, string id, CancellationToken ct)

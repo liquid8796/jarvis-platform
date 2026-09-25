@@ -1,13 +1,13 @@
 using System.Text.RegularExpressions;
 using Jarvis.McpServer.Domain;
 using Jarvis.McpServer.Infrastructure;
-using Jarvis.Protocol;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jarvis.McpServer.Application;
 
 /// <summary>
-/// Mirrors newly advertised agent capabilities into the admin catalog as Auto policy metadata.
+/// Reconciles the admin catalog against the union of all persisted Agent manifests.
+/// New capabilities receive Auto metadata; duplicate, retired and no-longer-advertised rows are removed.
 /// Runtime visibility never depends on this mirror succeeding.
 /// </summary>
 public sealed class ToolCatalogReconciler(
@@ -16,17 +16,50 @@ public sealed class ToolCatalogReconciler(
 {
     private static readonly Regex PublicName = new("^[A-Za-z0-9_-]{1,64}$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private readonly SemaphoreSlim _serial = new(1, 1);
 
-    public async Task ReconcileAsync(IReadOnlyList<ToolDescriptor> descriptors, CancellationToken ct)
+    public async Task<ToolCatalogReconcileResult> ReconcileAsync(CancellationToken ct)
     {
+        await _serial.WaitAsync(ct);
         try
         {
             await using var db = await contexts.CreateDbContextAsync(ct);
-            var entries = await db.Tools.OrderBy(t => t.Id).ToListAsync(ct);
-            var firstByTool = entries.GroupBy(t => t.AgentToolId, StringComparer.Ordinal)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-            var names = entries.ToDictionary(t => t.Name, t => t.Id, StringComparer.Ordinal);
-            var changed = false;
+            var manifests = await db.Devices.AsNoTracking()
+                .OrderByDescending(device => device.LastSeenAt)
+                .ThenBy(device => device.Id)
+                .Select(device => device.CapabilitiesJson)
+                .ToListAsync(ct);
+            var descriptors = AgentToolCatalogRules.Installed(manifests);
+            var installedIds = descriptors.Select(tool => tool.Id).ToHashSet(StringComparer.Ordinal);
+            var entries = await db.Tools.OrderBy(entry => entry.Id).ToListAsync(ct);
+
+            var duplicateRows = entries.GroupBy(entry => entry.AgentToolId, StringComparer.Ordinal)
+                .SelectMany(group => group
+                    .OrderByDescending(entry => entry.PublicationMode switch
+                    {
+                        ToolPublicationMode.Hidden => 2,
+                        ToolPublicationMode.Published => 1,
+                        _ => 0
+                    })
+                    .ThenBy(entry => entry.Id, StringComparer.Ordinal)
+                    .Skip(1));
+            var staleRows = entries.Where(entry =>
+                    AgentToolCatalogRules.IsRetired(entry.AgentToolId) || !installedIds.Contains(entry.AgentToolId))
+                .Concat(duplicateRows)
+                .DistinctBy(entry => entry.Id, StringComparer.Ordinal)
+                .ToArray();
+            if (staleRows.Length > 0)
+            {
+                db.Tools.RemoveRange(staleRows);
+                var staleIds = staleRows.Select(entry => entry.Id).ToHashSet(StringComparer.Ordinal);
+                entries.RemoveAll(entry => staleIds.Contains(entry.Id));
+            }
+
+            var firstByTool = entries.GroupBy(entry => entry.AgentToolId, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+            var names = entries.ToDictionary(entry => entry.Name, entry => entry.Id, StringComparer.Ordinal);
+            var added = 0;
+            var updated = 0;
 
             foreach (var descriptor in descriptors)
             {
@@ -63,7 +96,8 @@ public sealed class ToolCatalogReconciler(
                         if (entryChanged)
                         {
                             existing.Revision = Guid.NewGuid().ToString("N");
-                            changed = true;
+                            existing.Enabled = true;
+                            updated++;
                         }
                     }
                     continue;
@@ -87,15 +121,29 @@ public sealed class ToolCatalogReconciler(
                 entries.Add(entry);
                 firstByTool[descriptor.Id] = entry;
                 names[entry.Name] = entry.Id;
-                changed = true;
+                added++;
             }
 
-            if (changed) await db.SaveChangesAsync(ct);
+            if (added > 0 || updated > 0 || staleRows.Length > 0)
+                await db.SaveChangesAsync(ct);
+
+            if (added > 0 || updated > 0 || staleRows.Length > 0)
+                logger.LogInformation(
+                    "Tool catalog reconciled added={Added} updated={Updated} removed={Removed}",
+                    added, updated, staleRows.Length);
+            return new(added, updated, staleRows.Length);
         }
-        catch (Exception ex) when (ex is DbUpdateException or InvalidOperationException)
+        catch (DbUpdateException ex)
         {
-            // The live device manifest remains authoritative even if an admin edited the mirror concurrently.
-            logger.LogInformation("Tool catalog metadata reconciliation deferred: {Reason}", ex.GetType().Name);
+            // Live manifests remain authoritative if an administrator edits a policy concurrently.
+            logger.LogWarning("Tool catalog metadata reconciliation deferred: {Reason}", ex.GetType().Name);
+            return new(0, 0, 0);
         }
+        finally { _serial.Release(); }
     }
+}
+
+public sealed record ToolCatalogReconcileResult(int Added, int Updated, int Removed)
+{
+    public bool Changed => Added > 0 || Updated > 0 || Removed > 0;
 }

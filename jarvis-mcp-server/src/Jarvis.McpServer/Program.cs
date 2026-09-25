@@ -123,6 +123,7 @@ builder.Services.AddRateLimiter(o =>
 });
 var app = builder.Build();
 await DatabaseBootstrap.InitializeAsync(app.Services, app.Configuration);
+await app.Services.GetRequiredService<ToolCatalogReconciler>().ReconcileAsync(CancellationToken.None);
 app.UseForwardedHeaders();
 if (!app.Environment.IsDevelopment()) app.UseHsts();
 app.Use(async (http, next) =>

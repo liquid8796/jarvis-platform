@@ -54,7 +54,7 @@ Read the actual controller contracts for exact JSON fields. `/api` uses cookie a
 | `/api/admin/tools` | GET list / POST alias to an installed capability |
 | `/api/admin/tools/{id}` | GET detail+schema / PUT revision-aware metadata / DELETE |
 | `/api/admin/tools/bulk-availability` | POST `{ tools: [{ id, revision }], publicationMode }` where mode is `Auto`, `Published` or `Hidden`; legacy `enabled` remains accepted; 1..500 unique selections; admin + CSRF; atomic changes and audits; stale revision 409, missing tool 404 |
-| `/api/admin/tools/import` | POST optional metadata mirror for discovered capabilities; newly mirrored tools use `Auto` policy and are already runtime-visible from the selected device unless explicitly `Hidden` |
+| `/api/admin/tools/import` | POST **Sync catalog**; reconciles all enrolled manifests, returns `{ imported, updated, removed }`, creates `Auto` policy rows, and deletes duplicate/retired/no-longer-advertised records |
 | `/api/admin/capabilities` | GET capabilities known from enrolled devices |
 | `/api/admin/users` | GET / POST administrator user management |
 | `/api/admin/users/{id}` | PUT name/email/role/status/password / DELETE; last-admin safeguards |
@@ -82,3 +82,9 @@ OAuth clients use the standard MCP tools `agent_task_create`, `agent_task_plan`,
 ## Codex-compatible agent capability IDs
 
 The selected device may advertise these consolidated tools through `/mcp` and `agent_task_tools`: `source.apply_patch` (`apply_patch`), `image.view_image` (`view_image`), `unified_exec.exec_command` (`exec_command`), `unified_exec.write_stdin` (`write_stdin`), and `computer_use.computer_use` (`computer_use`). The legacy mutating filesystem, shell, process-job, and public `computer.*` descriptors are not emitted by Agent version 1.0.89. Existing MCP sessions receive the normal catalog-change notification and can also discover the new IDs through `jarvis__tool_search`.
+
+## Tool Catalog lifecycle - 1.0.90
+
+The `Tools` table is reconciled against the union of persisted enrolled-device manifests at server startup, Agent `hello`/`catalog.changed`, device deletion, administrator user deletion, and manual Sync catalog. A canonical tool row is deleted when no enrolled device advertises it. Canonical IDs in `AgentToolCatalogRules` are treated as intentionally retired and are excluded from device capability APIs, selected-device MCP discovery, task-tool discovery and policy editing even if an older Agent reports them. This is a metadata/policy cleanup; it does not modify an Agent installation or grant a replacement tool permission.
+
+The web Tool Catalog can filter by `Auto`, `Hidden`, or `Published`. The filter is client-side over the authenticated `/api/admin/tools` result and combines with text search; selection and bulk policy updates apply only to currently shown rows.

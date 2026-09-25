@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Jarvis.McpServer.Domain;
 using Jarvis.McpServer.Infrastructure;
 using Jarvis.Protocol;
@@ -29,9 +28,9 @@ public sealed class DeviceToolCatalog(AppDbContext db)
             .Where(d => d.OwnerId == ownerId && d.Id == deviceId)
             .Select(d => d.CapabilitiesJson)
             .SingleAsync(ct);
-        var descriptors = (JsonSerializer.Deserialize<ToolDescriptor[]>(json, WireJson.Options) ?? [])
-            .DistinctBy(t => t.Id, StringComparer.Ordinal)
-            .ToArray();
+
+        var descriptors = AgentToolCatalogRules.Installed([json]);
+
         var entries = await db.Tools.AsNoTracking().OrderBy(t => t.Id).ToListAsync(ct);
         var policies = entries
             .GroupBy(t => t.AgentToolId, StringComparer.Ordinal)

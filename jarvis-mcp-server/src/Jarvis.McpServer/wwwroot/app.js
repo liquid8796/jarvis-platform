@@ -11,7 +11,7 @@ const icons = {
 };
 const icon = name => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${icons[name] ?? icons.tools}</svg>`;
 const pill = (value, label=value) => `<span class="pill ${esc(value)}"><span class="dot"></span>${esc(label)}</span>`;
-const state = {user:null, registrationEnabled:false, page:'overview', csrf:'', overview:{}, devices:[], tools:[], capabilities:[], users:[], activity:[], query:'', busy:false, selectedTools:new Set(), bulkBusy:false};
+const state = {user:null, registrationEnabled:false, page:'overview', csrf:'', overview:{}, devices:[], tools:[], capabilities:[], users:[], activity:[], query:'', toolPolicy:'All', busy:false, selectedTools:new Set(), bulkBusy:false};
 let pendingToolAvailability = null;
 let toastTimer;
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),4500);}
@@ -74,8 +74,8 @@ function render(){
  if(state.page==='devices')html=pageHeader('Your devices.','Manage enrolled computers. Disabling a device immediately closes its connection.',addDevice)+`<section class="panel">${deviceTable(state.devices)}</section>`;
  if(state.page==='tools'){
   const admin=state.user.role==='admin';
-  html=pageHeader(admin?'Tools, under your control.':'Your agent capabilities.',admin?'New capabilities are automatic by default. Override metadata, explicitly publish, or hide individual tools.':'Capabilities installed on your devices. New tools are exposed automatically unless an administrator explicitly hides them.',admin?'<button data-action="import-tools">Import installed</button><button class="primary" data-action="add-tool">+ &nbsp; Add tool</button>':'')+
-  `<div class="toolbar"><div class="search">${icon('search')}<input id="tool-search" aria-label="Search tools" placeholder="Search tools, category or description…" value="${esc(state.query)}"></div><span class="muted small">${state.tools.length} ${admin?'registered tools':'installed capabilities'}</span></div>${admin?toolSelectionToolbar():''}<div id="tool-cards">${toolCards()}</div>`;
+  html=pageHeader(admin?'Tools, under your control.':'Your agent capabilities.',admin?'New capabilities are automatic by default. Override metadata, explicitly publish, or hide individual tools.':'Capabilities installed on your devices. New tools are exposed automatically unless an administrator explicitly hides them.',admin?'<button data-action="import-tools">Sync catalog</button><button class="primary" data-action="add-tool">+ &nbsp; Add tool</button>':'')+
+  `<div class="toolbar"><div class="toolbar-controls"><div class="search">${icon('search')}<input id="tool-search" aria-label="Search tools" placeholder="Search tools, category or description." value="${esc(state.query)}"></div>${admin?`<label class="policy-filter"><span>Availability</span><select id="tool-policy-filter" aria-label="Filter tools by availability">${['All','Auto','Hidden','Published'].map(mode=>`<option value="${mode}" ${state.toolPolicy===mode?'selected':''}>${mode}</option>`).join('')}</select></label>`:''}</div><span id="tool-result-count" class="muted small">${visibleTools().length} of ${state.tools.length} ${admin?'registered tools':'installed capabilities'}</span></div>${admin?toolSelectionToolbar():''}<div id="tool-cards">${toolCards()}</div>`;
  }
  if(state.page==='users')html=pageHeader('People & permissions.','Approve registrations and manage access to the control plane.','<button class="primary" data-action="add-user">+ &nbsp; Add user</button>')+
   `<section class="panel"><div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>${state.users.map(u=>`<tr><td><div class="cell-title"><div class="avatar">${esc(u.displayName.slice(0,1))}</div><div><strong>${esc(u.displayName)}</strong><small>${esc(u.email)}</small></div></div></td><td>${pill(u.role)}</td><td>${pill(u.status)}</td><td><button class="ghost" data-action="edit-user" data-id="${u.id}">Manage</button></td></tr>`).join('')}</tbody></table></div></section>`;
@@ -84,7 +84,18 @@ function render(){
  if(state.page==='tools')syncToolSelection();
 }
 function visibleTools() {
- return state.tools.filter(t => (t.name+' '+t.category+' '+t.description).toLowerCase().includes(state.query.toLowerCase()));
+ const query=state.query.toLowerCase();
+ return state.tools.filter(t => {
+  const policy=String(t.publicationMode??'Auto');
+  return (state.toolPolicy==='All' || policy===state.toolPolicy) &&
+   (t.name+' '+t.category+' '+t.description).toLowerCase().includes(query);
+ });
+}
+function refreshToolResults() {
+ pruneToolSelection();
+ const cards=$('#tool-cards'); if(cards)cards.innerHTML=toolCards();
+ const count=$('#tool-result-count'); if(count)count.textContent=`${visibleTools().length} of ${state.tools.length} ${state.user?.role==='admin'?'registered tools':'installed capabilities'}`;
+ syncToolSelection();
 }
 function pruneToolSelection() {
  const visible = new Set(visibleTools().map(t => t.id));
@@ -108,7 +119,7 @@ function syncToolSelection() {
  master.checked=visible.length>0 && count===visible.length;
  master.indeterminate=count>0 && count<visible.length;
  master.disabled=state.bulkBusy || !visible.length;
- $('#select-all-label').textContent=state.query?'Select all filtered':'Select all';
+ $('#select-all-label').textContent=(state.query || state.toolPolicy!=='All')?'Select all filtered':'Select all';
  $('#tool-selection-count').textContent=`${count} selected / ${visible.length} shown`;
  for(const action of ['clear-tool-selection','bulk-auto-tools','bulk-hide-tools','bulk-publish-tools'])
   $(`[data-action="${action}"]`).disabled=state.bulkBusy || count===0;
@@ -203,11 +214,14 @@ document.addEventListener('submit',async event=>{
  try{const data=Object.fromEntries(new FormData(form));if(form.dataset.register==='true'){const result=await api('/api/auth/register','POST',data);auth();toast(result.message);}else{await api('/api/auth/login','POST',data);await csrf();Object.assign(state,await api('/api/auth/session'));await workspace();}}catch(e){$('.form-error',form).textContent=e.message;}finally{button.disabled=false;}
 });
 document.addEventListener('input',event=>{if(event.target.id==='tool-search'){
- state.query=event.target.value;pruneToolSelection();$('#tool-cards').innerHTML=toolCards();syncToolSelection();
+ state.query=event.target.value;refreshToolResults();
 }});
 document.addEventListener('change',event=>{
- if(state.user?.role!=='admin' || state.bulkBusy)return;
  const input=event.target;
+ if(input.id==='tool-policy-filter'){
+  state.toolPolicy=input.value;refreshToolResults();return;
+ }
+ if(state.user?.role!=='admin' || state.bulkBusy)return;
  if(input.id==='select-all-tools'){
   for(const tool of visibleTools())if(input.checked)state.selectedTools.add(tool.id);else state.selectedTools.delete(tool.id);
  }else if(input.matches('input[data-tool-select]')){
@@ -219,7 +233,7 @@ $('#modal').addEventListener('cancel',event=>{if(state.bulkBusy)event.preventDef
 document.addEventListener('click',async event=>{
  const button=event.target.closest('button');if(!button || state.bulkBusy)return;
  try{
-  if(button.dataset.page){state.page=button.dataset.page;state.query='';state.selectedTools.clear();$('.sidebar')?.classList.remove('open');await loadPage();return;}
+  if(button.dataset.page){state.page=button.dataset.page;state.query='';state.toolPolicy='All';state.selectedTools.clear();$('.sidebar')?.classList.remove('open');await loadPage();return;}
   const {action,id}=button.dataset;
   switch(action){
    case 'reload':location.reload();break;
@@ -238,7 +252,7 @@ document.addEventListener('click',async event=>{
    case 'bulk-hide-tools':reviewToolAvailability('Hidden');break;
    case 'confirm-tool-availability':await applyToolAvailability();break;
    case 'add-tool':toolEditor();break;
-   case 'import-tools':{const result=await api('/api/admin/tools/import','POST',{});toast(`${result.imported} capabilities mirrored into Automatic policy. Live device capabilities are already discoverable unless hidden.`);await loadPage();break;}
+   case 'import-tools':{const result=await api('/api/admin/tools/import','POST',{});toast(`${result.imported} added, ${result.updated} refreshed, ${result.removed} stale records removed.`);await loadPage();break;}
    case 'tool-detail':{const tool=state.tools.find(t=>t.id===id),admin=state.user.role==='admin';const details=admin?await api(`/api/admin/tools/${id}`):{tool,capability:tool};modal(esc(tool.name),`<div class="modal-body"><p>${esc(tool.description)}</p><p>${pill(tool.category)} ${pill(details.capability?.readOnly?'read-only':'mutating')}</p><h3>Input schema</h3><pre>${esc(JSON.stringify(details.capability?.inputSchema??{},null,2))}</pre></div>`,`${admin?`<button class="primary" data-action="edit-tool" data-id="${id}">Edit tool</button>`:''}<button data-action="close-modal">Close</button>`);break;}
    case 'edit-tool':toolEditor(state.tools.find(t=>t.id===id));break;
    case 'delete-tool':await confirmDelete('tool',id);break;

@@ -34,7 +34,11 @@ public sealed class AdminController(AppDbContext db, UserManager<AppUser> users,
             request.Tools.ToDictionary(t => t.Id, t => t.Revision, StringComparer.Ordinal),
             request.RequestedPublicationMode, ct);
     [HttpPost("tools/import")]
-    public async Task<object> Import(CancellationToken ct) => new { imported = await catalog.ImportAsync(await Admin(ct), ct) };
+    public async Task<object> Import(CancellationToken ct)
+    {
+        var result = await catalog.ImportAsync(await Admin(ct), ct);
+        return new { imported = result.Added, updated = result.Updated, removed = result.Removed };
+    }
     [HttpDelete("tools/{id}")]
     public async Task<IActionResult> DeleteTool(string id, CancellationToken ct) { await catalog.DeleteAsync(await Admin(ct), id, ct); return NoContent(); }
     [HttpGet("users")]
@@ -76,6 +80,7 @@ public sealed class AdminController(AppDbContext db, UserManager<AppUser> users,
         var user = await users.FindByIdAsync(id) ?? throw new KeyNotFoundException("User not found.");
         await ProtectLastAdmin(user, "user", "disabled", ct);
         AccountController.Check(await users.DeleteAsync(user)); await transaction.CommitAsync(ct); router.DisconnectUser(id);
+        await catalog.ReconcileAsync(ct);
         await audit.WriteAsync(new() { UserId = actor, Action = "admin.user.delete", Outcome = id }, ct);
         return NoContent();
     }

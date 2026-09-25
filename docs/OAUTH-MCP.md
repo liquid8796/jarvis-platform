@@ -46,7 +46,7 @@ Neither query-string access tokens nor agent enrollment tokens authenticate MCP 
 
 Before scanning tools, connect the Agent and complete OAuth consent for the intended device. That selected device's live manifest is the discovery source: newly advertised capabilities default to **Auto** and do not require an Import/Enable pass. **Hidden** is the explicit deny state. Empty `tools/list` is not an OAuth client registration failure.
 
-Initialize-based clients advertise `tools.listChanged=true` and can refresh direct definitions when `notifications/tools/list_changed` arrives. Regardless of refresh support, the permanent `jarvis__tool_search` and `jarvis__tool_call` tools remain available so a session can discover and invoke capabilities added after it started.
+Initialize-based clients advertise `tools.listChanged=true` and can refresh direct definitions when `notifications/tools/list_changed` arrives. Regardless of refresh support, the permanent `jarvis__tool_search` and `jarvis__tool_call` tools remain available so a session can discover and invoke capabilities added after it started. Server 1.0.90 also removes policy rows for capabilities no enrolled device advertises and blocks centrally retired IDs, so stale database metadata cannot keep an old direct or generic tool callable.
 
 ## Verification
 

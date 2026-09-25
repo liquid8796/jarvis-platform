@@ -124,6 +124,11 @@ public sealed partial class AgentTaskMcpTests
             new Dictionary<string, IAgentTool>(),
             new Dictionary<string, IReadOnlyList<string>>()));
         await WaitForCapabilityAsync(app, peer.DeviceId, dynamicTool.Descriptor.Id, present: false);
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.False(await db.Tools.AnyAsync(tool => tool.AgentToolId == dynamicTool.Descriptor.Id));
+        }
 
         var removedCall = await CallAsync(client, DynamicAgentToolNames.Call, new
         {

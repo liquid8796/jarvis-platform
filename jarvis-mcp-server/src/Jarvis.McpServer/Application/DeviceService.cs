@@ -1,16 +1,16 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using Jarvis.McpServer.Domain;
 using Jarvis.McpServer.Infrastructure;
 using Jarvis.Protocol;
 using Microsoft.EntityFrameworkCore;
 namespace Jarvis.McpServer.Application;
-public sealed class DeviceService(AppDbContext db, JarvisOptions options, IAgentRouter router, IAuditWriter audit)
+public sealed class DeviceService(AppDbContext db, JarvisOptions options, IAgentRouter router, IAuditWriter audit,
+    ToolCatalogReconciler catalogReconciler, McpToolCatalogChangeHub changeHub)
 {
     public static string TokenHash(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
     public static IReadOnlyList<ToolDescriptor> Capabilities(Device device) =>
-        JsonSerializer.Deserialize<ToolDescriptor[]>(device.CapabilitiesJson, WireJson.Options) ?? [];
+        AgentToolCatalogRules.Installed([device.CapabilitiesJson]);
     public async Task<IReadOnlyList<DeviceView>> ListAsync(string owner, CancellationToken ct) =>
         (await db.Devices.AsNoTracking().Where(d => d.OwnerId == owner).OrderBy(d => d.Name).ToListAsync(ct))
         .Select(d => new DeviceView(d.Id, d.Name, d.Enabled, router.IsOnline(owner, d.Id), d.Platform,
@@ -48,6 +48,8 @@ public sealed class DeviceService(AppDbContext db, JarvisOptions options, IAgent
     public async Task DeleteAsync(string owner, string id, CancellationToken ct)
     {
         db.Devices.Remove(await OwnedAsync(owner, id, ct)); await db.SaveChangesAsync(ct); router.DisconnectDevice(id);
+        var reconciliation = await catalogReconciler.ReconcileAsync(ct);
+        if (reconciliation.Changed) await changeHub.NotifyAllAsync(ct);
         await audit.WriteAsync(new() { UserId = owner, DeviceId = id, Action = "device.delete", Outcome = "deleted" }, ct);
     }
     public Task<Device> OwnedAsync(string owner, string id, CancellationToken ct) =>

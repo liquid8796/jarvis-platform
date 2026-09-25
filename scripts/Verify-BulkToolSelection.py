@@ -25,9 +25,11 @@ spec.loader.exec_module(cdp_module)
 
 def verify(browser, output):
     fixture = {'role': 'admin', 'fail': False, 'requests': []}
+    modes = ['Auto', 'Auto', 'Hidden', 'Hidden', 'Published', 'Published', 'Auto', 'Published']
     fixture['tools'] = [{'id': f'tool-{i}', 'revision': f'r-{i}', 'name': f'{category}__fixture_{i}',
         'agentToolId': f'{category}.fixture_{i}', 'category': category, 'description': f'Fixture {category} capability {i}',
-        'enabled': False} for i, category in enumerate(['filesystem', 'filesystem', 'computer', 'computer', 'process', 'process', 'browser', 'visualize'])]
+        'publicationMode': modes[i], 'enabled': modes[i] != 'Hidden'}
+        for i, category in enumerate(['filesystem', 'filesystem', 'computer', 'computer', 'process', 'process', 'browser', 'visualize'])]
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_): pass
         def reply(self, status, payload, mime='application/json'):
@@ -61,9 +63,12 @@ def verify(browser, output):
             changed = 0
             for row in body['tools']:
                 tool = by_id[row['id']]
-                if tool['enabled'] != body['enabled']:
-                    changed += 1; tool['enabled'] = body['enabled']; tool['revision'] += '-next'
-            self.reply(200, {'updated': changed, 'selected': len(body['tools']), 'enabled': body['enabled']})
+                if tool['publicationMode'] != body['publicationMode']:
+                    changed += 1
+                    tool['publicationMode'] = body['publicationMode']
+                    tool['enabled'] = body['publicationMode'] != 'Hidden'
+                    tool['revision'] += '-next'
+            self.reply(200, {'updated': changed, 'selected': len(body['tools']), 'publicationMode': body['publicationMode']})
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     origin = f'http://127.0.0.1:{server.server_port}'
@@ -97,19 +102,29 @@ def verify(browser, output):
                         checks.append({'check': name, 'result': 'PASS'})
                     def search(value):
                         cdp.evaluate("(()=>{const i=document.querySelector('#tool-search');i.value=" + json.dumps(value) + ";i.dispatchEvent(new Event('input',{bubbles:true}));})()")
+                    def policy(value):
+                        cdp.evaluate("(()=>{const i=document.querySelector('#tool-policy-filter');i.value=" + json.dumps(value) + ";i.dispatchEvent(new Event('change',{bubbles:true}));})()")
                     def screenshot(name):
                         time.sleep(.5) # Capture after the real page-enter animation settles.
                         data = cdp.call('Page.captureScreenshot', {'format': 'png'})['data']
                         output.with_name(name).write_bytes(base64.b64decode(data))
                     cdp.call('Page.navigate', {'url': origin}); wait("!!document.querySelector('[data-page=tools]')")
                     click('[data-page=tools]'); wait("!!document.querySelector('#select-all-tools')")
+                    check('availability filter rendered', "document.querySelector('#tool-policy-filter').value==='All' && document.querySelectorAll('[data-tool-select]').length===8")
+                    policy('Hidden')
+                    check('hidden filter shows only hidden tools', "document.querySelectorAll('[data-tool-select]').length===2 && document.querySelectorAll('#tool-cards .pill.disabled').length===2")
+                    policy('Published')
+                    check('published filter shows only published tools', "document.querySelectorAll('[data-tool-select]').length===3 && document.querySelectorAll('#tool-cards .pill.active').length===3")
+                    policy('Auto')
+                    check('auto filter shows only automatic tools', "document.querySelectorAll('[data-tool-select]').length===3 && document.querySelectorAll('#tool-cards .pill.installed').length===3")
+                    policy('All')
                     check('initial empty selection', "document.querySelector('[data-action=bulk-publish-tools]').disabled && document.querySelectorAll('[data-tool-select]').length===8")
                     click('#select-all-tools')
                     check('select all eight', "document.querySelectorAll('[data-tool-select]:checked').length===8 && document.querySelector('#select-all-tools').checked")
                     click('[data-tool-select="tool-0"]')
                     check('partial selection mixed state', "document.querySelectorAll('[data-tool-select]:checked').length===7 && document.querySelector('#select-all-tools').indeterminate")
                     click('[data-action=clear-tool-selection]')
-                    check('clear disables bulk actions', "document.querySelectorAll('[data-tool-select]:checked').length===0 && document.querySelector('[data-action=bulk-disable-tools]').disabled")
+                    check('clear disables bulk actions', "document.querySelectorAll('[data-tool-select]:checked').length===0 && document.querySelector('[data-action=bulk-hide-tools]').disabled")
                     search('filesystem'); click('#select-all-tools')
                     check('select all respects search', "document.querySelectorAll('[data-tool-select]:checked').length===2 && document.querySelector('#select-all-label').textContent==='Select all filtered'")
                     screenshot('bulk-selection-desktop.png')
@@ -122,10 +137,10 @@ def verify(browser, output):
                     wait("!document.querySelector('#modal').open && document.querySelectorAll('#tool-cards .pill.active').length===2")
                     assert len(fixture['requests']) == 1 and {t['id'] for t in fixture['requests'][0]['tools']} == {'tool-0','tool-1'}
                     check('one atomic publish request and cleared selection', "document.querySelectorAll('[data-tool-select]:checked').length===0 && document.querySelectorAll('.tool-card .pill.active').length===2")
-                    click('#select-all-tools'); click('[data-action=bulk-disable-tools]'); click('[data-action=confirm-tool-availability]')
+                    click('#select-all-tools'); click('[data-action=bulk-hide-tools]'); click('[data-action=confirm-tool-availability]')
                     wait("!document.querySelector('#modal').open && document.querySelectorAll('#tool-cards .pill.active').length===0")
-                    assert len(fixture['requests']) == 2 and fixture['requests'][-1]['enabled'] is False
-                    checks.append({'check': 'bulk disable uses fresh revisions', 'result': 'PASS'})
+                    assert len(fixture['requests']) == 2 and fixture['requests'][-1]['publicationMode'] == 'Hidden'
+                    checks.append({'check': 'bulk hide uses fresh revisions', 'result': 'PASS'})
                     click('#select-all-tools'); search('computer')
                     check('hidden selections removed on filter change', "document.querySelectorAll('[data-tool-select]:checked').length===0 && document.querySelectorAll('[data-tool-select]:checked').length===0")
                     fixture['fail'] = True
@@ -140,7 +155,7 @@ def verify(browser, output):
                     screenshot('bulk-selection-mobile.png')
                     fixture['role'] = 'user'; cdp.call('Page.navigate', {'url': origin})
                     wait("!!document.querySelector('[data-page=tools]')"); click('[data-page=tools]'); wait("!!document.querySelector('#tool-search')")
-                    check('non-admin has no bulk controls', "!document.querySelector('#select-all-tools') && !document.querySelector('[data-tool-select]') && !document.querySelector('[data-action=bulk-publish-tools]')")
+                    check('non-admin has no bulk controls or policy filter', "!document.querySelector('#select-all-tools') && !document.querySelector('[data-tool-select]') && !document.querySelector('[data-action=bulk-publish-tools]') && !document.querySelector('#tool-policy-filter')")
                     errors = [e for e in cdp.events if e.get('method') == 'Runtime.exceptionThrown']
                     assert not errors, errors
                     checks.append({'check': 'no uncaught browser exceptions', 'result': 'PASS'})

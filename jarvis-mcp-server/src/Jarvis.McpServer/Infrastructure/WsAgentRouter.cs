@@ -70,8 +70,8 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                 Capabilities = peer.Capabilities,
                 ExecutionSettingsRevision = peer.SupportsExecutionSettings ? peer.ExecutionSettings.Revision : null
             }, stop.Token);
-            await catalogReconciler.ReconcileAsync(hello.Tools, stop.Token);
-            await changeHub.NotifyDeviceAsync(device.OwnerId, device.Id, stop.Token);
+            await catalogReconciler.ReconcileAsync(stop.Token);
+            await changeHub.NotifyAllAsync(stop.Token);
             var heartbeat = WatchAsync(peer, stop.Token);
             try
             {
@@ -135,8 +135,8 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
         device.LastSeenAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         await db.SaveChangesAsync(ct);
         peer.UpdateCatalog(generation.Value, digest);
-        await catalogReconciler.ReconcileAsync(tools, ct);
-        await changeHub.NotifyDeviceAsync(peer.OwnerId, peer.DeviceId, ct);
+        await catalogReconciler.ReconcileAsync(ct);
+        await changeHub.NotifyAllAsync(ct);
         await peer.Wire.SendAsync(new WireMessage("catalog.ack")
         {
             CatalogGeneration = generation.Value,
