@@ -1,3 +1,12 @@
+## 1.0.95 - 2026-09-26
+
+- Add `thread__list` and cursor-based `thread__wait` over the existing append-only thread journal. Wait is a read-only composite operation that returns bounded event pages, next cursor, timeout state, and does not consume a normal execution slot while polling.
+- Add durable session-owned automation tools: `automation_create`, `automation_update`, `automation_get`, `automation_list`, `automation_cancel`, and `automation_run_due`. One-time and interval schedules use optimistic revisions and only enqueue bounded thread work plus journal events; they never call a model or arbitrary tool automatically. Missed interval occurrences are coalesced, with a local Agent pump and explicit catch-up tool.
+- Add durable structured asynchronous-input tools: `async_input_request`, `async_input_respond`, `async_input_wait`, `async_input_list`, and `async_input_cancel`. Answers are locally validated against bounded JSON Schema, requests can expire, and every state transition is revisioned and journaled.
+- Scope automation/input records to authenticated owner, enrolled device, and explicit Jarvis session; preserve project/workspace boundaries for referenced threads; cancel active schedules and pending inputs on session close; add finite schedule, payload, schema, answer, expiration, list, and count limits.
+- Add focused regressions for tool discovery, journal waiting, one-time and recurring scheduling, missed-run coalescing, queue materialization, revision conflicts, scope isolation, structured response validation, asynchronous waits, expiration, session close, and workspace enforcement.
+- Update Agent/operator documentation and bump package to **1.0.95**, assembly/file to **1.0.95.0**.
+
 ## 1.0.94 - 2026-09-26
 
 - Add durable explicit-session artifact tools: `artifact_create`, `artifact_update`, `artifact_get`, `artifact_list`, `artifact_show`, and `artifact_delete` for bounded HTML, Markdown, SVG, JSON, and text documents.

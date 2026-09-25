@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.94
+# Jarvis Control - 1.0.95
+
+## Thread, automation and asynchronous input (1.0.95)
+
+Jarvis Agent now extends the durable thread runtime with `thread__list` and cursor-based `thread__wait`, plus session-owned automation and asynchronous-input tools. Automations are deterministic local schedules: when due, they append one bounded item to the existing thread queue and journal an `automation.fired` event. They do **not** invoke a model, execute an arbitrary tool, or create an invisible cloud job. One-time schedules complete after firing; interval schedules coalesce missed occurrences and advance the next due time. A local Agent pump catches up while the Agent is running, and `automation_run_due` provides an explicit bounded catch-up path.
+
+`async_input_request` creates a durable structured question attached to a thread. A later caller can list, wait for, answer, cancel, or expire it; answers are validated locally against the supplied JSON Schema and guarded by optimistic revision numbers. Both wait tools are composite/read-only waits so they do not occupy a normal execution slot while polling. Automation and input ownership is bound to authenticated owner, enrolled device, and explicit Jarvis session; thread access remains constrained to selected workspace projects. Session close cancels active schedules and pending inputs owned by that session. See [Thread, automation and asynchronous input](docs/THREAD-AUTOMATION-ASYNC-INPUT.md).
 
 ## Artifact Runtime (1.0.94)
 
@@ -170,7 +176,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.94**, assembly/file **1.0.94.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.95**, assembly/file **1.0.95.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 

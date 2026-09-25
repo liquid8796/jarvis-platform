@@ -15,7 +15,7 @@ public static class ToolExecutionResources
             return new(["job|" + Number(arguments, "session_id")], true);
         if (id == "unified_exec.exec_command")
             return new(["*"], true); // Arbitrary commands are not assumed to remain inside cwd.
-        if (tool.Category is "session" or "workspace" or "thread" or "workflow" or "artifact")
+        if (tool.Category is "session" or "workspace" or "thread" or "workflow" or "artifact" or "automation" or "async_input")
             return new(["coordination|" + tool.Category + "|" + context.IsolationScopeId], !tool.ReadOnly);
         if (tool.Category == "image_gen")
         {

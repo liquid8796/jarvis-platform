@@ -1,1 +1,1 @@
-feat(agent): add durable artifact runtime
+feat(thread): add automation and async input

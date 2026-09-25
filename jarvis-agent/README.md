@@ -1,4 +1,10 @@
-# Jarvis Agent - 1.0.94
+# Jarvis Agent - 1.0.95
+
+## Thread, automation and asynchronous input (1.0.95)
+
+Use `thread__list` to discover durable project threads and `thread__wait` to read events after a cursor without tying up the ordinary execution queue. The automation family—`automation_create`, `automation_update`, `automation_get`, `automation_list`, `automation_cancel`, and `automation_run_due`—stores one-time or interval schedules in the existing thread database. A due schedule only creates a normal thread queue record and journal event; another explicit turn or local workflow decides how to process it.
+
+The async-input family—`async_input_request`, `async_input_respond`, `async_input_wait`, `async_input_list`, and `async_input_cancel`—persists structured questions and answers. Responses must match the request's JSON Schema and current revision. These records are explicit-session owned, bounded, restart durable, workspace checked, and cancelled on session close. The local pump runs only while the Agent process is alive; this release does not claim cloud background execution or automatically contact a language model. See [Thread, automation and asynchronous input](../docs/THREAD-AUTOMATION-ASYNC-INPUT.md).
 
 ## Artifact Runtime (1.0.94)
 
