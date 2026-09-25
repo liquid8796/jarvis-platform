@@ -1,3 +1,11 @@
+## 1.0.94 - 2026-09-26
+
+- Add durable explicit-session artifact tools: `artifact_create`, `artifact_update`, `artifact_get`, `artifact_list`, `artifact_show`, and `artifact_delete` for bounded HTML, Markdown, SVG, JSON, and text documents.
+- Persist artifacts and append-only revision events in local SQLite/WAL storage scoped to authenticated owner, enrolled device, and Jarvis session. Add opaque IDs, stable local URIs, SHA-256 content digests, soft deletion, active-count/list/content/metadata limits, and optimistic revision conflicts for update/delete/show operations.
+- Add a local renderer that injects a network-denying CSP, removes HTML `<base>` and refresh redirects, escapes Markdown/text, embeds SVG through a data URI, validates and pretty-prints JSON, and forwards the rendered widget through the existing local artifact host.
+- Integrate the artifact tool set into Desktop/CLI Agent runtime and execution-resource coordination; add persistence, isolation, revision, rendering, deletion, validation, and descriptor regressions.
+- Update Agent/operator documentation and bump package to **1.0.94**, assembly/file to **1.0.94.0**.
+
 ## 1.0.93 - 2026-09-26
 
 - Add session-scoped `worker_spawn`, `worker_send`, `worker_wait`, `worker_list`, and `worker_stop` tools for concurrent local collaboration actors. Workers run bounded Jint JavaScript, receive bounded mailbox messages, stream output incrementally, and forward nested images/widgets without introducing a hidden model or paid-provider dependency.

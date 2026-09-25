@@ -7,6 +7,7 @@ using Jarvis.Agent.Core;
 using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.RemoteTasks;
 using Jarvis.Agent.Core.Threads;
+using Jarvis.Agent.Core.Artifacts;
 using Jarvis.Protocol;
 
 namespace Jarvis.Agent.Windows;
@@ -17,6 +18,7 @@ public sealed class AgentRuntime : IAsyncDisposable
     private readonly ToolInventory _inventory;
     private readonly ProcessToolSet _processes;
     private readonly ThreadRuntimeToolSet _threads;
+    private readonly ArtifactRuntimeToolSet _artifacts;
     private readonly PluginRuntimeBootstrap _plugins;
     private readonly IDisposable _pluginLifecycleBinding;
     private readonly CancellationTokenSource _stop = new();
@@ -47,8 +49,9 @@ public sealed class AgentRuntime : IAsyncDisposable
         }
         _inventory = new ToolInventory(questions, artifacts, mainWindow, settingsRoot);
         _threads = new ThreadRuntimeToolSet(System.IO.Path.Combine(root, "thread-runtime.db"));
+        _artifacts = new ArtifactRuntimeToolSet(System.IO.Path.Combine(root, "artifact-runtime.db"), artifacts.ShowAsync);
 
-        var registry = new DynamicToolRegistry(_inventory.Tools.Concat(_processes.Tools).Concat(_threads.Tools));
+        var registry = new DynamicToolRegistry(_inventory.Tools.Concat(_processes.Tools).Concat(_threads.Tools).Concat(_artifacts.Tools));
         var lifecycle = new AgentLifecycleHub();
         var adaptive = adaptiveCoordinator ?? new DefaultRemoteTaskAdaptiveCoordinator(registry);
         Connection = new AgentConnection(registry, approvals, Gate, _permissions,
@@ -124,6 +127,6 @@ public sealed class AgentRuntime : IAsyncDisposable
         if (_connectionTask is not null) try { await _connectionTask.WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
         try { await Task.WhenAll(_sessionCleanup.Values).WaitAsync(TimeSpan.FromSeconds(6)); } catch (Exception) { }
         _inventory.BrowserSessionStopRequested -= StopBrowserSession;
-        _pluginLifecycleBinding.Dispose(); _plugins.Dispose(); _threads.Dispose(); _processes.Dispose(); _inventory.Dispose(); _stop.Dispose();
+        _pluginLifecycleBinding.Dispose(); _plugins.Dispose(); _artifacts.Dispose(); _threads.Dispose(); _processes.Dispose(); _inventory.Dispose(); _stop.Dispose();
     }
 }

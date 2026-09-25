@@ -1,1 +1,1 @@
-feat(agent): add collaboration worker runtime
+feat(agent): add durable artifact runtime

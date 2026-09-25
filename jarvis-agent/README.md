@@ -1,4 +1,10 @@
-# Jarvis Agent - 1.0.93
+# Jarvis Agent - 1.0.94
+
+## Artifact Runtime (1.0.94)
+
+Use `artifact_create` in an explicit Jarvis session to create a durable local HTML, Markdown, SVG, JSON, or text document. Continue with `artifact_get`/`artifact_list`, update using the latest `revision` through `artifact_update`, display the exact revision with `artifact_show`, and soft-delete it with `artifact_delete`. Create and update also accept `show: true` to persist and render in one call.
+
+Artifacts are SQLite-backed and scoped to owner + enrolled device + session. The runtime uses optimistic revisions and content digests, never follows an artifact ID across scopes, and does not upload content or grant network access. The renderer injects a network-denying CSP, strips HTML base/refresh redirects, escapes non-HTML formats, embeds SVG as data, and validates JSON. See [Artifact Runtime](../docs/ARTIFACT-RUNTIME.md).
 
 ## Collaboration Workers (1.0.93)
 

@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.93
+# Jarvis Control - 1.0.94
+
+## Artifact Runtime (1.0.94)
+
+Jarvis Agent now publishes durable `artifact_create`, `artifact_update`, `artifact_get`, `artifact_list`, `artifact_show`, and `artifact_delete` tools for explicit Jarvis sessions. HTML, Markdown, SVG, JSON, and plain-text documents are stored in a local SQLite/WAL runtime keyed by authenticated owner, enrolled device, and session. Each artifact has an opaque ID, revision, SHA-256 digest, event history, and a stable `jarvis-artifact://...` URI. Updates and deletes require the caller's expected revision, so concurrent edits fail with a conflict instead of silently overwriting newer content.
+
+Rendering remains local. HTML is normalized with a network-denying content-security policy, `<base>` and refresh redirects are removed, Markdown/text are escaped, SVG is wrapped as a data image, and JSON is validated and pretty-printed. `artifact_show` can display the current revision through the existing local artifact host and also returns a widget to the caller. Content, metadata, artifact count, and list size are bounded; soft deletion removes stored content from normal reads. See [Artifact Runtime](docs/ARTIFACT-RUNTIME.md).
 
 ## Collaboration Workers (1.0.93)
 
@@ -164,7 +170,7 @@ Source tool computer/browser/visualize được giữ lại; host áp dụng gi�
 python .\scripts\Export-Source.py
 ```
 
-Current package **1.0.93**, assembly/file **1.0.93.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
+Current package **1.0.94**, assembly/file **1.0.94.0**. Historical release notes and commit messages remain in `CHANGELOG.md`; `scripts/Verify-CurrentVersion.py` checks current-version metadata for drift.
 
 ## Agent Harness (1.0.47)
 
