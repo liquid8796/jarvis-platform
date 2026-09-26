@@ -1,1 +1,1 @@
-fix(agent): sync tool permissions with live catalog
+fix(unity): prefix MCP bridge tool names

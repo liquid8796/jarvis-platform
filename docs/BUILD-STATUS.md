@@ -1,4 +1,11 @@
 # Build / test status
+## 1.0.97 Unity-prefixed MCP bridge names - executed verification (2026-09-26)
+
+- Updated all six Unity bridge public names to `unity_list_tools`, `unity_call_tool`, `unity_list_resources`, `unity_read_resource`, `unity_list_prompts`, and `unity_get_prompt` while retaining canonical `unity.*` capability IDs and local permission semantics.
+- Added server-side normalization for older Agent manifests, exact legacy-default Tool Catalog migration across Auto/Published/Hidden policy rows, preservation of administrator aliases, and stale ChatGPT-call compatibility for the former unprefixed names.
+- Focused Unity/Blender bridge regressions and Tool Catalog reconciliation regressions passed. Maintained Release suites passed **595/595**, **0 failed / 0 skipped**: Core **311**, Windows Agent **163**, Server **121**. The full Release solution build completed with exit code 0.
+- Package/assembly/file version is **1.0.97 / 1.0.97.0**. Source verification does not replace the running Agent or promote the OCI MCP service; activate the new names by updating the Agent/server and refreshing ChatGPT actions.
+
 ## 1.0.96 live Tool permissions catalog - executed verification (2026-09-26)
 
 - Fixed the Desktop Tool permissions bootstrap to include descriptor-only Artifact Runtime and Thread Interaction projections, closing the exact **83 -> 102** mismatch observed against the MCP server catalog without opening duplicate SQLite runtimes or starting a second automation pump.

@@ -152,6 +152,7 @@ public sealed class BlenderMcpTests : IDisposable
         // The gateway catalog has globally unique Name values, not (Category, Name).
         Assert.Equal(12, blender.Tools.Concat(unity.Tools).Select(t => t.Descriptor.Name).Distinct().Count());
         Assert.All(blender.Tools, t => Assert.StartsWith("blender_", t.Descriptor.Name));
+        Assert.All(unity.Tools, t => Assert.StartsWith("unity_", t.Descriptor.Name));
         _ = new DynamicToolRegistry(blender.Tools.Concat(unity.Tools));
     }
 

@@ -87,11 +87,23 @@ public sealed class UnityMcpTests : IDisposable
     {
         using var set = new UnityMcpToolSet(ConfigPath);
         Assert.Equal(6, set.Tools.Count);
+        Assert.Equal(
+            new[]
+            {
+                "unity_call_tool",
+                "unity_get_prompt",
+                "unity_list_prompts",
+                "unity_list_resources",
+                "unity_list_tools",
+                "unity_read_resource"
+            },
+            set.Tools.Select(tool => tool.Descriptor.Name).Order(StringComparer.Ordinal).ToArray());
         foreach (var tool in set.Tools)
         {
             Assert.True(tool.Descriptor.Sensitive);
             Assert.False(tool.Descriptor.ReadOnly);
             Assert.Equal("unity", tool.Descriptor.Category);
+            Assert.StartsWith("unity_", tool.Descriptor.Name);
             SchemaGuard.Compile(tool.Descriptor.InputSchema);
         }
         var registry = new DynamicToolRegistry(set.Tools);

@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.96
+# Jarvis Control - 1.0.97
+
+## Unity-prefixed MCP bridge names (1.0.97)
+
+The six Unity bridge tools now use category-identifiable public names: `unity_list_tools`, `unity_call_tool`, `unity_list_resources`, `unity_read_resource`, `unity_list_prompts`, and `unity_get_prompt`. Their canonical Agent IDs remain `unity.list_tools`, `unity.call_tool`, and so on, so saved local permissions, task plans, routing, and downstream Unity MCP behavior are unchanged.
+
+The MCP server normalizes older Agent manifests to the new names and migrates only policy rows whose names still equal the exact legacy defaults such as `call_tool`. Administrator-defined aliases remain untouched, including Published and Hidden policies. Existing ChatGPT turns that cached the old six names remain callable during the transition, while refreshed `tools/list` results and the Tool Catalog show only the `unity_`-prefixed names. Package **1.0.97**, assembly/file **1.0.97.0**.
 
 ## Live Tool permissions catalog (1.0.96)
 
@@ -73,7 +79,7 @@ The Agent adds six `blender.*` bridge tools using the same real Python/stdio MCP
 
 ## Unity MCP integration (1.0.85)
 
-Jarvis Agent now consumes the **Jarvis Agent** client configuration written by MCP for Unity to `%LOCALAPPDATA%\JarvisAgent\mcp.json`. Supports stdio and Streamable HTTP with six `unity.*` bridge tools, lazy per-session connections, bounded discovery/results, and cancellation on Pause/session stop. See [the Agent guide](jarvis-agent/README.md#unity-mcp-bridge-1085) for setup and limitations. Assembly/file version: **1.0.85.0**.
+Jarvis Agent consumes the **Jarvis Agent** client configuration written by MCP for Unity to `%LOCALAPPDATA%\JarvisAgent\mcp.json`. It supports stdio and Streamable HTTP with six canonical `unity.*` bridge IDs whose public names are `unity_list_tools`, `unity_call_tool`, `unity_list_resources`, `unity_read_resource`, `unity_list_prompts`, and `unity_get_prompt`, plus lazy per-session connections, bounded discovery/results, and cancellation on Pause/session stop. See [the Agent guide](jarvis-agent/README.md#unity-mcp-bridge-1085) for setup and limitations.
 
 **Version 1.0.84 hardens per-chat default-workspace routing.** Newly opened explicit sessions keep the Agent's configured default workspace unless the current user request explicitly asks to select, change or clear it. Workspace tool guidance no longer treats prior chats, remembered project paths, session metadata or inferred project identity as authority for an override. See the [operator guide](docs/AGENT.md) for the session/workspace contract and [BUILD-STATUS.md](docs/BUILD-STATUS.md) for executed checks. Build/push does not itself update a running Agent or production MCP service.
 

@@ -194,6 +194,19 @@ public sealed class McpGateway(
                     .Where(IsDirectVisible)
                     .Where(t => StringComparer.Ordinal.Equals(t.PublicName, request.Name))
                     .ToArray();
+                if (matches.Length == 0 &&
+                    AgentToolCatalogRules.TryResolveLegacyPublicName(request.Name, out var legacyToolId) &&
+                    AgentToolCatalogRules.TryGetPreferredPublicName(legacyToolId, out var preferredName))
+                {
+                    // Existing ChatGPT turns may still hold the pre-1.0.97 Unity names. Keep those
+                    // snapshots callable while the row still uses the new default. An administrator
+                    // alias remains authoritative and intentionally disables the historical alias.
+                    matches = resolved
+                        .Where(IsDirectVisible)
+                        .Where(t => StringComparer.Ordinal.Equals(t.Descriptor.Id, legacyToolId) &&
+                            StringComparer.Ordinal.Equals(t.PublicName, preferredName))
+                        .ToArray();
+                }
                 if (matches.Length == 0)
                     return Error("Tool is hidden, unavailable or unknown. Use jarvis__tool_search to inspect the live selected-device catalog.");
                 if (matches.Length > 1)

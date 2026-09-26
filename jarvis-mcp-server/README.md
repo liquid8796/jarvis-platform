@@ -1,6 +1,12 @@
 # jarvis-mcp-server
 
-See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.90**, assembly/file: **1.0.90.0**. Source publication and local packaging do not deploy or restart the live service.
+See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.97**, assembly/file: **1.0.97.0**. Source publication and local packaging do not deploy or restart the live service.
+
+## Unity public-name migration (1.0.97)
+
+Selected-device manifests are normalized so the six canonical `unity.*` capabilities publish as `unity_list_tools`, `unity_call_tool`, `unity_list_resources`, `unity_read_resource`, `unity_list_prompts`, and `unity_get_prompt` even when an older Agent still advertises the unprefixed names. Reconciliation renames only persisted rows whose current name is the exact historical default; administrator aliases are preserved across Auto, Published, and Hidden policies.
+
+For stale ChatGPT turns, the gateway still resolves the six historical unprefixed names to their canonical Unity IDs. New discovery responses and the admin catalog expose only the prefixed names.
 
 ## Catalog lifecycle and availability filters (1.0.90)
 

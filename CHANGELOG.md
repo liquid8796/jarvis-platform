@@ -1,3 +1,10 @@
+## 1.0.97 - 2026-09-26
+
+- Prefix all six Unity MCP bridge public names with `unity_` while retaining the existing canonical `unity.*` IDs and permission semantics.
+- Normalize older Agent manifests server-side, migrate exact legacy default Tool Catalog names even for Published/Hidden rows, and preserve administrator-defined aliases.
+- Keep stale ChatGPT tool snapshots compatible by resolving the former unprefixed names during calls while advertising only the new names in fresh tool lists.
+- Add Agent descriptor, Blender/Unity coexistence, catalog reconciliation, legacy-manifest normalization, and compatibility-alias regressions. Bump package to **1.0.97**, assembly/file to **1.0.97.0**.
+
 ## 1.0.96 - 2026-09-26
 
 - Fix the Jarvis Agent Desktop Tool permissions inventory so it includes the six Artifact Runtime descriptors and 13 thread/automation/asynchronous-input descriptors that were already advertised by the runtime and MCP server.

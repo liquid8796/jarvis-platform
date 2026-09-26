@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Jarvis.McpServer.Domain;
 using Jarvis.McpServer.Infrastructure;
+using Jarvis.Protocol;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jarvis.McpServer.Application;
@@ -65,9 +66,9 @@ public sealed class ToolCatalogReconciler(
             {
                 if (firstByTool.TryGetValue(descriptor.Id, out var existing))
                 {
+                    var entryChanged = false;
                     if (existing.PublicationMode == ToolPublicationMode.Auto)
                     {
-                        var entryChanged = false;
                         if (!existing.Enabled)
                         {
                             existing.Enabled = true;
@@ -83,22 +84,30 @@ public sealed class ToolCatalogReconciler(
                             existing.Category = descriptor.Category;
                             entryChanged = true;
                         }
-                        if (!StringComparer.Ordinal.Equals(existing.Name, descriptor.Name) &&
-                            PublicName.IsMatch(descriptor.Name) &&
-                            !ToolPublicationRules.IsReservedPublicName(descriptor.Name) &&
-                            (!names.TryGetValue(descriptor.Name, out var holder) || holder == existing.Id))
-                        {
-                            names.Remove(existing.Name);
-                            names[descriptor.Name] = existing.Id;
-                            existing.Name = descriptor.Name;
-                            entryChanged = true;
-                        }
-                        if (entryChanged)
-                        {
-                            existing.Revision = Guid.NewGuid().ToString("N");
-                            existing.Enabled = true;
-                            updated++;
-                        }
+                    }
+
+                    // Published/Hidden rows normally preserve administrator metadata. The six Unity bridge
+                    // rows predate category-prefixed public names, though, so migrate only their exact former
+                    // defaults. A custom administrator alias is deliberately left untouched.
+                    var adoptsLiveName = existing.PublicationMode == ToolPublicationMode.Auto ||
+                        IsLegacyUnityDefault(existing, descriptor);
+                    if (adoptsLiveName &&
+                        !StringComparer.Ordinal.Equals(existing.Name, descriptor.Name) &&
+                        PublicName.IsMatch(descriptor.Name) &&
+                        !ToolPublicationRules.IsReservedPublicName(descriptor.Name) &&
+                        (!names.TryGetValue(descriptor.Name, out var holder) || holder == existing.Id))
+                    {
+                        names.Remove(existing.Name);
+                        names[descriptor.Name] = existing.Id;
+                        existing.Name = descriptor.Name;
+                        entryChanged = true;
+                    }
+
+                    if (entryChanged)
+                    {
+                        existing.Revision = Guid.NewGuid().ToString("N");
+                        existing.Enabled = existing.PublicationMode != ToolPublicationMode.Hidden;
+                        updated++;
                     }
                     continue;
                 }
@@ -141,6 +150,11 @@ public sealed class ToolCatalogReconciler(
         }
         finally { _serial.Release(); }
     }
+
+    private static bool IsLegacyUnityDefault(ToolEntry entry, ToolDescriptor descriptor) =>
+        AgentToolCatalogRules.IsLegacyDefaultPublicName(entry.AgentToolId, entry.Name) &&
+        AgentToolCatalogRules.TryGetPreferredPublicName(entry.AgentToolId, out var preferredName) &&
+        StringComparer.Ordinal.Equals(descriptor.Name, preferredName);
 }
 
 public sealed record ToolCatalogReconcileResult(int Added, int Updated, int Removed)

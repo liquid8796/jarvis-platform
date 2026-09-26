@@ -139,6 +139,53 @@ public sealed partial class AgentTaskMcpTests
         Assert.Contains("not installed", removedCall.GetProperty("content")[0].GetProperty("text").GetString(), StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Legacy_unity_name_remains_callable_only_while_the_prefixed_default_is_public()
+    {
+        using var app = new ServerFixture();
+        using var admin = await app.Admin();
+        await using var peer = await TaskAgentPeer.ConnectAsync(app, admin);
+        using var client = await GrantAsync(app, admin, peer.DeviceId);
+
+        var unity = new LegacyUnityTool();
+        peer.Connection.ApplyPluginCatalog(new PluginCatalogSnapshot(
+            [],
+            new Dictionary<string, IAgentTool> { [unity.Descriptor.Id] = unity },
+            new Dictionary<string, IReadOnlyList<string>>()));
+        await WaitForCapabilityAsync(app, peer.DeviceId, unity.Descriptor.Id, present: true);
+
+        var listed = await RpcAsync(client, "tools/list", new { });
+        var names = listed.GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString()).ToArray();
+        Assert.Contains("unity_list_tools", names);
+        Assert.DoesNotContain("list_tools", names);
+
+        var prefixed = await CallAsync(client, "unity_list_tools", new { });
+        Assert.False(prefixed.GetProperty("isError").GetBoolean(), prefixed.GetRawText());
+        Assert.Equal("unity-bridge-ok", prefixed.GetProperty("content")[0].GetProperty("text").GetString());
+
+        var legacy = await CallAsync(client, "list_tools", new { });
+        Assert.False(legacy.GetProperty("isError").GetBoolean(), legacy.GetRawText());
+        Assert.Equal("unity-bridge-ok", legacy.GetProperty("content")[0].GetProperty("text").GetString());
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var policy = await db.Tools.SingleAsync(tool => tool.AgentToolId == unity.Descriptor.Id);
+            policy.Name = "custom_unity_discovery";
+            policy.PublicationMode = ToolPublicationMode.Published;
+            policy.Enabled = true;
+            policy.Revision = Guid.NewGuid().ToString("N");
+            await db.SaveChangesAsync();
+        }
+
+        var staleLegacy = await CallAsync(client, "list_tools", new { });
+        Assert.True(staleLegacy.GetProperty("isError").GetBoolean());
+        var custom = await CallAsync(client, "custom_unity_discovery", new { });
+        Assert.False(custom.GetProperty("isError").GetBoolean(), custom.GetRawText());
+        Assert.Equal("unity-bridge-ok", custom.GetProperty("content")[0].GetProperty("text").GetString());
+    }
+
     private static async Task<ToolEntry> ReadPolicyAsync(ServerFixture app, string toolId)
     {
         using var scope = app.Services.CreateScope();
@@ -181,5 +228,20 @@ public sealed partial class AgentTaskMcpTests
 
         public Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context, CancellationToken cancellationToken) =>
             Task.FromResult(new ToolReply("dynamic:" + arguments.GetProperty("value").GetString()));
+    }
+
+    private sealed class LegacyUnityTool : IAgentTool
+    {
+        public ToolDescriptor Descriptor { get; } = new(
+            "unity.list_tools",
+            "list_tools",
+            "unity",
+            "Pre-1.0.97 Unity bridge discovery fixture.",
+            WireJson.Element(new { type = "object", additionalProperties = false }),
+            ReadOnly: false,
+            Sensitive: true);
+
+        public Task<ToolReply> ExecuteAsync(JsonElement arguments, AgentExecutionContext context,
+            CancellationToken cancellationToken) => Task.FromResult(new ToolReply("unity-bridge-ok"));
     }
 }

@@ -9,5 +9,5 @@ public sealed class UnityMcpToolSet : ExternalMcpToolSet
         Func<McpServerConfig, CancellationToken, Task<IMcpClient>>? connect = null)
         : base(configPath, "unity", "Unity",
             "Uses the local JarvisAgent/mcp.json Unity entry; keep Unity's MCP session running.",
-            UnityMcpConfig.Load, connect) { }
+            UnityMcpConfig.Load, connect, catalogNamePrefix: "unity_") { }
 }

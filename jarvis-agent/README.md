@@ -1,4 +1,10 @@
-# Jarvis Agent - 1.0.96
+# Jarvis Agent - 1.0.97
+
+## Unity-prefixed MCP bridge names (1.0.97)
+
+Unity keeps the same six canonical IDs but now advertises unambiguous public names: `unity_list_tools`, `unity_call_tool`, `unity_list_resources`, `unity_read_resource`, `unity_list_prompts`, and `unity_get_prompt`. This makes every Tool permissions and MCP Tool Catalog row visibly attributable to Unity and matches the existing `blender_*` convention. Local permission files remain keyed by canonical `unity.*` IDs and require no migration.
+
+Server-side catalog reconciliation also upgrades the exact old default names while preserving custom administrator aliases. Older ChatGPT tool snapshots can still invoke the six unprefixed names during rollout; refresh the app actions to receive the new public surface.
 
 ## Live Tool permissions catalog (1.0.96)
 
@@ -62,7 +68,7 @@ The MCP gateway wire protocol is unchanged; the existing dynamic catalog can imp
 
 The Agent reads only `%LOCALAPPDATA%\JarvisAgent\mcp.json` (`mcpServers.unityMCP`), not a repository MCP file and not the separate JarvisCode profile. Install MCP for Unity 10.2.1-beta.7+, open **Window > MCP for Unity**, select **Jarvis Agent**, and click **Configure** (or select it in the first-run wizard). Keep the Unity MCP session active; HTTP also requires the shared HTTP server. Remote endpoints require HTTPS. Prefer HTTP for multiple assistants: Unity's legacy stdio/TCP connection is single-agent even though Agent-side sessions are isolated.
 
-Restart the updated Agent and reconnect. Import/enable its `unity` tool category in Jarvis Control if the server has not yet imported these descriptors. `unity.list_tools` returns the actual downstream schemas with paging/filtering. Use `unity.call_tool` with a discovered name and object arguments. `unity.list_resources`, `unity.read_resource`, `unity.list_prompts`, and `unity.get_prompt` expose the remaining surfaces. Reading a prompt does not execute its instructions.
+Restart the updated Agent and reconnect. Import/enable its `unity` tool category in Jarvis Control if the server has not yet imported these descriptors. Canonical IDs remain `unity.list_tools`, `unity.call_tool`, `unity.list_resources`, `unity.read_resource`, `unity.list_prompts`, and `unity.get_prompt`; their public catalog names are the corresponding `unity_*` forms. Use `unity_list_tools` to discover exact downstream schemas, then `unity_call_tool` with a discovered name and object arguments. Reading a prompt does not execute its instructions.
 
 All six wrappers retain normal sensitive-tool approval and Arm/Pause checks, including discovery because opening stdio can launch a process. Configuration does not grant permissions or change enrollment. Connections open only on an approved tool call, are reused per session, and close on Pause/stop. The next call reloads local config; invalid/disabled config closes the corresponding session connection. Transport failures are not retried, so verify Unity state before manually repeating a modifying call. Discovery/results and config sizes are bounded; Agent plugin skills are not installed by Unity's client-skill button.
 

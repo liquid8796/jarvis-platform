@@ -46,6 +46,19 @@ public static class ToolPublicationRules
 /// </summary>
 public static class AgentToolCatalogRules
 {
+    private sealed record PublicNameMigration(string LegacyName, string PreferredName);
+
+    private static readonly IReadOnlyDictionary<string, PublicNameMigration> PublicNameMigrations =
+        new Dictionary<string, PublicNameMigration>(StringComparer.Ordinal)
+        {
+            ["unity.list_tools"] = new("list_tools", "unity_list_tools"),
+            ["unity.call_tool"] = new("call_tool", "unity_call_tool"),
+            ["unity.list_resources"] = new("list_resources", "unity_list_resources"),
+            ["unity.read_resource"] = new("read_resource", "unity_read_resource"),
+            ["unity.list_prompts"] = new("list_prompts", "unity_list_prompts"),
+            ["unity.get_prompt"] = new("get_prompt", "unity_get_prompt")
+        };
+
     private static readonly HashSet<string> RetiredIds = new(StringComparer.Ordinal)
     {
         "filesystem.Write", "filesystem.Edit", "filesystem.NotebookEdit",
@@ -58,10 +71,44 @@ public static class AgentToolCatalogRules
 
     public static bool IsRetired(string toolId) => RetiredIds.Contains(toolId);
 
+    public static bool TryGetPreferredPublicName(string toolId, out string preferredName)
+    {
+        if (PublicNameMigrations.TryGetValue(toolId, out var migration))
+        {
+            preferredName = migration.PreferredName;
+            return true;
+        }
+        preferredName = "";
+        return false;
+    }
+
+    public static bool IsLegacyDefaultPublicName(string toolId, string name) =>
+        PublicNameMigrations.TryGetValue(toolId, out var migration) &&
+        StringComparer.Ordinal.Equals(name, migration.LegacyName);
+
+    public static bool TryResolveLegacyPublicName(string name, out string toolId)
+    {
+        foreach (var pair in PublicNameMigrations)
+        {
+            if (!StringComparer.Ordinal.Equals(pair.Value.LegacyName, name)) continue;
+            toolId = pair.Key;
+            return true;
+        }
+        toolId = "";
+        return false;
+    }
+
+    public static ToolDescriptor NormalizePublicName(ToolDescriptor tool) =>
+        TryGetPreferredPublicName(tool.Id, out var preferredName) &&
+        !StringComparer.Ordinal.Equals(tool.Name, preferredName)
+            ? tool with { Name = preferredName }
+            : tool;
+
     public static IReadOnlyList<ToolDescriptor> Installed(IEnumerable<string> manifests) =>
         manifests
             .SelectMany(json => JsonSerializer.Deserialize<ToolDescriptor[]>(json, WireJson.Options) ?? [])
             .Where(tool => !IsRetired(tool.Id))
+            .Select(NormalizePublicName)
             .DistinctBy(tool => tool.Id, StringComparer.Ordinal)
             .OrderBy(tool => tool.Category, StringComparer.Ordinal)
             .ThenBy(tool => tool.Name, StringComparer.Ordinal)
