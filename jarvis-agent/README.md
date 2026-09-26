@@ -1,4 +1,10 @@
-# Jarvis Agent - 1.0.95
+# Jarvis Agent - 1.0.96
+
+## Live Tool permissions catalog (1.0.96)
+
+The Tool permissions page now mirrors the complete Agent runtime catalog rather than a startup-only subset. Artifact tools and the 13 thread/automation/asynchronous-input tools are present before connection, and after connection the page follows `DynamicToolRegistry.Changed` so dynamically added or removed plugin capabilities update without restarting the window. The overview tool count and permission row count therefore share one live catalog.
+
+Refreshing the catalog preserves unsaved Full Permission choices for canonical IDs that remain installed. New IDs are not silently preapproved, removed IDs are pruned from active standing consent, and permanent constrained-process approval remains limited to `unified_exec.exec_command`.
 
 ## Thread, automation and asynchronous input (1.0.95)
 

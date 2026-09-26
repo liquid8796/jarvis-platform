@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.95
+# Jarvis Control - 1.0.96
+
+## Live Tool permissions catalog (1.0.96)
+
+The Jarvis Agent Desktop **Tool permissions** tab now uses the same complete descriptor inventory as the runtime manifest. The offline bootstrap includes Artifact Runtime plus thread/automation/asynchronous-input capabilities, so the local permission count no longer stops at the older 83-tool snapshot while the MCP server shows 102 tools. Descriptor-only projections avoid starting automation pumps or opening a second mutable runtime merely to render the settings UI.
+
+After connect, Tool permissions subscribes to the Agent's live `DynamicToolRegistry`. Plugin installs/removals and any future catalog replacement update both the overview count and permission rows on the WPF dispatcher. Unsaved choices are preserved for retained canonical IDs, newly appearing tools start from active local policy, and removed capabilities are immediately removed from active standing consent. Package **1.0.96**, assembly/file **1.0.96.0**.
 
 ## Thread, automation and asynchronous input (1.0.95)
 

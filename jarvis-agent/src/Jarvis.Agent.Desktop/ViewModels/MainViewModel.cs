@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Artifacts;
 using Jarvis.Agent.Core.Threads;
 using Jarvis.Protocol;
 using Jarvis.Agent.Desktop.Infrastructure;
@@ -17,6 +18,7 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
     private readonly string _settingsRoot;
     private readonly ToolPermissionPolicy _permissions = new();
     private readonly ToolPermissionStore _permissionStore;
+    private Action<DynamicToolSnapshot>? _toolCatalogChanged;
     private int _selectedTab;
     public int SelectedTab { get => _selectedTab; set { Set(ref _selectedTab, value); if (_sessionUiReady) RefreshSessionUi(); } }
     public ToolPermissionsViewModel Permissions { get; }
@@ -58,10 +60,13 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
         try
         {
             var prompts = new LocalPrompts(owner, _permissions, _permissionStore);
-            using var inventory = new ToolInventory(prompts, new DesktopArtifactSink(owner), () => owner, _settingsRoot);
+            var artifactSink = new DesktopArtifactSink(owner);
+            using var inventory = new ToolInventory(prompts, artifactSink, () => owner, _settingsRoot);
             using var processes = new ProcessToolSet();
             using var threads = new ThreadRuntimeToolSet(System.IO.Path.Combine(_settingsRoot, "thread-runtime.db"));
             var descriptors = inventory.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor)
+                .Concat(ThreadInteractionRuntimeToolSet.Descriptors)
+                .Concat(ArtifactRuntimeToolSet.Descriptors)
                 .Concat(AgentCoreHostTools.Descriptors).DistinctBy(t => t.Id).ToArray();
             foreach (var tool in descriptors) Tools.Add(tool.Name);
             Permissions = new ToolPermissionsViewModel(descriptors, _permissions, _permissionStore);
@@ -137,12 +142,25 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
     private async Task ToggleConnection()
     {
         Error = "";
-        if (_runtime is not null) { await _runtime.DisposeAsync(); _runtime = null; _connectedOptions = null; _connectedToken = null; Status = "Not connected"; Control = "Control paused"; Changed(); RefreshSessionUi(); return; }
+        if (_runtime is not null)
+        {
+            DetachToolCatalog(_runtime);
+            await _runtime.DisposeAsync();
+            _runtime = null;
+            _connectedOptions = null;
+            _connectedToken = null;
+            Status = "Not connected";
+            Control = "Control paused";
+            Changed();
+            RefreshSessionUi();
+            return;
+        }
         var folders = new WorkspaceDirectories(Workspace, AdditionalDirectories);
         var options = new AgentOptions(ServerUrl, DeviceId, folders.Primary, AllowLoopbackHttp, folders.Additional);
         AgentProfile.Save(options, Token);
         var prompts = new LocalPrompts(_owner, _permissions, _permissionStore);
         _runtime = new AgentRuntime(prompts, prompts, new DesktopArtifactSink(_owner), () => _owner, _permissions, _settingsRoot);
+        AttachToolCatalog(_runtime);
         _runtime.SessionCleanupWarning += warning => _owner.Dispatcher.InvokeAsync(() => Sessions.ReportWarning(warning));
         _runtime.Gate.Changed += armed => _owner.Dispatcher.InvokeAsync(() =>
             Control = armed ? "Armed · until you pause" : "Control paused");
@@ -156,7 +174,6 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
             "TRANSPORT_INTERRUPTED" => "Connection interrupted · retrying",
             _ => "Disconnected"
         });
-        Tools.Clear(); foreach (var descriptor in _runtime.Connection.Descriptors) Tools.Add(descriptor.Name);
         Status = "Connecting…"; Changed();
         _connectedOptions = options; _connectedToken = Token;
         _ = ObserveAsync(_runtime.StartAsync(options, Token));
@@ -172,8 +189,39 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
     }
     public void Pause() { _runtime?.Pause(); Control = "Control paused"; }
     private void Fail(Exception ex) { Error = ex.Message; }
+    private void AttachToolCatalog(AgentRuntime runtime)
+    {
+        _toolCatalogChanged = snapshot => _ = _owner.Dispatcher.InvokeAsync(() =>
+        {
+            if (ReferenceEquals(_runtime, runtime)) RefreshToolCatalog(snapshot.Descriptors);
+        });
+        runtime.Connection.ToolRegistry.Changed += _toolCatalogChanged;
+        // Subscribe before the initial snapshot so a plugin/catalog update cannot fall into a refresh gap.
+        RefreshToolCatalog(runtime.Connection.Descriptors);
+    }
+    private void DetachToolCatalog(AgentRuntime runtime)
+    {
+        if (_toolCatalogChanged is null) return;
+        runtime.Connection.ToolRegistry.Changed -= _toolCatalogChanged;
+        _toolCatalogChanged = null;
+    }
+    private void RefreshToolCatalog(IEnumerable<ToolDescriptor> descriptors)
+    {
+        var snapshot = descriptors.DistinctBy(tool => tool.Id).OrderBy(tool => tool.Category)
+            .ThenBy(tool => tool.Name).ToArray();
+        Tools.Clear();
+        foreach (var descriptor in snapshot) Tools.Add(descriptor.Name);
+        Permissions.ReplaceDescriptors(snapshot);
+        Changed();
+    }
     private void Changed() { PropertyChanged?.Invoke(this, new(nameof(ConnectLabel))); PropertyChanged?.Invoke(this, new(nameof(ToolCount))); }
     private void Set<T>(ref T field, T value, [CallerMemberName] string name = "")
     { if (EqualityComparer<T>.Default.Equals(field, value)) return; field = value; PropertyChanged?.Invoke(this, new(name)); }
-    public async ValueTask DisposeAsync() { _sessionRefreshTimer?.Stop(); if (_runtime is not null) await _runtime.DisposeAsync(); }
+    public async ValueTask DisposeAsync()
+    {
+        _sessionRefreshTimer?.Stop();
+        if (_runtime is null) return;
+        DetachToolCatalog(_runtime);
+        await _runtime.DisposeAsync();
+    }
 }

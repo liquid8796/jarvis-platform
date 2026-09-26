@@ -1,4 +1,12 @@
 # Build / test status
+## 1.0.96 live Tool permissions catalog - executed verification (2026-09-26)
+
+- Fixed the Desktop Tool permissions bootstrap to include descriptor-only Artifact Runtime and Thread Interaction projections, closing the exact **83 -> 102** mismatch observed against the MCP server catalog without opening duplicate SQLite runtimes or starting a second automation pump.
+- The connected Desktop now subscribes to the live DynamicToolRegistry; catalog replacements update overview and permission rows on the WPF dispatcher. Retained unsaved choices survive by canonical ID, new tools start from active local policy, and removed IDs are pruned from in-memory standing consent.
+- The Session Tool REPL long-cell regression now verifies its incremental-output contract by accumulating all cursor reads; the focused streaming/reset case passed **1/1**.
+- Focused Tool permissions regressions passed **3/3**. Maintained Release suites passed **588/588**, **0 failed / 0 skipped**: Core **311**, Windows Agent **163**, Server **114**. The full Release solution build completed with **0 errors** and five pre-existing Core test/analyzer warnings. Package/assembly/file version verification passed at **1.0.96 / 1.0.96.0**.
+- This source verification does not replace or restart the currently running Agent. Install/restart the 1.0.96 Desktop package before expecting the local Tool permissions count and dynamic rows to reflect the fix.
+
 ## 1.0.90 Tool Catalog lifecycle - executed verification (2026-09-26)
 
 - Implemented union-of-manifests catalog reconciliation at startup and on Agent/device/user lifecycle changes. Current capabilities retain policy, newly observed capabilities receive `Auto`, and duplicate, retired or no-longer-advertised rows are deleted. The retired registry covers all legacy filesystem mutation, shell, process-job and public `computer.*` IDs replaced in 1.0.89; runtime device/MCP/task views apply the same filter.

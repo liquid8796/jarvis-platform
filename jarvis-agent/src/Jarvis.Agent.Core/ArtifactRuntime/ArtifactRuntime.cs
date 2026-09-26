@@ -495,6 +495,7 @@ public static class ArtifactRenderer
 /// <summary>Tool facade for durable artifact creation, optimistic editing and isolated rendering.</summary>
 public sealed class ArtifactRuntimeToolSet : IDisposable
 {
+    private static readonly string[] Operations = ["create", "update", "get", "list", "show", "delete"];
     private readonly SqliteArtifactRuntimeStore _store;
     private readonly Func<WidgetArtifact, CancellationToken, Task>? _show;
 
@@ -506,27 +507,14 @@ public sealed class ArtifactRuntimeToolSet : IDisposable
         _show = show;
     }
 
-    public IEnumerable<IAgentTool> Tools =>
-    [
-        new Tool(this, "create"), new Tool(this, "update"), new Tool(this, "get"),
-        new Tool(this, "list"), new Tool(this, "show"), new Tool(this, "delete")
-    ];
+    public IEnumerable<IAgentTool> Tools => Operations.Select(operation => (IAgentTool)new Tool(this, operation));
+    public static IReadOnlyList<ToolDescriptor> Descriptors => Operations.Select(DescriptorFor).ToArray();
 
     public void Dispose() => _store.Dispose();
 
     private sealed class Tool(ArtifactRuntimeToolSet owner, string operation) : IAgentTool
     {
-        public ToolDescriptor Descriptor => new("artifact." + operation, "artifact_" + operation, "artifact",
-            operation switch
-            {
-                "create" => "Create a durable session-owned HTML, Markdown, SVG, JSON, or text artifact, optionally showing it immediately.",
-                "update" => "Update a durable artifact using an expected revision so concurrent edits cannot be overwritten silently.",
-                "get" => "Read one durable artifact owned by this Jarvis session.",
-                "list" => "List bounded artifact metadata owned by this Jarvis session.",
-                "show" => "Render and display the current revision of a durable artifact in the local artifact host and return the widget.",
-                _ => "Soft-delete a durable artifact using an expected revision."
-            }, Schema(operation), operation is "get" or "list" or "show",
-            operation is "create" or "update" or "show" or "delete");
+        public ToolDescriptor Descriptor { get; } = DescriptorFor(operation);
 
         public async Task<ToolReply> ExecuteAsync(JsonElement args, AgentExecutionContext context, CancellationToken ct)
         {
@@ -631,7 +619,7 @@ public sealed class ArtifactRuntimeToolSet : IDisposable
             return text;
         }
 
-        private static JsonElement Schema(string op)
+        internal static JsonElement Schema(string op)
         {
             var id = new { type = "string", pattern = "^artifact_[a-f0-9]{32}$" };
             var common = new Dictionary<string, object>
@@ -656,4 +644,16 @@ public sealed class ArtifactRuntimeToolSet : IDisposable
             return WireJson.Element(schema);
         }
     }
+
+    private static ToolDescriptor DescriptorFor(string operation) => new("artifact." + operation, "artifact_" + operation, "artifact",
+            operation switch
+            {
+                "create" => "Create a durable session-owned HTML, Markdown, SVG, JSON, or text artifact, optionally showing it immediately.",
+                "update" => "Update a durable artifact using an expected revision so concurrent edits cannot be overwritten silently.",
+                "get" => "Read one durable artifact owned by this Jarvis session.",
+                "list" => "List bounded artifact metadata owned by this Jarvis session.",
+                "show" => "Render and display the current revision of a durable artifact in the local artifact host and return the widget.",
+                _ => "Soft-delete a durable artifact using an expected revision."
+            }, Tool.Schema(operation), operation is "get" or "list" or "show",
+            operation is "create" or "update" or "show" or "delete");
 }

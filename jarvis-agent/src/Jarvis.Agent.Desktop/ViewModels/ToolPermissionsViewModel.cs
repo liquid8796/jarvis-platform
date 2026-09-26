@@ -61,6 +61,7 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
 {
     private readonly ToolPermissionPolicy _policy;
     private readonly ToolPermissionStore _store;
+    private ToolPermissionSettings _savedSettings = new([], []);
     private string _search = "", _status = "", _error = "";
     public ObservableCollection<ToolPermissionItem> Items { get; }
     public ICollectionView FilteredTools { get; }
@@ -89,7 +90,7 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         FilteredTools.Filter = item => item is ToolPermissionItem tool &&
             (tool.Name.Contains(Search, StringComparison.OrdinalIgnoreCase) ||
              tool.Category.Contains(Search, StringComparison.OrdinalIgnoreCase) || tool.Id.Contains(Search, StringComparison.OrdinalIgnoreCase));
-        foreach (var row in Items) row.PropertyChanged += (_, _) => SelectionChanged();
+        foreach (var row in Items) row.PropertyChanged += ItemPropertyChanged;
         SelectAllCommand = new RelayCommand(() => SetAll(true));
         ClearAllCommand = new RelayCommand(() => SetAll(false));
         ResetCommand = new RelayCommand(Reset);
@@ -98,6 +99,7 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         {
             var installed = Items.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
             var settings = _store.LoadSettings();
+            _savedSettings = settings;
             _policy.Replace(settings.FullPermissionTools.Where(installed.Contains));
             _policy.ReplaceAlwaysApprovedConstrainedTools(settings.AlwaysApprovedConstrainedTools.Where(installed.Contains));
             Reset();
@@ -107,9 +109,43 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         {
             _policy.Replace([]);
             _policy.ReplaceAlwaysApprovedConstrainedTools([]);
+            _savedSettings = new([], []);
             Error = "Permissions were not loaded; no tools were preapproved. " + ex.Message;
         }
         _policy.PermissionsChanged += RefreshPermissionIndicators;
+    }
+    public void ReplaceDescriptors(IEnumerable<ToolDescriptor> descriptors)
+    {
+        ArgumentNullException.ThrowIfNull(descriptors);
+        var next = descriptors.DistinctBy(tool => tool.Id).OrderBy(tool => tool.Category)
+            .ThenBy(tool => tool.Name).ToArray();
+        var draft = Items.ToDictionary(item => item.Id, item => item.FullPermission, StringComparer.Ordinal);
+        var installed = next.Select(tool => tool.Id).ToHashSet(StringComparer.Ordinal);
+
+        _policy.Replace(_savedSettings.FullPermissionTools.Where(installed.Contains));
+        _policy.ReplaceAlwaysApprovedConstrainedTools(
+            _savedSettings.AlwaysApprovedConstrainedTools.Where(installed.Contains));
+
+        foreach (var item in Items) item.PropertyChanged -= ItemPropertyChanged;
+        Items.Clear();
+        foreach (var descriptor in next)
+        {
+            var item = new ToolPermissionItem(descriptor, RevokeAlwaysApproval)
+            {
+                FullPermission = draft.TryGetValue(descriptor.Id, out var selected)
+                    ? selected
+                    : _policy.HasFullPermission(descriptor.Id),
+                AlwaysApproved = _policy.HasAlwaysApprovedConstrainedTool(descriptor.Id)
+            };
+            item.PropertyChanged += ItemPropertyChanged;
+            Items.Add(item);
+        }
+
+        FilteredTools.Refresh();
+        Status = $"Tool catalog refreshed. {Items.Count} tools available; unsaved choices for retained tools were preserved.";
+        Error = "";
+        Changed(nameof(SavedSummary));
+        SelectionChanged();
     }
     private void SetAll(bool value)
     {
@@ -132,8 +168,10 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         try
         {
             var selected = Items.Where(i => i.FullPermission).Select(i => i.Id).ToArray();
+            var settings = new ToolPermissionSettings(selected, _policy.AlwaysApprovedConstrainedTools);
             // Persist first. A failed write must not leave an unsaved permission active in memory.
-            _store.Save(new ToolPermissionSettings(selected, _policy.AlwaysApprovedConstrainedTools));
+            _store.Save(settings);
+            _savedSettings = settings;
             _policy.Replace(selected);
             Error = "";
             Status = "Saved. Selected tools run without another Jarvis permission prompt while control is armed. Constrained process tools still require approval unless separately marked Always approved.";
@@ -146,8 +184,11 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         if (!item.SupportsAlwaysApproval || !_policy.HasAlwaysApprovedConstrainedTool(item.Id)) return;
         try
         {
-            var next = _policy.AlwaysApprovedConstrainedTools.Where(id => !StringComparer.Ordinal.Equals(id, item.Id)).ToArray();
-            _store.Save(new ToolPermissionSettings(_policy.FullPermissionTools, next));
+            var next = _savedSettings.AlwaysApprovedConstrainedTools
+                .Where(id => !StringComparer.Ordinal.Equals(id, item.Id)).ToArray();
+            var settings = new ToolPermissionSettings(_savedSettings.FullPermissionTools, next);
+            _store.Save(settings);
+            _savedSettings = settings;
             _policy.RevokeAlwaysApprovedConstrainedTool(item.Id);
             item.AlwaysApproved = false;
             Error = "";
@@ -161,6 +202,7 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         foreach (var item in Items) item.AlwaysApproved = _policy.HasAlwaysApprovedConstrainedTool(item.Id);
         Changed(nameof(SavedSummary));
     }
+    private void ItemPropertyChanged(object? sender, PropertyChangedEventArgs args) => SelectionChanged();
     private void SelectionChanged() { Changed(nameof(SelectionSummary)); Changed(nameof(HasChanges)); }
     private void Changed([CallerMemberName] string name = "") => PropertyChanged?.Invoke(this, new(name));
 }

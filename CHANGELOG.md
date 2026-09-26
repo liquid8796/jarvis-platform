@@ -1,3 +1,12 @@
+## 1.0.96 - 2026-09-26
+
+- Fix the Jarvis Agent Desktop Tool permissions inventory so it includes the six Artifact Runtime descriptors and 13 thread/automation/asynchronous-input descriptors that were already advertised by the runtime and MCP server.
+- Add descriptor-only projections for Artifact Runtime and Thread Interaction tools, allowing the offline settings page to show the complete catalog without starting an automation pump or opening duplicate mutable runtime services.
+- Subscribe the Desktop UI to the live `DynamicToolRegistry` after connect; refresh overview and permission rows on catalog changes while preserving unsaved choices for retained IDs and pruning removed IDs from active standing consent.
+- Add regressions for live runtime catalog replacement, exact descriptor/count parity, new capability visibility, draft preservation, metadata refresh, and removed-permission pruning.
+- Harden the long-running Session Tool REPL regression to accumulate incremental `wait` output instead of assuming the terminal poll contains every earlier streamed chunk.
+- Update Agent/operator documentation and bump package to **1.0.96**, assembly/file to **1.0.96.0**.
+
 ## 1.0.95 - 2026-09-26
 
 - Add `thread__list` and cursor-based `thread__wait` over the existing append-only thread journal. Wait is a read-only composite operation that returns bounded event pages, next cursor, timeout state, and does not consume a normal execution slot while polling.

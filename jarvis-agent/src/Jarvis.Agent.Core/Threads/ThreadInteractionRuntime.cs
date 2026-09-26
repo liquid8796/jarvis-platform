@@ -853,6 +853,12 @@ public sealed class SqliteThreadInteractionStore : IDisposable
 /// <summary>Public tools plus a local durable pump for thread events, queue automations and async input.</summary>
 public sealed class ThreadInteractionRuntimeToolSet : IDisposable
 {
+    private static readonly string[] Operations =
+    [
+        "thread_list", "thread_wait", "automation_create", "automation_update", "automation_get",
+        "automation_list", "automation_cancel", "automation_run_due", "async_input_request",
+        "async_input_respond", "async_input_wait", "async_input_list", "async_input_cancel"
+    ];
     private readonly SqliteThreadInteractionStore _store;
     private readonly CancellationTokenSource _stop = new();
     private readonly Task? _pump;
@@ -867,16 +873,10 @@ public sealed class ThreadInteractionRuntimeToolSet : IDisposable
         if (startPump) _pump = Task.Run(PumpAsync);
     }
 
-    public IEnumerable<IAgentTool> Tools =>
-    [
-        new Tool(this, "thread_list"), new WaitTool(this, "thread_wait"),
-        new Tool(this, "automation_create"), new Tool(this, "automation_update"),
-        new Tool(this, "automation_get"), new Tool(this, "automation_list"),
-        new Tool(this, "automation_cancel"), new Tool(this, "automation_run_due"),
-        new Tool(this, "async_input_request"), new Tool(this, "async_input_respond"),
-        new WaitTool(this, "async_input_wait"), new Tool(this, "async_input_list"),
-        new Tool(this, "async_input_cancel")
-    ];
+    public IEnumerable<IAgentTool> Tools => Operations.Select(operation => operation is "thread_wait" or "async_input_wait"
+        ? (IAgentTool)new WaitTool(this, operation)
+        : new Tool(this, operation));
+    public static IReadOnlyList<ToolDescriptor> Descriptors => Operations.Select(DescriptorFor).ToArray();
 
     public void CloseSession(AgentSessionIdentity identity) => _store.CloseSession(identity);
     public IReadOnlyList<ThreadAutomationRun> RunDueNow(DateTimeOffset now, int maxRuns = 100) =>
