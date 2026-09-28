@@ -22,7 +22,8 @@ public sealed class McpGateway(
     IHttpContextAccessor http,
     AgentTaskService tasks,
     McpSessionContext sessions,
-    DeviceToolCatalog deviceTools)
+    DeviceToolCatalog deviceTools,
+    ConnectionIdentityService identityService)
 {
     private HttpContext Http => http.HttpContext ?? throw new InvalidOperationException("MCP HTTP request required.");
 
@@ -43,6 +44,7 @@ public sealed class McpGateway(
             .Select(t => PublicTool(t.PublicDescriptor, t.PublicName, t.Description, scoped))
             .ToList();
         tools.AddRange(DynamicAgentToolGateway.List(scoped, sessions));
+        tools.AddRange(McpIdentityTools.List());
 
         // Session/workspace lifecycle tools are host bookkeeping and bypass administrator publication aliases.
         if (scoped)
@@ -92,6 +94,27 @@ public sealed class McpGateway(
     public async Task<CallToolResult> CallAsync(CallToolRequestParams request, CancellationToken ct)
     {
         var (user, device) = await CurrentAccess.RequireMcpAsync(Http, db, ct);
+        // Gateway-owned identity must work before Agent discovery and session extraction, including
+        // at connection time with a paused/offline Agent. Only the validated OAuth binding is used.
+        if (ConnectionIdentityToolNames.IsReserved(request.Name))
+        {
+            if (request.Arguments is { Count: > 0 })
+            {
+                await audit.WriteAsync(new()
+                {
+                    UserId = user.Id, DeviceId = device.Id, Action = "tool." + request.Name,
+                    Outcome = "rejected:INVALID_ARGUMENTS", CorrelationId = Guid.NewGuid().ToString("N")
+                }, ct);
+                return McpIdentityTools.InvalidArguments();
+            }
+            var identity = await identityService.ReadAsync(user.Id, device.Id, ct);
+            await audit.WriteAsync(new()
+            {
+                UserId = user.Id, DeviceId = device.Id, Action = "tool." + request.Name,
+                Outcome = "completed", CorrelationId = Guid.NewGuid().ToString("N")
+            }, ct);
+            return McpIdentityTools.Result(request.Name, identity);
+        }
         var resolved = await deviceTools.ResolveAsync(user.Id, device.Id, ct);
         var capabilities = resolved.ToDictionary(t => t.Descriptor.Id, t => t.Descriptor, StringComparer.Ordinal);
         var scoped = capabilities.ContainsKey("session.open");

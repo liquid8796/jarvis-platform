@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.97
+# Jarvis Control - 1.0.98
+
+## Authenticated connection identity (1.0.98)
+
+The MCP server permanently publishes two read-only, empty-argument tools: `jarvis__profile` for standard OpenAI profile discovery and `jarvis__whoami` for detailed account/device/server identity. Both resolve only the current validated OAuth owner/device binding and work without an Agent connection, local Arm, or application session. No account/device/session selector is accepted, no Agent command is dispatched, and no credentials or other accounts/devices are returned.
+
+The designated profile uses `_meta["openai/profile"] = true`, a strict `id/name/email/nickname` output schema, and identical structured/JSON-text results. Its ID is the existing persisted enrollment UUID: ownership is immutable, reconnect/refresh/rename/token rotation preserve it, and a new enrollment receives a fresh ID. The diagnostic tool reports the enrolled device name (not an inferred Windows hostname), optional last-reported platform/Agent version, live connection status, account identity and server origin/version. Labels are display data, never routing authority. Reserved names cannot be impersonated through Agent manifests or publication aliases. See [API](docs/API.md). Package **1.0.98**, assembly/file **1.0.98.0**. Deploy the server and refresh client tool discovery; no Agent upgrade or OAuth grant rotation is required.
 
 ## Unity-prefixed MCP bridge names (1.0.97)
 

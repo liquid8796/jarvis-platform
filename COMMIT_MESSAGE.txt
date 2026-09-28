@@ -1,1 +1,1 @@
-fix(unity): prefix MCP bridge tool names
+feat(mcp): add OAuth-bound connection profile and identity tools

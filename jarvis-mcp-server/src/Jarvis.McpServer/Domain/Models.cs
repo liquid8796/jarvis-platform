@@ -37,7 +37,8 @@ public static class ToolPublicationRules
 {
     public static bool IsVisible(ToolPublicationMode mode) => mode != ToolPublicationMode.Hidden;
     public static bool IsReservedPublicName(string name) =>
-        RemoteTaskRules.IsReservedName(name) || AgentSessionRules.IsPublicTool(name) || DynamicAgentToolNames.IsReserved(name);
+        RemoteTaskRules.IsReservedName(name) || AgentSessionRules.IsPublicTool(name) ||
+        DynamicAgentToolNames.IsReserved(name) || ConnectionIdentityToolNames.IsReserved(name);
 }
 /// <summary>
 /// Server-side lifecycle rules for Agent capabilities that have been intentionally replaced.

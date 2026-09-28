@@ -1,5 +1,13 @@
 # OAuth and MCP integration - 1.0.21
 
+## Connection identity — 1.0.98
+
+Call `jarvis__profile` or `jarvis__whoami` with `{}`, without `_jarvis`. The server resolves the account and enrolled device from validated OAuth credentials, not a caller-supplied ID. Profile discovery uses `_meta["openai/profile"] = true`; details are in the [API identity contract](API.md#oauth-connection-profile-and-identity--1098). The persisted enrollment UUID survives reconnect, refresh and display changes. Two devices under one account remain separate profiles.
+
+The tools work with an offline or paused Agent and do not execute a local command. Invalid account/device/session arguments are rejected and audited without reflecting their values. Deploy server 1.0.98 and refresh client tool definitions to activate the feature; a source push alone does not update a running service. Profile metadata helps identify connections but is not a command to switch accounts automatically.
+
+Regression coverage also checks paused Agents, deleted accounts, malformed Agent catalog metadata, and rejection audit entries that omit supplied selectors and profile contents. Device platform/version/last-seen are stored observations, not a fresh hardware scan.
+
 ## ChatGPT plugin setup
 
 MCP URL: `https://jarvis-mcp.158.180.59.36.sslip.io/mcp` for the current OCI deployment.

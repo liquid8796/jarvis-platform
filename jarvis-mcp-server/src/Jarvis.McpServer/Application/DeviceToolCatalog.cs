@@ -11,7 +11,9 @@ public sealed record ResolvedDeviceTool(
     string Description,
     ToolPublicationMode PublicationMode)
 {
-    public bool Visible => ToolPublicationRules.IsVisible(PublicationMode);
+    public bool Visible => ToolPublicationRules.IsVisible(PublicationMode) &&
+        !ConnectionIdentityToolNames.IsReserved(PublicName) &&
+        !ConnectionIdentityToolNames.IsReserved(Descriptor.Id);
     public ToolDescriptor PublicDescriptor => Descriptor with { Name = PublicName, Description = Description };
 }
 

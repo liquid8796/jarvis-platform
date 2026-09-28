@@ -1,4 +1,12 @@
 # Build / test status
+## 1.0.98 authenticated connection identity - executed verification (2026-09-28)
+
+- Added server-owned `jarvis__profile` and `jarvis__whoami`, strict empty inputs, the OpenAI profile marker/schema and allowlisted account/device/server projections. Identity resolves only the validated OAuth owner/device and never dispatches an Agent command or requires an application session.
+- Focused identity regressions passed **20/20**, **0 failed / 0 skipped**. Coverage includes real OAuth consent/PKCE and refresh, stable reconnect/rename/token-rotation IDs, separate accounts/devices, re-enrollment, offline/unarmed/paused Agents, malformed Agent metadata, optional display fields, input rejection/audit redaction, revocation/deletion/ownership checks and reserved-name spoofing protection.
+- Full Release solution build passed with **0 warnings / 0 errors**. Maintained Release suites passed **615/615**, **0 failed / 0 skipped**: Core **311**, Windows Agent **163**, Server **141**. Source hashes remained unchanged throughout this full verification run. Version validation passed for package **1.0.98** and assembly/file **1.0.98.0**.
+- Receipts: `artifacts/verification/connection-identity-1.0.98/` contains `identity-final.trx`, all three full-suite TRX/log files, `build.log` and the verified source hash snapshot. The earlier wrong-owner fixture failure was corrected by supplying a real foreign-key owner; no production ownership check was relaxed.
+- This is source/build/integration-test verification, not a live ChatGPT multi-account UI acceptance or production deployment. The running Agent and OCI MCP service were not replaced or restarted. Deploy server 1.0.98 and refresh client tool definitions to activate these tools; older Agents and existing valid grants remain compatible.
+
 ## 1.0.97 Unity-prefixed MCP bridge names - executed verification (2026-09-26)
 
 - Updated all six Unity bridge public names to `unity_list_tools`, `unity_call_tool`, `unity_list_resources`, `unity_read_resource`, `unity_list_prompts`, and `unity_get_prompt` while retaining canonical `unity.*` capability IDs and local permission semantics.

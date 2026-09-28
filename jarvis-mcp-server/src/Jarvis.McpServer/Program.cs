@@ -82,6 +82,7 @@ builder.Services.AddControllersWithViews().AddJsonOptions(o => o.JsonSerializerO
 builder.Services.AddSingleton<McpToolCatalogChangeHub>();
 builder.Services.AddSingleton<ToolCatalogReconciler>();
 builder.Services.AddScoped<DeviceToolCatalog>();
+builder.Services.AddScoped<ConnectionIdentityService>();
 builder.Services.AddSingleton<WsAgentRouter>();
 builder.Services.AddSingleton<IAgentRouter>(s => s.GetRequiredService<WsAgentRouter>());
 builder.Services.AddSingleton<IAgentTaskRouter>(s => s.GetRequiredService<WsAgentRouter>());
@@ -138,7 +139,8 @@ app.Use(async (http, next) =>
             if (http.Response.StatusCode == 401) http.Response.Headers.WWWAuthenticate = "Bearer resource_metadata=\"" + settings.PublicOrigin + "/.well-known/oauth-protected-resource\"";
             return Task.CompletedTask;
         });
-    if (http.Request.Path.StartsWithSegments("/api") || http.Request.Path.StartsWithSegments("/connect")) http.Response.Headers.CacheControl = "no-store";
+    if (http.Request.Path.StartsWithSegments("/api") || http.Request.Path.StartsWithSegments("/connect") ||
+        http.Request.Path.StartsWithSegments("/mcp")) http.Response.Headers.CacheControl = "no-store";
     try { await next(); }
     catch (Exception ex) when (!http.Response.HasStarted && ex is ArgumentException or KeyNotFoundException or UnauthorizedAccessException or InvalidOperationException or DbUpdateException)
     {

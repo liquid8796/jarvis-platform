@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.WebUtilities;
 namespace Jarvis.Server.Tests;
 
-public sealed class OAuthFlowTests
+public sealed partial class OAuthFlowTests
 {
     private const string Resource = "https://jarvis.test/mcp";
     private const string Callback = "https://client.example/callback";
@@ -127,11 +127,15 @@ public sealed class OAuthFlowTests
         Assert.False(string.IsNullOrEmpty((await refresh.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("access_token").GetString()));
     }
 
-    private static async Task<ConsentFlow> ConsentAsync(HttpClient admin, HttpClient client)
+    private static async Task<ConsentFlow> ConsentAsync(HttpClient admin, HttpClient client, string? existingDeviceId = null)
     {
-        var enrollment = await admin.PostAsJsonAsync("/api/devices", new { name = "OAuth fixture" });
-        enrollment.EnsureSuccessStatusCode();
-        var device = await enrollment.Content.ReadFromJsonAsync<JsonElement>();
+        if (existingDeviceId is null)
+        {
+            var enrollment = await admin.PostAsJsonAsync("/api/devices", new { name = "OAuth fixture" });
+            enrollment.EnsureSuccessStatusCode();
+            var device = await enrollment.Content.ReadFromJsonAsync<JsonElement>();
+            existingDeviceId = device.GetProperty("deviceId").GetString()!;
+        }
         var discovery = await client.GetFromJsonAsync<JsonElement>("/.well-known/oauth-authorization-server");
         var registrationPath = new Uri(discovery.GetProperty("registration_endpoint").GetString()!).PathAndQuery;
         var advertisedScopes = string.Join(" ", discovery.GetProperty("scopes_supported").EnumerateArray().Select(s => s.GetString()));
@@ -173,7 +177,7 @@ public sealed class OAuthFlowTests
         // Simulate the browser's actual form submission, not a hand-built OAuth request.
         // Do not let the API CSRF header mask a missing hidden token regression.
         admin.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
-        form["deviceId"] = device.GetProperty("deviceId").GetString()!;
+        form["deviceId"] = existingDeviceId;
         form["decision"] = "allow";
         return new(WebUtility.HtmlDecode(action.Groups[1].Value), form, clientId, verifier);
     }

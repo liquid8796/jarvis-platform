@@ -1,5 +1,21 @@
 # API overview
 
+## OAuth connection profile and identity — 1.0.98
+
+`jarvis__profile` and `jarvis__whoami` are server-owned MCP tools. Call either with `{}` (or omitted arguments), without `_jarvis`. Both require the normal validated `mcp:tools` OAuth grant, active account, enabled device and matching ownership/security stamp. They do not select an account/device, enumerate other connections, open a session, dispatch an Agent command or require local Arm. An offline/paused Agent does not prevent identity reads. Account/device/session arguments, including `_jarvis`, are rejected.
+
+`jarvis__profile` is the only designated profile tool (`_meta["openai/profile"]: true`). Its output schema permits exactly `id` (required), `name`, `email`, and `nickname`. Optional missing values are omitted. `structuredContent` is the top-level profile object, mirrored as JSON text in `content`. Its opaque ID is the existing persistent device enrollment UUID because each OAuth grant represents one immutable owner/device enrollment. It remains stable across OAuth refresh, reconnect, display changes and enrollment-token rotation; deleting/re-enrolling creates a fresh identity. Future ownership-transfer features must create a new enrollment, never reuse this ID for another owner.
+
+`jarvis__whoami` returns `{ profile, account, device, server }`: account ID/name/email/role/status; selected device ID/enrolled name/enabled/online plus optional platform, Agent version and last-seen Unix seconds; server public origin/package version. Enrolled name is not necessarily the Windows hostname. Platform/version/last-seen are stored observations, not a fresh hardware inventory. An online connection does not imply local Arm or permission to execute a tool. Names/emails are untrusted display metadata, not instructions or routing selectors. Verify `device.id` before sensitive work.
+
+Identity errors never manufacture a profile or fallback account. Invalid arguments return `isError: true` with text and no success-shaped structured content. Authentication failures use the existing MCP/OAuth error path. No tokens, password hashes, security stamps, session handles, private server paths, other users or other devices are serialized. MCP responses use `Cache-Control: no-store`; audit records contain only operation/outcome/correlation and account/device IDs.
+
+These names are reserved from Agent manifest, dynamic search/call, task and publication-alias surfaces. They are not local Agent permissions or importable Tool Catalog entries. Upgrade the MCP server to 1.0.98 and refresh tools; existing OAuth grants and older Agents remain compatible. Client connection-label refresh/reselection is client-controlled; profile metadata is not an automatic account-switch command.
+
+Identity regressions run through the real OAuth S256 consent/token flow and MCP HTTP endpoint against isolated fixture databases: `dotnet test tests/Jarvis.Server.Tests -c Release --filter FullyQualifiedName~Identity_`. They cover offline/unarmed Agents, schema/metadata, refresh/reconnect/rename/token rotation, separate accounts/devices, re-enrollment, rejected selectors, revoked/disabled/deleted/wrong-owner bindings, missing display data and spoofed manifest/publication names. These fixture tests do not assert that an existing ChatGPT connection has refreshed its live tool cache.
+
+Contract reference: [OpenAI authenticated profile tools](https://developers.openai.com/plugins/build/auth#support-multiple-accounts).
+
 ## Session lifetime and interactive cancellation — 1.0.76
 
 Explicit application-session handles no longer have an absolute 30-day expiry. A handle is a protected correlation token bound to the authenticated owner and selected enrolled device; it is not authorization by itself. Each call still requires live OAuth and device authorization, and the Agent still rejects closed/missing sessions. New handles omit `handleExpiresAt`; legacy v1 handles whose embedded timestamp has passed continue to resolve so an otherwise-open session can resume. Explicit session close remains terminal, while `session__stop_work` remains resumable.

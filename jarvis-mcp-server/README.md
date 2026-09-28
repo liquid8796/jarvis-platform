@@ -1,6 +1,12 @@
 # jarvis-mcp-server
 
-See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.97**, assembly/file: **1.0.97.0**. Source publication and local packaging do not deploy or restart the live service.
+See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.98**, assembly/file: **1.0.98.0**. Source publication and local packaging do not deploy or restart the live service.
+
+## Connection profile and whoami (1.0.98)
+
+`jarvis__profile` is the designated authenticated OpenAI profile tool; `jarvis__whoami` provides a separate safe account/device/server diagnostic projection. Both accept only `{}`, need no application session/Agent connection/Arm, and use the validated OAuth owner/device binding rather than caller-supplied IDs. The profile ID is the persisted, non-reassignable device enrollment UUID. Detailed output and identity stability/security/refresh rules are documented in [API](../docs/API.md#oauth-connection-profile-and-identity--1098).
+
+These server-owned names are always advertised, reserved against Agent/policy collisions and excluded from local Agent/task/generic-call surfaces. Deploy only the server for this feature; older Agents and current grants remain compatible. Invalid identity arguments return a text-only MCP error rather than an invalid profile-shaped structured result; successful results carry identical structured and JSON-text objects.
 
 ## Unity public-name migration (1.0.97)
 
@@ -23,7 +29,7 @@ The generic fallback does not grant authority. Calls still pass device routing, 
 
 ## MCP output contracts (1.0.62)
 
-Every tool advertised by `tools/list` now includes an object-root `outputSchema`. Every tool-level result includes matching `structuredContent`, including validation, local permission and execution errors. HTTP/OAuth or JSON-RPC protocol failures remain protocol failures, not fabricated successful tool results.
+Every tool advertised by `tools/list` now includes an object-root `outputSchema`. Ordinary Agent tool-level results include matching `structuredContent`, including validation, local permission and execution errors. The strict server-owned identity tools added in 1.0.98 instead omit structured output on errors so a failed request cannot resemble an authenticated profile. HTTP/OAuth or JSON-RPC protocol failures remain protocol failures, not fabricated successful tool results.
 
 - Ordinary installed tools and `jarvis__tool_call` expose `{ "text": "...", "isError": false }`. `jarvis__tool_search` exposes a typed `{ "tools": [...] }` result. Text remains opaque; existing text blocks and image blocks stay in `content`. Image data is encoded through the SDK's `ImageContentBlock.FromBytes` factory and is not duplicated in structured output. Local widget HTML is not exposed.
 - `agent_task_create`, `agent_task_plan`, `agent_task_get` and `agent_task_cancel` expose the existing `RemoteTaskReply` with a typed task snapshot or error. A task whose status is FAILED can still be read successfully; only an operation-level error sets the MCP error flag.

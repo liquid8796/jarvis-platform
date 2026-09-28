@@ -1,3 +1,12 @@
+## 1.0.98 - 2026-09-28
+
+- Add server-owned `jarvis__profile` and `jarvis__whoami` tools scoped strictly to the validated OAuth account/device, callable without an Agent or application session.
+- Designate the profile with OpenAI metadata, a strict four-field output contract and stable persisted enrollment UUID; keep detailed account/device/server diagnostics separate.
+- Reject account/device/session arguments, reserve identity names against manifest/policy spoofing, project only safe fields and mark MCP responses no-store. Identity reads never execute Agent commands or expose credentials.
+- Add OAuth integration regressions for discovery/schema, offline identity, stable reconnect/refresh/rename identity, separate accounts/devices, input/auth rejection and reserved-name protection.
+- Update existing operator/API documentation; bump package to **1.0.98** and assembly/file to **1.0.98.0**.
+- Verify all **20** focused identity cases and **615** maintained Release tests; full solution build completes with zero warnings/errors. Record evidence and deployment boundaries in `docs/BUILD-STATUS.md`.
+
 ## 1.0.97 - 2026-09-26
 
 - Prefix all six Unity MCP bridge public names with `unity_` while retaining the existing canonical `unity.*` IDs and permission semantics.
