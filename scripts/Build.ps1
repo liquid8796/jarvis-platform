@@ -62,6 +62,15 @@ try {
       $componentName = if ($target[1] -eq 'desktop') { 'Desktop' } else { 'Cli' }
       & (Join-Path $PSScriptRoot 'Verify-AgentOutput.ps1') -OutputDirectory $targetOutput -Component $componentName -PublishedWinX64
     }
+    # Runtime installation is opt-in and side-by-side; never package a machine-specific venv or credentials.
+    $blenderSupport = Join-Path $agentOutput 'blender-support'
+    New-Item -ItemType Directory -Force -Path (Join-Path $blenderSupport 'blender') | Out-Null
+    foreach($script in @('Install-BlenderMcpRuntime.ps1','Configure-BlenderMcp.ps1','Start-BlenderMcp.ps1')) {
+      Copy-Item -LiteralPath (Join-Path $PSScriptRoot $script) -Destination $blenderSupport -Force
+    }
+    Get-ChildItem (Join-Path $PSScriptRoot 'blender') -File | Where-Object { $_.Extension -in '.py','.json' } |
+      Copy-Item -Destination (Join-Path $blenderSupport 'blender') -Force
+    Copy-Item -LiteralPath (Join-Path $root 'docs/BLENDER-UPSTREAM-PARITY.md') -Destination $blenderSupport -Force
         # Ship both real entry points, not standalone baseline host artifacts or secrets.
     # Required framework assemblies are not private configuration files.
     $frameworkPrivateAssemblies = @('System.Private.CoreLib.dll','System.Private.DataContractSerialization.dll',

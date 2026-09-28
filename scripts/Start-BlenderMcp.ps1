@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory=$true)][string]$BlenderExe,
     [Parameter(Mandatory=$true)][string]$AddonPath,
-    [ValidateRange(1,65535)][int]$Port = 9876
+    [ValidateRange(1,65535)][int]$Port = 9876,
+    [switch]$WaitForExit = $true
 )
 $ErrorActionPreference = 'Stop'
 $exe = (Resolve-Path -LiteralPath $BlenderExe).Path
@@ -34,4 +35,12 @@ if (-not $ready) {
     # Do not kill anything here: preserve the owned window/log for diagnosis, and never touch another Blender.
     throw "Dedicated Blender has not opened the expected loopback listener. PID $($process.Id), logs: $run"
 }
-[pscustomobject]@{ pid=$process.Id; host='127.0.0.1'; port=$Port; logDirectory=$run; factoryStartup=$true; autoexecDisabled=$true } | ConvertTo-Json -Compress
+[pscustomobject]@{ pid=$process.Id; host='127.0.0.1'; port=$Port; logDirectory=$run; factoryStartup=$true; autoexecDisabled=$true; launcherWaits=[bool]$WaitForExit } | ConvertTo-Json -Compress
+if ($WaitForExit) {
+    # Keep the owning exec session alive: a supervised launcher that exits can
+    # have its child process tree reaped by the host. Do not escape its job or
+    # create an unsupervised task/service to keep Blender running.
+    $process.WaitForExit()
+    $process.Refresh()
+    exit $process.ExitCode
+}

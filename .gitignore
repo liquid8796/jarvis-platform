@@ -12,3 +12,5 @@ artifacts/
 vm-ssh/
 .env
 *.user
+**/__pycache__/
+*.py[cod]

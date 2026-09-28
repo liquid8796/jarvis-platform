@@ -1,1 +1,1 @@
-feat(mcp): add OAuth-bound connection profile and identity tools
+feat(blender): close upstream capability parity and harden runtime bridge

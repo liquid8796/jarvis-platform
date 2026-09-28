@@ -49,12 +49,13 @@ public sealed class ToolPermissionsViewModelTests : IDisposable
             settingsRoot: _root, pluginDirectory: Path.Combine(_root, "plugins"));
         viewModel.ReplaceDescriptors(runtime.Connection.Descriptors);
 
-        Assert.Equal(102, runtime.Connection.Descriptors.Count);
+        Assert.Equal(103, runtime.Connection.Descriptors.Count);
         Assert.Equal(runtime.Connection.Descriptors.Count, viewModel.Items.Count);
         Assert.Equal(runtime.Connection.Descriptors.Select(tool => tool.Id).Order(),
             viewModel.Items.Select(item => item.Id).Order());
         Assert.Contains(viewModel.Items, item => item.Id == "artifact.create");
         Assert.Contains(viewModel.Items, item => item.Id == "async_input.request");
+        Assert.Contains(viewModel.Items, item => item.Id == "blender.get_capabilities");
         Assert.True(viewModel.Items.Single(item => item.Id == "thread.create").FullPermission);
         Assert.Contains(viewModel.Items.Count.ToString(), viewModel.Status, StringComparison.Ordinal);
     }

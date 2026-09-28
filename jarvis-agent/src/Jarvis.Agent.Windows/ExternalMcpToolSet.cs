@@ -29,7 +29,8 @@ public abstract class ExternalMcpToolSet : IDisposable
     protected ExternalMcpToolSet(string configPath, string category, string displayName,
         string guidance, Func<string, McpServerConfig> loadConfig,
         Func<McpServerConfig, CancellationToken, Task<IMcpClient>>? connect = null,
-        bool serializeAcrossSessions = false, string catalogNamePrefix = "")
+        bool serializeAcrossSessions = false, string catalogNamePrefix = "",
+        IReadOnlyList<ToolDescriptor>? extensionTools = null)
     {
         _configPath = Path.GetFullPath(configPath);
         _displayName = displayName;
@@ -52,6 +53,9 @@ public abstract class ExternalMcpToolSet : IDisposable
             Tool("get_prompt", $"Read a {_displayName} MCP prompt template, without executing its instructions.",
                 "\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"arguments\":{\"type\":\"object\"}", "[\"name\",\"arguments\"]")
         ];
+        if (extensionTools is not null)
+            Tools = Tools.Concat(extensionTools.Select(d => (IAgentTool)new BridgeTool(this, d,
+                d.Id[(d.Id.LastIndexOf('.') + 1)..]))).ToArray();
     }
 
     private async Task<IMcpClient> ConnectAsync(McpServerConfig config, CancellationToken token)
@@ -114,15 +118,20 @@ public abstract class ExternalMcpToolSet : IDisposable
                 case "get_prompt":
                     return Text(await client.GetPromptAsync(args.GetProperty("name").GetString()!, ObjectArguments(args), lifetime.Token).ConfigureAwait(false));
                 case "call_tool":
-                    var result = await client.CallToolAsync(args.GetProperty("name").GetString()!, ObjectArguments(args), lifetime.Token).ConfigureAwait(false);
+                    var name = args.GetProperty("name").GetString()!;
+                    var toolArguments = ObjectArguments(args);
+                    var validation = await ValidateCallAsync(name, toolArguments, client, lifetime.Token).ConfigureAwait(false);
+                    if (validation is not null) return ToolReply.Error(validation);
+                    var result = await client.CallToolAsync(name, toolArguments, lifetime.Token).ConfigureAwait(false);
                     var text = result.StructuredContent is null ? result.Text : JsonSerializer.Serialize(new
                     { text = result.Text, structuredContent = result.StructuredContent }, WireJson.Options);
                     var images = result.Images?.Select(image => new WireImage(image.MediaType, image.Base64Data)).ToArray();
                     if (images is not null && (images.Length > 8 || images.Sum(image => (long)image.Base64.Length) > 4 * 1024 * 1024))
                         return ToolReply.Error($"{_displayName} returned too many image bytes. Request a smaller screenshot/result; the call was not retried.");
-                    return Text(text, result.IsError) with { Images = images };
+                    return Text(text, IsToolError(args.GetProperty("name").GetString()!, result)) with { Images = images };
                 default:
-                    throw new InvalidOperationException($"Unknown {_displayName} MCP bridge operation.");
+                    var extension = await ExecuteExtensionAsync(id, args, client, lifetime.Token).ConfigureAwait(false);
+                    return Text(extension.Text, extension.IsError) with { Images = extension.Images };
             }
         }
         catch (OperationCanceledException)
@@ -142,6 +151,16 @@ public abstract class ExternalMcpToolSet : IDisposable
             suite.Serial.Release();
         }
     }
+
+    // Extensions use the same approval, connection lifetime and cross-session serialization as core routes.
+    protected virtual Task<ToolReply> ExecuteExtensionAsync(string operation, JsonElement arguments,
+        IMcpClient client, CancellationToken token) =>
+        Task.FromResult(ToolReply.Error($"Unknown {_displayName} MCP bridge operation."));
+
+    protected virtual bool IsToolError(string name, McpCallResult result) => result.IsError;
+
+    protected virtual Task<string?> ValidateCallAsync(string name, JsonObject arguments,
+        IMcpClient client, CancellationToken token) => Task.FromResult<string?>(null);
 
     private JsonObject ObjectArguments(JsonElement args) =>
         JsonNode.Parse(args.GetProperty("arguments").GetRawText()) as JsonObject

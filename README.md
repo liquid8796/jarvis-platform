@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.98
+# Jarvis Control - 1.0.99
+
+## Blender upstream parity and diagnostics (1.0.99)
+
+Jarvis' managed Blender runtime is pinned to `mcp-for-blender 2.1.1`, commit `41a184322db3ccdcb2fdbc1f6994afe71bf9163c`: 36 downstream tools, including Poly Haven preview and the four Tripo lifecycle tools. Advanced Poly Haven search/import and Hunyuan quality support come from the reviewed upstream implementation rather than parallel copies. Tripo requires upstream Premium; installing or discovering a tool does not enable a subscription or spend credits.
+
+The new `blender_get_capabilities` bridge tool distinguishes catalog/schema parity from addon compatibility and untested provider readiness. Blender semantic errors propagate as errors without replaying mutations. Obsolete Poly Haven `categories` filters fail explicitly against the new schema. The side-by-side installer verifies an immutable archive hash, preserves the MIT license, keeps telemetry disabled, and never switches a live profile or reloads an open scene. The dedicated launcher waits by default so supervised exec sessions retain ownership of Blender. See [Blender integration and rollout](docs/BLENDER-UPSTREAM-PARITY.md). Existing server routing is unchanged; activation requires the new Agent plus a matched server/addon pair.
 
 ## Authenticated connection identity (1.0.98)
 

@@ -1,0 +1,12 @@
+{
+  "version": "2.1.1",
+  "commit": "41a184322db3ccdcb2fdbc1f6994afe71bf9163c",
+  "archive_url": "https://codeload.github.com/ahujasid/mcp-for-blender/zip/41a184322db3ccdcb2fdbc1f6994afe71bf9163c",
+  "archive_sha256": "fcc0815da3adf21e92906471ee1be615c099b91f0c03f5bb95c997411f26a1db",
+  "addon_sha256": "d224965b72ecc2dc646156b85060bfc7befd08a959ff638e149e81e59c8cd701",
+  "addon_protocol": 11,
+  "tool_count": 36,
+  "policy_revision": 1,
+  "license": "MIT",
+  "reviewed_utc": "2026-09-28"
+}

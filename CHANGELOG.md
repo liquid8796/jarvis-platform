@@ -1,3 +1,12 @@
+## 1.0.99 - 2026-09-28
+
+- Pin the optional managed Blender runtime to `mcp-for-blender 2.1.1` at reviewed commit `41a184322db3ccdcb2fdbc1f6994afe71bf9163c`, expanding downstream discovery from 31 to 36 tools. Add Poly Haven preview and Tripo status/generate/poll/import; retain upstream advanced search, native .blend import, texture scaling and Hunyuan quality support.
+- Add `blender_get_capabilities` with separate catalog, schema, addon and provider-readiness states. Preserve local approval, cross-session serialization, cancellation and bounded output; no paid provider calls are made by diagnostics.
+- Normalize Blender string/JSON semantic errors without retrying mutations or changing Unity behavior. Reject the obsolete Poly Haven `categories` argument when the live schema no longer accepts it.
+- Add side-by-side hash-verified installation, a runtime receipt, resolved dependency inventory, MIT attribution and hash-gated privacy patches. Environment opt-out avoids consent prompts, persistent telemetry identity and sender startup. Leave shared configuration and active scenes unchanged during staging.
+- Keep dedicated Blender launchers alive by default under supervised execution. Extend the real stdio/Blender smoke and offline regression coverage. Ship Blender support scripts with Agent packages.
+- Bump package to **1.0.99** and assembly/file to **1.0.99.0**. Deployment and paid-provider verification remain separate from build/test completion.
+
 ## 1.0.98 - 2026-09-28
 
 - Add server-owned `jarvis__profile` and `jarvis__whoami` tools scoped strictly to the validated OAuth account/device, callable without an Agent or application session.

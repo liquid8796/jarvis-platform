@@ -139,7 +139,7 @@ public sealed class BlenderMcpTests : IDisposable
     {
         using var blender = new BlenderMcpToolSet(ConfigPath);
         using var unity = new UnityMcpToolSet(ConfigPath);
-        Assert.Equal(6, blender.Tools.Count);
+        Assert.Equal(7, blender.Tools.Count);
         foreach (var tool in blender.Tools)
         {
             Assert.Equal("blender", tool.Descriptor.Category);
@@ -148,9 +148,9 @@ public sealed class BlenderMcpTests : IDisposable
             Assert.Contains("Safe Mode", tool.Descriptor.Description);
             SchemaGuard.Compile(tool.Descriptor.InputSchema);
         }
-        Assert.Equal(12, blender.Tools.Concat(unity.Tools).Select(t => t.Descriptor.Id).Distinct().Count());
+        Assert.Equal(13, blender.Tools.Concat(unity.Tools).Select(t => t.Descriptor.Id).Distinct().Count());
         // The gateway catalog has globally unique Name values, not (Category, Name).
-        Assert.Equal(12, blender.Tools.Concat(unity.Tools).Select(t => t.Descriptor.Name).Distinct().Count());
+        Assert.Equal(13, blender.Tools.Concat(unity.Tools).Select(t => t.Descriptor.Name).Distinct().Count());
         Assert.All(blender.Tools, t => Assert.StartsWith("blender_", t.Descriptor.Name));
         Assert.All(unity.Tools, t => Assert.StartsWith("unity_", t.Descriptor.Name));
         _ = new DynamicToolRegistry(blender.Tools.Concat(unity.Tools));
@@ -255,6 +255,90 @@ public sealed class BlenderMcpTests : IDisposable
         Assert.Equal("prompt:inspect", (await Invoke(set, "get_prompt", new { name = "inspect", arguments = new { } })).Text);
     }
 
+    [Theory]
+    [InlineData("Error: no object", true)]
+    [InlineData("Error generating model: provider error", true)]
+    [InlineData("Failed to download asset: missing", true)]
+    [InlineData("Rejected by safe mode: import subprocess", true)]
+    [InlineData("{\"error\":\"quota exhausted\",\"code\":\"QUOTA_EXHAUSTED\"}", true)]
+    [InlineData("{\"success\":false}", true)]
+    [InlineData("{\"succeed\":false}", true)]
+    [InlineData("{\"Response\":{\"Error\":{\"Code\":\"invalid\"}}}", true)]
+    [InlineData("{\"status\":\"FAILED\"}", true)]
+    [InlineData("{\"status\":\"IN_PROGRESS\"}", false)]
+    [InlineData("{\"error\":null,\"success\":true}", false)]
+    [InlineData("{\"objects\":[{\"error\":\"user property\"}]}", false)]
+    [InlineData("Code executed successfully: Error: user printed this", false)]
+    [InlineData("PolyHaven integration is disabled.", false)]
+    public async Task Semantic_errors_preserve_text_without_replaying(string text, bool isError)
+    {
+        Save(); var fake = new FakeClient { Result = new(text, false) };
+        using var set = new BlenderMcpToolSet(ConfigPath, (_, _) => Task.FromResult<IMcpClient>(fake));
+        var reply = await Invoke(set, "call_tool", new { name = "execute_blender_code", arguments = new { code = "pass" } });
+        Assert.Equal(isError, reply.IsError); Assert.Equal(text, reply.Text); Assert.Equal(1, fake.Calls);
+    }
+
+    [Fact]
+    public void Structured_envelopes_and_premium_unavailability_are_classified_without_affecting_status_queries()
+    {
+        Assert.True(BlenderMcpResult.IsError("export_scene", new("", false) { StructuredContent = new JsonObject { ["result"] = new JsonObject { ["success"] = false } } }));
+        Assert.True(BlenderMcpResult.IsError("execute_blender_code", new("", false) { StructuredContent = new JsonObject { ["result"] = "Error: blocked" } }));
+        var unavailable = new McpCallResult("Tripo is only available with MCP for Blender Premium.", false);
+        Assert.False(BlenderMcpResult.IsError("get_tripo_status", unavailable));
+        Assert.True(BlenderMcpResult.IsError("generate_tripo_model", unavailable));
+        Assert.Equal(11, BlenderMcpResult.ParseObjectPrefix("{\"protocol_version\":11}\n\nOptional guidance")!["protocol_version"]!.GetValue<int>());
+        Assert.Null(BlenderMcpResult.ParseObjectPrefix("not json"));
+        Assert.Null(BlenderMcpResult.ParseObjectPrefix("{" + new string(' ', 512 * 1024)));
+    }
+
+    private static IReadOnlyList<McpToolDescriptor> FullCatalog() => BlenderMcpCapabilities.Groups.Values.SelectMany(x => x)
+        .Select(name => new McpToolDescriptor(name, "test", new JsonObject { ["type"] = "object", ["properties"] = new JsonObject
+        { ["query"] = new JsonObject(), ["category"] = new JsonObject(), ["attributes"] = new JsonObject(),
+          ["min_size_m"] = new JsonObject(), ["limit"] = new JsonObject(), ["quality"] = new JsonObject() } })).ToArray();
+
+    [Fact]
+    public async Task Capability_discovery_does_not_probe_or_claim_provider_readiness()
+    {
+        Save(); var fake = new FakeClient();
+        using var set = new BlenderMcpToolSet(ConfigPath, (_, _) => Task.FromResult<IMcpClient>(fake));
+        var report = JsonNode.Parse((await Invoke(set, "get_capabilities")).Text)!;
+        Assert.False(report["catalogParity"]!.GetValue<bool>());
+        Assert.Equal(36, report["expectedToolCount"]!.GetValue<int>());
+        Assert.Equal("not_probed", report["addonState"]!.GetValue<string>());
+        Assert.Contains("get_polyhaven_asset_preview", report["missingTools"]!.ToJsonString());
+        Assert.Equal(0, fake.Calls);
+    }
+
+    [Theory]
+    [InlineData("{\"source\":\"native\",\"up_to_date\":true,\"protocol_version\":11,\"telemetry_consent\":false}\nGuidance", "compatible")]
+    [InlineData("{\"source\":\"native\",\"up_to_date\":false}", "upgrade_required")]
+    [InlineData("{\"source\":\"native\",\"up_to_date\":true,\"protocol_version\":7}", "upgrade_required")]
+    [InlineData("{\"source\":\"native\",\"up_to_date\":true}", "unverified")]
+    [InlineData("{\"source\":\"native\",\"up_to_date\":\"true\",\"protocol_version\":11}", "unverified")]
+    [InlineData("{\"source\":\"missing\"}", "unverified")]
+    [InlineData("Error: not connected", "unavailable")]
+    public async Task Capability_probe_distinguishes_catalog_and_addon_state(string status, string state)
+    {
+        Save(); var fake = new FakeClient { Catalog = FullCatalog(), Result = new(status, false) };
+        using var set = new BlenderMcpToolSet(ConfigPath, (_, _) => Task.FromResult<IMcpClient>(fake));
+        var report = JsonNode.Parse((await Invoke(set, "get_capabilities", new { probeAddon = true })).Text)!;
+        Assert.True(report["catalogParity"]!.GetValue<bool>());
+        Assert.True(report["schemaFeatures"]!["advancedPolyhaven"]!.GetValue<bool>());
+        Assert.Equal(state, report["addonState"]!.GetValue<string>());
+        Assert.Equal(1, fake.Calls); Assert.Equal("get_addon_status", fake.LastName);
+    }
+
+    [Fact]
+    public async Task Obsolete_polyhaven_filter_is_not_silently_discarded()
+    {
+        Save(); var fake = new FakeClient { Catalog = FullCatalog() };
+        using var set = new BlenderMcpToolSet(ConfigPath, (_, _) => Task.FromResult<IMcpClient>(fake));
+        var reply = await Invoke(set, "call_tool", new { name = "search_polyhaven_assets", arguments = new { categories = "wood" } });
+        Assert.True(reply.IsError); Assert.Contains("not sent", reply.Text); Assert.Equal(0, fake.Calls);
+        reply = await Invoke(set, "call_tool", new { name = "search_polyhaven_assets", arguments = new { query = "wood" } });
+        Assert.False(reply.IsError); Assert.Equal(1, fake.Calls);
+    }
+
     private sealed class FakeClient : IMcpClient
     {
         public string ServerName => "blender";
@@ -265,11 +349,12 @@ public sealed class BlenderMcpTests : IDisposable
         public McpCallResult Result { get; init; } = new("ok", false);
         public Exception? Failure { get; init; }
         public bool Block { get; init; }
+        public IReadOnlyList<McpToolDescriptor>? Catalog { get; init; }
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ValueTask DisposeAsync() { Disposed = true; return ValueTask.CompletedTask; }
         public Task<IReadOnlyList<McpToolDescriptor>> ListToolsAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<McpToolDescriptor>>(
-            [new("get_scene_info", "inspect scene", new JsonObject { ["type"] = "object" }), new("execute_blender_code", "code", new JsonObject { ["type"] = "object" })]);
+            Catalog ?? [new("get_scene_info", "inspect scene", new JsonObject { ["type"] = "object" }), new("execute_blender_code", "code", new JsonObject { ["type"] = "object" })]);
         public Task<IReadOnlyList<McpResourceDescriptor>> ListResourcesAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<McpResourceDescriptor>>([new("blender://scene", "scene", null, "application/json")]);
         public Task<string> ReadResourceAsync(string uri, CancellationToken ct) => Task.FromResult("resource:" + uri);
         public Task<IReadOnlyList<McpPromptDescriptor>> ListPromptsAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<McpPromptDescriptor>>([new("inspect", null, [])]);
