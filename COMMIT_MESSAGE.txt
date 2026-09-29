@@ -1,1 +1,1 @@
-fix(agent): harden process termination and audit redaction
+fix(browser): restore automatic extension reconnect

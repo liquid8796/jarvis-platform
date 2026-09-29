@@ -9,9 +9,12 @@ const HOST = "com.jarvis.agent.browser";
 const NATIVE_HOST_PROTOCOL_VERSION = 2;
 const BROWSER_PROTOCOL_VERSION = 2;
 const EXTENSION_INSTANCE_STORAGE = "jarvis.extensionInstanceId.v1";
+const NATIVE_RECONNECT_ALARM = "jarvis.nativeReconnect.v1";
 const EXTENSION_CAPABILITIES = ["application-sessions-v1", "tab-ownership-v1", "cdp-v1", "browser-family-v1", "imagegen-v1"];
 let port = null;
 let reconnectDelay = 1000;
+let reconnectTimer = null;
+let connecting = false;
 let extensionInstancePromise = null;
 
 async function extensionInstanceId() {
@@ -26,15 +29,21 @@ async function extensionInstanceId() {
 }
 
 function connect() {
+  if (port || connecting) return;
+  connecting = true;
+  let candidate;
   try {
-    port = chrome.runtime.connectNative(HOST);
+    candidate = chrome.runtime.connectNative(HOST);
   } catch (e) {
+    connecting = false;
     schedule();
     return;
   }
-  reconnectDelay = 1000;
-  port.onMessage.addListener(onRequest);
-  port.onDisconnect.addListener(() => {
+  port = candidate;
+  connecting = false;
+  candidate.onMessage.addListener(onRequest);
+  candidate.onDisconnect.addListener(() => {
+    if (port !== candidate) return;
     port = null;
     // Nothing is driving these pages any more; leaving a glow up would lie.
     clearIndicators("off").catch(() => {});
@@ -50,7 +59,7 @@ function connect() {
     capabilities: EXTENSION_CAPABILITIES,
     extensionInstanceId: instanceId,
     applicationSessions: true
-  })).catch(() => port?.disconnect());
+  }, candidate) ? connected() : candidate.disconnect()).catch(() => candidate.disconnect());
 }
 
 // Which Chromium this is, so the app can tell several connected browsers apart.
@@ -66,15 +75,57 @@ function browserName() {
 }
 
 function schedule() {
-  setTimeout(connect, reconnectDelay);
+  if (port || connecting) return;
+  if (reconnectTimer === null) {
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connect();
+    }, reconnectDelay);
+  }
+  // MV3 service workers can be suspended before an in-memory timer fires. A repeating
+  // browser alarm is the durable wake-up path when the Agent starts after Chrome.
+  try {
+    const alarm = chrome.alarms?.create(NATIVE_RECONNECT_ALARM, { delayInMinutes: 0.5, periodInMinutes: 0.5 });
+    if (alarm && typeof alarm.catch === "function") alarm.catch(() => {});
+  } catch (e) { /* immediate retry remains available when alarms are unavailable */ }
   reconnectDelay = Math.min(reconnectDelay * 2, 30000);
 }
 
-function post(message) {
-  if (port) {
-    try { port.postMessage(message); } catch (e) { /* port died; reconnect fires */ }
+function connected() {
+  reconnectDelay = 1000;
+  if (reconnectTimer !== null) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  try {
+    const cleared = chrome.alarms?.clear(NATIVE_RECONNECT_ALARM);
+    if (cleared && typeof cleared.catch === "function") cleared.catch(() => {});
+  } catch (e) { /* retry alarm cleanup is best-effort */ }
+}
+
+function post(message, target = port) {
+  if (!target || target !== port) return false;
+  try { target.postMessage(message); return true; }
+  catch (e) {
+    if (port === target) {
+      port = null;
+      try { target.disconnect(); } catch (disconnectError) { /* already disconnected */ }
+      schedule();
+    }
+    return false;
   }
 }
+
+chrome.alarms?.onAlarm.addListener(alarm => {
+  if (alarm.name !== NATIVE_RECONNECT_ALARM) return;
+  if (reconnectTimer !== null) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  connect();
+});
+chrome.runtime.onStartup?.addListener(() => { reconnectDelay = 1000; connect(); });
+chrome.runtime.onInstalled?.addListener(() => { reconnectDelay = 1000; connect(); });
 
 // Application identity comes from the authenticated native host envelope, never page/tool arguments.
 const sessionStates = new Map();

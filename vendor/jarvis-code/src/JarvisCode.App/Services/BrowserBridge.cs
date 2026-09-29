@@ -93,6 +93,7 @@ public sealed class BrowserBridge : IDisposable
     }
 
     private readonly string _pipeName;
+    private readonly Func<string, NamedPipeServerStream> _serverFactory;
     private readonly CancellationTokenSource _cts = new();
     private readonly ConcurrentDictionary<string, (Connection Connection, TaskCompletionSource<JsonObject> Waiter)> _pending = new();
     private readonly SemaphoreSlim _writeLock = new(1, 1);
@@ -158,15 +159,17 @@ public sealed class BrowserBridge : IDisposable
     public event Action? StopRequested;
     internal event Action<string?>? ClientStopRequested;
 
-    public BrowserBridge(string? pipeName = null)
+    public BrowserBridge(string? pipeName = null, Func<string, NamedPipeServerStream>? serverFactory = null)
     {
         _pipeName = pipeName ?? PipeName;
+        _serverFactory = serverFactory ?? CreateDefaultServer;
         _ = Task.Run(AcceptLoopAsync);
     }
 
     private BrowserBridge(BrowserBridgeClient remote)
     {
         _pipeName = "";
+        _serverFactory = CreateDefaultServer;
         _remote = remote;
         remote.StateChanged += () => StateChanged?.Invoke();
         remote.StopRequested += () => StopRequested?.Invoke();
@@ -252,9 +255,7 @@ public sealed class BrowserBridge : IDisposable
             NamedPipeServerStream server;
             try
             {
-                server = new NamedPipeServerStream(
-                    _pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                server = _serverFactory(_pipeName);
             }
             catch (IOException)
             {
@@ -281,6 +282,10 @@ public sealed class BrowserBridge : IDisposable
             _ = Task.Run(() => ServeConnectionAsync(server));
         }
     }
+
+    private static NamedPipeServerStream CreateDefaultServer(string pipeName) => new(
+        pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
+        PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
     private async Task ServeConnectionAsync(NamedPipeServerStream server)
     {

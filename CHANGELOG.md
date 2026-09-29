@@ -1,3 +1,11 @@
+## 1.0.102 - 2026-09-30
+
+- Upgrade Jarvis Agent Browser to **1.4.1** and keep native-host recovery alive across Manifest V3 service-worker suspension. A durable chrome.alarms wake-up now retries every 30 seconds while disconnected, with immediate in-memory retries plus browser startup/install wake paths.
+- Make native connection replacement race-safe: a stale port disconnect can no longer clear a newer connection, successful handshakes cancel pending retry state, failed native writes actively close the stale port, and failed ImageGen browser-binding delivery reports an error instead of claiming the selection was saved.
+- Fix Chrome/Edge detection when Jarvis Agent is running elevated. The browser service now creates the extension pipe with a current-user/SYSTEM-only DACL, rejects remote clients, and applies a medium mandatory-integrity label so Chromium's intentionally medium-integrity native host can connect without weakening user isolation.
+- Update ImageGen setup/status guidance and add deterministic shipping-extension regressions for manifest permissions, native disconnect, alarm wake-up, and reconnect. Bump package to **1.0.102** and assembly/file to **1.0.102.0**.
+- Verify all **656** maintained Release tests: Core 320, Windows Agent 195, Server 141; full solution build completes with zero warnings/errors and both self-contained Agent output validators pass.
+
 ## 1.0.101 - 2026-09-29
 
 - Make durable-process termination reporting truthful when Windows rejects a stop. Job-object termination failures are no longer ignored; an elevated root process that remains alive stays running and reports termination_unconfirmed instead of being marked complete.

@@ -1,4 +1,12 @@
-# Jarvis Agent - 1.0.101
+# Jarvis Agent - 1.0.102
+
+## Browser extension reconnect recovery (1.0.102)
+
+Jarvis Agent Browser **1.4.1** combines immediate native-host retries with a persistent Manifest V3 alarm. If Chrome/Edge is already open when the Agent starts, service-worker suspension can no longer discard the only reconnect timer; the alarm wakes the extension every 30 seconds until the Agent bridge accepts it. Startup/install events retry as well, and a stale disconnected port cannot overwrite a newer healthy connection.
+
+Elevated Agent operation is supported without opening the bridge to other users. A high-integrity Jarvis browser service now creates the extension-facing named pipe with access limited to SYSTEM and the current Windows user, rejects remote pipe clients, and applies a medium mandatory-integrity label. This allows Chrome/Edge's medium-integrity native host to connect when the Agent itself was started as Administrator; the service-control pipe and all browser session/ownership checks remain unchanged.
+
+Run **Set up browser integration** after installing this Agent build, then reload the unpacked extension once. The extension keeps the same stable ID and existing Chrome/Edge profile. ImageGen binding now reports a failed native delivery instead of saying the browser was selected when the bridge dropped mid-request. Package **1.0.102**, assembly/file **1.0.102.0**.
 
 ## Confirmed process stops and redacted audit failures (1.0.101)
 

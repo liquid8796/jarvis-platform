@@ -1,4 +1,12 @@
-# Jarvis Control - 1.0.101
+# Jarvis Control - 1.0.102
+
+## Automatic browser-extension reconnect (1.0.102)
+
+Jarvis Agent Browser **1.4.1** no longer depends on a Manifest V3 service worker keeping an ordinary JavaScript timer alive. When Chrome/Edge starts before Jarvis Agent, or the native host temporarily disappears, the extension uses a persistent browser alarm to wake and retry the native connection every 30 seconds while retaining fast in-memory retries. Browser startup and extension-update events also trigger reconnection. A stale native-port disconnect cannot clear a newer connection.
+
+Windows elevation is now handled explicitly. When Jarvis Agent is started as Administrator, the browser service runs at high integrity while Chrome deliberately launches native-messaging hosts at medium integrity. Older builds inherited a high-integrity label on the extension pipe, so Chromium received `Error when communicating with the native messaging host` even though the extension, registry manifest, executable path and Windows user were all correct. The extension pipe now remains restricted to SYSTEM and the current Windows user, rejects remote clients, and carries a medium mandatory-integrity label so the same user's Chrome/Edge native host can connect.
+
+After updating the Agent package, run browser integration setup once and reload the unpacked extension so Chrome reads manifest 1.4.1 and grants the non-warning alarms permission. The existing extension ID, profile, ChatGPT cookies, Downloads permission, browser binding, and native-host identity remain unchanged. Package **1.0.102**, assembly/file **1.0.102.0**.
 
 ## Process termination and audit hardening (1.0.101)
 

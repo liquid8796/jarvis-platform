@@ -12,19 +12,29 @@ const J = 'ig_' + 'c'.repeat(32), K = 'ig_' + 'd'.repeat(32);
 function browser() {
   const event = () => ({ listeners: [], addListener(fn) { this.listeners.push(fn); } });
   const local = {}, sessionStorage = {}, tabs = new Map(), groups = new Map(), replies = new Map(), downloads = new Map();
+  const reconnectAlarms = new Map(), nativePorts = [];
   const timerHandles = new Set();
   let context, requestId = 0, nextTab = 0, nextGroup = 0, nextDownload = 0;
-  const state = { accountHash: 'a'.repeat(64), sendClicks: 0, uploads: 0, downloaded: 0, stopped: 0,
+  const state = { accountHash: 'a'.repeat(64), sendClicks: 0, uploads: 0, downloaded: 0, stopped: 0, nativeConnects: 0, nativeDisconnects: 0,
+    nativePostError: false,
     namesReady: true, ready: true, userIds: [], imageKeys: ['assistant:https://chatgpt.com/backend-api/files/image'],
     href: 'https://chatgpt.com/backend-api/files/image/download', commands: [], boundRequests: [] };
   const store = target => ({ async get(key) { return { [key]: structuredClone(target[key]) }; },
     async set(value) { Object.assign(target, structuredClone(value)); } });
   const chrome = {
     runtime: { id: 'test-extension', getURL: name => 'chrome-extension://test-extension/' + name,
-      onMessage: event(), getManifest: () => ({ version: '1.4.0' }),
-      connectNative: () => ({ onMessage: event(), onDisconnect: event(), disconnect() {}, postMessage(m) {
-        if (m.id) replies.set(m.id, m); if (m.event === 'imagegen_bind_browser') state.boundRequests.push(m);
-      } }) },
+      onMessage: event(), onStartup: event(), onInstalled: event(), getManifest: () => ({ version: '1.4.1' }),
+      connectNative: () => {
+        state.nativeConnects++;
+        const nativePort = { onMessage: event(), onDisconnect: event(),
+          disconnect() { state.nativeDisconnects++; for (const fn of nativePort.onDisconnect.listeners) fn(); }, postMessage(m) {
+            if (state.nativePostError) throw Error('Synthetic native disconnect');
+            if (m.id) replies.set(m.id, m); if (m.event === 'imagegen_bind_browser') state.boundRequests.push(m);
+          } };
+        nativePorts.push(nativePort); return nativePort;
+      } },
+    alarms: { onAlarm: event(), create(name, options) { reconnectAlarms.set(name, structuredClone(options)); },
+      async clear(name) { return reconnectAlarms.delete(name); } },
     storage: { local: store(local), session: store(sessionStorage) },
     tabs: { onRemoved: event(),
       async create(o) { const t = { id: ++nextTab, groupId: -1, status: 'complete', windowId: o.windowId || 7, url: o.url, title: 'Fixture', active: o.active !== false }; tabs.set(t.id, t); return { ...t }; },
@@ -78,6 +88,9 @@ function browser() {
   };
   function reload() {
     chrome.runtime.onMessage.listeners.length = 0;
+    chrome.runtime.onStartup.listeners.length = 0;
+    chrome.runtime.onInstalled.listeners.length = 0;
+    chrome.alarms.onAlarm.listeners.length = 0;
     chrome.downloads.onCreated.listeners.length = 0;
     chrome.downloads.onDeterminingFilename.listeners.length = 0;
     context = vm.createContext({ chrome, navigator: { userAgent: 'Chrome/150' }, console, URL, crypto: webcrypto,
@@ -109,9 +122,35 @@ function browser() {
     let result; for (let i = 0; i < 3; i++) result = await call(sessionId, 'imagegen_poll', { jobId });
     assert.equal(result.ready, true); return result;
   }
+  async function fireAlarm(name) {
+    for (const fn of chrome.alarms.onAlarm.listeners) await fn({ name });
+    await new Promise(resolve => setImmediate(resolve));
+  }
   return { call, config, prepare, generate, state, tabs, downloads, reload, chrome, local,
-    context: () => context, dispose: () => timerHandles.forEach(clearTimeout) };
+    reconnectAlarms, nativePorts, fireAlarm, context: () => context,
+    dispose: () => timerHandles.forEach(clearTimeout) };
 }
+
+test('shipping manifest declares durable native reconnect support', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(base, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.version, '1.4.1');
+  assert.ok(manifest.permissions.includes('alarms'));
+});
+
+test('native disconnect schedules an alarm and an alarm wake reconnects', async t => {
+  const b = browser(); t.after(b.dispose);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(b.state.nativeConnects, 1);
+  const stalePort = b.nativePorts.at(-1);
+  stalePort.disconnect();
+  assert.ok(b.reconnectAlarms.has('jarvis.nativeReconnect.v1'));
+  await b.fireAlarm('jarvis.nativeReconnect.v1');
+  assert.equal(b.state.nativeConnects, 2);
+  assert.equal(b.reconnectAlarms.has('jarvis.nativeReconnect.v1'), false);
+  stalePort.disconnect();
+  assert.equal(b.state.nativeConnects, 2);
+  assert.equal(b.reconnectAlarms.has('jarvis.nativeReconnect.v1'), false);
+});
 
 test('new image uses inactive tab in existing window and returns only verified download metadata', async t => {
   const b = browser(); t.after(b.dispose); await b.generate();
@@ -175,6 +214,13 @@ test('popup configuration is local-only and cannot be requested by a web page', 
   const b = browser(); t.after(b.dispose);
   assert.match((await b.config('bind', {}, true)).error, /restricted/); assert.equal(b.state.boundRequests.length, 0);
   assert.equal((await b.config('bind')).requested, true); assert.equal(b.state.boundRequests.length, 1);
+});
+test('popup does not claim a browser binding after native delivery fails', async t => {
+  const b = browser(); t.after(b.dispose); await new Promise(resolve => setImmediate(resolve));
+  const disconnectsBefore = b.state.nativeDisconnects; b.state.nativePostError = true;
+  const result = await b.config('bind');
+  assert.match(result.error, /disconnected/i); assert.equal(b.state.boundRequests.length, 0);
+  assert.equal(b.state.nativeDisconnects, disconnectsBefore + 1); assert.ok(b.reconnectAlarms.has('jarvis.nativeReconnect.v1'));
 });
 test('explicitly adopted image-only tab survives session close', async t => {
   const b = browser(); t.after(b.dispose); await b.call(A, 'imagegen_state');

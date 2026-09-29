@@ -7,6 +7,7 @@
   <ItemGroup>
     <Using Remove="System.Drawing" />
     <Using Remove="System.Windows.Forms" />
+    <InternalsVisibleTo Include="Jarvis.Agent.Windows.Tests" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Jarvis.Agent.Core/Jarvis.Agent.Core.csproj" />

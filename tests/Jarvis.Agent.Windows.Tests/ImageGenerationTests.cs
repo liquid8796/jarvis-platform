@@ -120,6 +120,15 @@ public sealed class ImageGenerationTests : IDisposable
         Assert.Equal(vm.SelectedBrowser.InstanceId, new ImageGenBrowserBindingStore(_root).Read()!.ExtensionInstanceId);
         vm.ClearCommand.Execute(null); Assert.Null(new ImageGenBrowserBindingStore(_root).Read());
     }
+    [Fact]
+    public async Task DesktopSettingsExplainAutomaticReconnectWhenNoExtensionIsReady()
+    {
+        var vm = new ImageGenViewModel(_root, () => new Runtime());
+        await vm.RefreshAsync();
+        Assert.Empty(vm.Browsers);
+        Assert.Contains("1.4.1+", vm.Status, StringComparison.Ordinal);
+        Assert.Contains("automatic reconnect", vm.Status, StringComparison.OrdinalIgnoreCase);
+    }
     private static JsonObject Result(string path, long size) => new() { ["downloads"] = new JsonArray(new JsonObject
     { ["filename"] = path, ["state"] = "complete", ["downloadId"] = 7, ["fileSize"] = size }) };
     private static byte[] MakePng(int width, int height)

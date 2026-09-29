@@ -36,7 +36,7 @@ public sealed partial class BrowserServiceServer : IDisposable
     {
         _servicePipeName = servicePipeName;
         _root = root ?? AgentProfile.Root;
-        _bridge = new BrowserBridge(extensionPipeName);
+        _bridge = new BrowserBridge(extensionPipeName, BrowserIntegration.CreateExtensionPipeServer);
         _bridge.ApplicationStopRequested += OnApplicationStopRequested;
         _bridge.ImageGenerationBindingRequested += OnImageGenerationBindingRequested;
     }

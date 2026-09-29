@@ -1,3 +1,11 @@
+## 1.0.102 browser extension reconnect recovery
+
+Jarvis Agent Browser **1.4.1** persists native-host recovery through Manifest V3 worker suspension. Fast JavaScript-timer retries remain, but a chrome.alarms wake-up retries every 30 seconds until the local Agent browser service accepts the extension. Browser startup and extension install/update events also reconnect, and disconnect callbacks are tied to the exact port that raised them so an old port cannot clear a replacement connection.
+
+If the Agent is run as Administrator, Chrome's native-messaging host still starts at medium integrity. Version 1.0.102 creates only the extension-facing named pipe with a medium mandatory-integrity label while retaining a protected DACL for SYSTEM plus the current Windows user and rejecting remote clients. This removes the Windows MIC block that previously made an enabled extension appear disconnected under an elevated Agent; it does not grant another account access, lower the Agent process, or bypass browser session ownership.
+
+After installing Agent **1.0.102**, use Connection center's browser setup once and reload the unpacked extension. This refreshes the assets and manifest without changing its stable extension ID or importing cookies. Package **1.0.102**, assembly/file **1.0.102.0**.
+
 ## 1.0.101 process-stop truthfulness and audit redaction
 
 Durable process status is observation-based. For non-elevated launches, Jarvis checks the Windows Job Object termination result and continues monitoring descendants until the tree is gone. Elevated launches cannot be assigned to the medium-integrity Agent's Job Object; when Windows rejects Kill, process_stop returns state with termination_unconfirmed as true and the launch remains running until a later process_get observes its actual exit. Do not interpret a stop request as proof that an elevated application closed. If the Agent exits while Windows is rejecting termination, that elevated child can remain alive and must be verified or closed by the operator.

@@ -1,6 +1,6 @@
 # jarvis-mcp-server
 
-See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.98**, assembly/file: **1.0.98.0**. Source publication and local packaging do not deploy or restart the live service.
+See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.102**, assembly/file: **1.0.102.0**. Source publication and local packaging do not deploy or restart the live service. The 1.0.102 behavior change is Agent/extension-side and remains wire-compatible with server 1.0.101.
 
 ## Connection profile and whoami (1.0.98)
 

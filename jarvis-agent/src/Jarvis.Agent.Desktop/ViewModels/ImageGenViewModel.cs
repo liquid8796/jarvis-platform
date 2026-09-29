@@ -69,7 +69,7 @@ public sealed class ImageGenViewModel : INotifyPropertyChanged
             Browsers.Add(choice);
             if (choice.InstanceId == _binding?.ExtensionInstanceId) SelectedBrowser = choice;
         }
-        Status = Browsers.Count == 0 ? "No compatible extension is connected. Reload Jarvis Agent Browser 1.4.0+ in your existing Chrome/Edge profile and allow its Downloads permission."
+        Status = Browsers.Count == 0 ? "No compatible extension is connected. Install/reload Jarvis Agent Browser 1.4.1+ once, keep Downloads allowed, then wait up to 30 seconds for automatic reconnect."
             : _binding is null ? "Choose a browser below or click Use this browser in the Jarvis extension. New image tabs will stay in that browser."
             : SelectedBrowser is null ? "The saved browser is disconnected. Open the same profile; Jarvis will not select a replacement automatically."
             : "The selected browser is connected. ImageGen tools still require normal local approval and Arm control.";

@@ -11,8 +11,9 @@ function browser() {
   let tabId = 0, groupId = 0, requestId = 0;
   const event = () => ({ listeners: [], addListener(fn) { this.listeners.push(fn); } });
   const chrome = {
-    runtime: { onMessage: event(), getManifest: () => ({ version: 'test' }),
+    runtime: { onMessage: event(), onStartup: event(), onInstalled: event(), getManifest: () => ({ version: 'test' }),
       connectNative: () => ({ onMessage: event(), onDisconnect: event(), disconnect() {}, postMessage(m) { if (m.id) replies.set(m.id, m); } }) },
+    alarms: { onAlarm: event(), create() {}, async clear() { return true; } },
     storage: { local: {
       async get(key) { return { [key]: '12345678-1234-1234-1234-123456789abc' }; },
       async set() {}

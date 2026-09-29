@@ -291,8 +291,12 @@ globalThis.JarvisImageGen = (() => {
     }
     (async () => {
       await loaded; await sessionReady;
-      if (message.action === 'state') return { connected: !!port, browser: browserName(),
+      if (message.action === 'state') {
+        if (!port) connect();
+        return { connected: !!port, browser: browserName(),
         instanceId: await extensionInstanceId(), sessions: [...sessionStates.values()].filter(s => !s.closed).map(s => ({ id: s.id, imageTab: scopes.get(s.id)?.tabId || null })) };
+      }
+      if (!port) connect();
       if (!port) throw Error('Connect Jarvis Agent before choosing a browser.');
       if (!['Chrome', 'Edge'].includes(browserName())) throw Error('ImageGen supports Chrome or Edge.');
       if (message.action === 'adopt') {
@@ -307,7 +311,8 @@ globalThis.JarvisImageGen = (() => {
         await ensureGroup(tab.id, session);
         scopes.set(session.id, { sessionId: session.id, tabId: tab.id, conversationId: conv, adopted: true }); await persist();
       } else if (!['bind', 'unbind'].includes(message.action)) throw Error('Unknown configuration action.');
-      post({ event: 'imagegen_bind_browser', enabled: message.action !== 'unbind' });
+      if (!post({ event: 'imagegen_bind_browser', enabled: message.action !== 'unbind' }))
+        throw Error('Jarvis Agent disconnected before the browser selection could be saved. Wait for reconnect and try again.');
       return { requested: true, message: 'Selection sent to the local Agent. Refresh ImageGen settings to confirm.' };
     })().then(respond, e => respond({ error: e.message || 'Configuration failed.' }));
     return true;

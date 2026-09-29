@@ -1,6 +1,6 @@
 # ChatGPT Web ImageGen through the existing browser
 
-Applies to Jarvis Agent **1.0.87**, assembly/file **1.0.87.0**, and Jarvis Agent Browser extension **1.4.0**. This is an extension-backed integration, not Codex runtime parity and not a public OpenAI Image API client. Execution evidence and live acceptance scope are recorded in [BUILD-STATUS.md](BUILD-STATUS.md).
+Applies to Jarvis Agent **1.0.102**, assembly/file **1.0.102.0**, and Jarvis Agent Browser extension **1.4.1**. This is an extension-backed integration, not Codex runtime parity and not a public OpenAI Image API client. Execution evidence and live acceptance scope are recorded in [BUILD-STATUS.md](BUILD-STATUS.md).
 
 ## Architecture and boundaries
 
@@ -10,14 +10,20 @@ The ImageGen backend never constructs `ChatGptWebViewTransport`, launches a brow
 
 Native messaging still uses the small `jarvis-browser-host` relay and browser-service process; these are **not another browser**. No browser identity is inferred from the default/first active Chrome connection. A locally selected `extensionInstanceId` is stable across extension reconnects; temporary connection IDs are resolved afresh and never used as persistent identity. Missing or duplicate selected instances fail closed. Generic browser tools keep their previous routing behavior; ImageGen has a separate exact-instance route.
 
+On Windows, Chrome/Edge launches the native-messaging host at medium integrity even when Jarvis Agent itself is elevated. Agent 1.0.102 therefore gives only the extension-facing named pipe a medium mandatory-integrity label while keeping its DACL limited to SYSTEM and the current Windows user and rejecting remote clients. Older Agent builds could show **No compatible extension is connected** and log `Error when communicating with the native messaging host` when the Agent/browser service was high integrity; reinstalling the extension or changing profiles did not repair that Windows MIC mismatch.
+
 Chrome/Edge retains its normal authenticated session. The page adapter checks the account identity through the page's same-origin session read and only returns a SHA-256 identity fingerprint, never cookies, access tokens, email addresses or the full authentication response. Account fingerprints are pinned per image session/job. Challenges and expired sessions must be handled by the user in the selected browser. There is no challenge or rate-limit bypass. ChatGPT account plan/limits still apply; this module does not turn a subscription into unlimited generation.
 
 ## Activation
 
-1. Build/publish and start the **1.0.87 Agent**, reconnect it to Jarvis Control. The source build/server deployment does not replace a running old Agent automatically.
-2. Use Connection center's browser integration setup to copy/register the updated extension assets. Reload the unpacked **Jarvis Agent Browser 1.4.0** extension in the **existing** Chrome/Edge profile. The new Downloads permission may require browser approval. Do not create another profile or import cookies.
+1. Build/publish and start the **1.0.102 Agent**, reconnect it to Jarvis Control. The source build/server deployment does not replace a running old Agent automatically.
+2. Use Connection center's browser integration setup to copy/register the updated extension assets. Reload the unpacked **Jarvis Agent Browser 1.4.1** extension in the **existing** Chrome/Edge profile. Downloads must remain granted; the new alarms permission is used only to wake a suspended Manifest V3 worker for native reconnect. Do not create another profile or import cookies.
 3. Open ChatGPT in that profile and sign in normally. Use **ImageGen > Refresh connections > Use selected browser**, or the extension popup's **Use this browser for ImageGen**. Merely discovering a connection never binds it. A popup reports that a selection was *requested*; the Agent settings show the saved result.
 4. On server 1.0.88+, the Agent's four `image_gen` descriptors are Auto-visible as soon as the selected device advertises them; no Import/Enable pass is required. An administrator may still explicitly Publish or Hide them. Configure normal local tool approvals: image generation, recovery and cancellation are sensitive operations, and discovery never arms control or grants Full permissions.
+
+If Chrome/Edge starts before the Agent, extension 1.4.1 retries immediately and also wakes every 30 seconds through chrome.alarms; a manual extension reload should no longer be required for ordinary Agent restarts. Reload is still required once after replacing extension files so Chromium activates the new manifest/service worker.
+
+If **Refresh connections** remains empty after that one-time reload, verify that the running Agent is 1.0.102 or newer. The extension details page may show the service worker as active while its console repeatedly reports native-host communication failures; that pattern indicates an old/elevated browser service or stale package, not a missing Chrome permission. Restart the updated Agent, reload the unpacked extension once, wait up to 30 seconds, then refresh connections. Do not disable browser security, run Chrome elevated, or broaden the native-host manifest as a workaround.
 5. Open an explicit Jarvis session and retain its own `_jarvis.sessionHandle`. Stateful image references are never shared via the sessionless owner/device scope.
 
 The extension normally creates one inactive ChatGPT tab in an existing normal window for each Jarvis session. It does not commandeer the tab controlling Jarvis or an arbitrary personal conversation. The first successful submission creates the remote conversation; subsequent jobs keep its ID. Separate tabs/conversations isolate work, **not account quota**.
