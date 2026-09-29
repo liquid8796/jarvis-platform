@@ -1,4 +1,16 @@
-# Jarvis Control - 1.0.99
+# Jarvis Control - 1.0.100
+
+## Durable launches, diagnostics and local audit (1.0.100)
+
+Jarvis Agent now exposes explicit-session `process_launch`, `process_get`, and `process_stop` tools for desktop clients whose lifetime must not be tied to a temporary PowerShell or command-shell process. A direct launch remains owner/device/session scoped, registered in a Windows job object when it is not elevated, and counted against local process limits. The root launcher may exit while tracked descendants continue. A transient transport reconnect and `session__stop_work` do not reap durable launches; explicit local Pause, permission revocation, `process_stop`, application-session close, an optional timeout, natural tree exit, or Agent exit does.
+
+The Tool permissions page includes a separate **Allow Full Permission tools to request Windows UAC elevation (Administrator)** switch. `run_as_administrator` is accepted only when `process.launch` has Full Permission and that local switch is enabled; Windows still presents the standard UAC decision. Jarvis does not offer a SYSTEM transition, privileged-token duplication, integrity-level bypass, protected-process access, anti-cheat bypass, or enterprise-policy bypass.
+
+Three read-only sensitive diagnostics add bounded PE/binary metadata and hashes (`binary_inspect`), running-process discovery (`process_list`), and query-only path/architecture/elevation/integrity/module inspection (`process_inspect`). They do not execute the inspected binary, attach a debugger, read/write another process's memory, inject code, alter thread context, or defeat process protection. Persistent Agent audit records now use reason codes, hashed session correlation, bounded fields, 5 MiB rotation, and 14-day retention; `audit_query` is session scoped unless the caller has Full Permission. Arguments and sensitive tool payloads are not written to the audit files.
+
+ImageGen clones browser-returned JSON nodes before composing Agent results, fixing the previous parent-ownership exception. Browser tools with local Full Permission now skip Jarvis' per-origin consent prompt for that invocation without modifying saved Allowed Sites; website sign-in, browser policy, extension binding, OS permissions and denied applications remain enforced.
+
+The selected local Blender profile is now switched to the reviewed `mcp-for-blender 2.1.1` runtime and matching protocol-11 addon. Live capability probing reports all **36/36** downstream tools, addon compatibility with **Blender 5.2.1 LTS**, and telemetry consent disabled. This includes `get_polyhaven_asset_preview`, `get_tripo_status`, `generate_tripo_model`, `poll_tripo_job_status`, and `import_generated_asset_tripo`. Catalog availability does not establish provider credentials, Premium entitlement, credits, or successful paid generation; none was invoked during activation.
 
 ## Blender upstream parity and diagnostics (1.0.99)
 

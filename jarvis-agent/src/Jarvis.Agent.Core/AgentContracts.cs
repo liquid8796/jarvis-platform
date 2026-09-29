@@ -48,6 +48,8 @@ public sealed record AgentExecutionContext(string Workspace, string CallId, stri
         throw new AgentRequestException("SESSION_REQUIRED", "Open a session with session__open and use its sessionHandle.");
     // Set by the local dispatcher, never taken from remote arguments or the wire envelope.
     public bool FullPermission { get; init; }
+    // Local standing consent for UAC elevation. This is never accepted from remote arguments.
+    public bool WindowsElevationAllowed { get; init; }
 }
 public interface IAgentTool
 {

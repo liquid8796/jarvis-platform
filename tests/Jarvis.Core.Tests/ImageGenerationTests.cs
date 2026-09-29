@@ -168,6 +168,18 @@ public sealed class ImageGenerationTests : IDisposable
         Assert.Empty(ToolExecutionResources.For(ImageGenerationToolSet.Describe("read"), empty, context).Resources);
         Assert.NotEmpty(ToolExecutionResources.For(ImageGenerationToolSet.Describe("read"), WireJson.Element(new { resume = true }), context).Resources);
     }
+    [Fact]
+    public async Task Get_state_clones_a_parented_browser_node_before_adding_jobs()
+    {
+        var backend = new Backend { ReturnParentedState = true };
+        using var tools = new ImageGenerationToolSet(_root, backend, new Artifacts());
+        var tool = tools.Tools.Single(item => item.Descriptor.Id == "image_gen.get_state");
+        var reply = await tool.ExecuteAsync(WireJson.Element(new { }), Context(), CancellationToken.None);
+        Assert.False(reply.IsError, reply.Text);
+        var result = ReadJson(reply);
+        Assert.True(result["connected"]!.GetValue<bool>());
+        Assert.Equal(JsonValueKind.Array, result["jobs"]!.GetValueKind());
+    }
     private static JsonObject ReadJson(ToolReply reply) => JsonNode.Parse(reply.Text)!.AsObject();
     private static async Task<JsonObject> Wait(ImageGenerationJobs jobs, AgentExecutionContext context, string id, string expected)
     {
@@ -188,11 +200,18 @@ public sealed class ImageGenerationTests : IDisposable
         public string? FailOperation { get; set; }
         public string Failure { get; set; } = "FAILURE";
         public string? BlockOperation { get; set; }
+        public bool ReturnParentedState { get; set; }
         public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ImageBrowserBinding Binding { get; set; } = new(Guid.NewGuid().ToString(), "chrome", Guid.NewGuid().ToString("N"));
         public int Count(string operation) => Calls.Count(c => c == operation);
         public Task<ImageBrowserBinding> GetBindingAsync(AgentExecutionContext context, CancellationToken ct) => Task.FromResult(Binding);
-        public Task<JsonObject> GetStateAsync(AgentExecutionContext context, CancellationToken ct) => Task.FromResult(new JsonObject { ["connected"] = true });
+        public Task<JsonObject> GetStateAsync(AgentExecutionContext context, CancellationToken ct)
+        {
+            var state = new JsonObject { ["connected"] = true };
+            if (!ReturnParentedState) return Task.FromResult(state);
+            var envelope = new JsonObject { ["state"] = state };
+            return Task.FromResult(envelope["state"]!.AsObject());
+        }
         public async Task<JsonObject> CallAsync(string operation, ImageGenerationJob job, AgentExecutionContext context, CancellationToken ct)
         {
             Calls.Enqueue(operation);

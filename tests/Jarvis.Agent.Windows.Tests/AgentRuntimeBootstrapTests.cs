@@ -56,7 +56,7 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
     {
         Directory.CreateDirectory(_root);
         new ToolPermissionStore(Path.Combine(_root, "tool-permissions.json")).Save(
-            new ToolPermissionSettings(["process.start"], ["process.start"]));
+            new ToolPermissionSettings(["process.launch"], ["process.start"], AllowWindowsElevation: true));
 
         await using var runtime = new AgentRuntime(new Approval(), new Questions(), new Artifacts(), settingsRoot: _root,
             pluginDirectory: Path.Combine(_root, "plugins"));
@@ -64,7 +64,9 @@ public sealed class AgentRuntimeBootstrapTests : IDisposable
         Assert.NotNull(field);
         var policy = Assert.IsType<ToolPermissionPolicy>(field.GetValue(runtime));
         Assert.False(policy.HasFullPermission("process.start"));
+        Assert.True(policy.HasFullPermission("process.launch"));
         Assert.True(policy.HasAlwaysApprovedConstrainedTool("unified_exec.exec_command"));
+        Assert.True(policy.AllowWindowsElevation);
     }
 
     [Fact]

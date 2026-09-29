@@ -19,10 +19,10 @@ public static class AgentSessionRules
     public static bool IsPublicTool(string name) => name is "session__open" or "session__get" or "session__list" or
         "session__send_message" or "session__read_events" or "session__stop_work" or "session__close" or "workspace__get" or "workspace__set";
     public static bool IsControlTool(string toolId) => IsTool(toolId) || toolId is "unified_exec.write_stdin" or
-        "tool_repl.wait" or "tool_repl.reset";
+        "tool_repl.wait" or "tool_repl.reset" or "process.get" or "process.stop";
     public static bool AllowedWhilePaused(string toolId) => toolId is "session.get" or "session.list" or
         "session.read_events" or "session.stop_work" or "session.close" or "workspace.get" or
-        "tool_repl.wait" or "tool_repl.reset";
+        "tool_repl.wait" or "tool_repl.reset" or "process.get" or "process.stop";
 }
 
 public sealed record AgentSessionSnapshot(

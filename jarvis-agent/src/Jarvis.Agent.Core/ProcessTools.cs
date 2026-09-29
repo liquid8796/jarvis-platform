@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using Jarvis.Agent.Core.Auditing;
 using Jarvis.Protocol;
 using Microsoft.Win32.SafeHandles;
 
@@ -16,25 +17,49 @@ public sealed partial class ProcessToolSet : IDisposable
     private readonly ConcurrentDictionary<string, ManagedJob> _jobs = new();
     private readonly ConcurrentDictionary<long, string> _codexSessions = new();
     private readonly ConcurrentDictionary<long, long> _codexReadCursors = new();
+    private readonly ConcurrentDictionary<string, LaunchedProcess> _launched = new(StringComparer.Ordinal);
     private long _nextCodexSessionId;
     private readonly object _startLock = new();
     private readonly Func<AgentExecutionSettings> _settings;
+    private readonly Func<bool> _allowWindowsUacElevation;
+    private readonly IAgentAuditSink _audit;
     private bool _disposed;
-    public ProcessToolSet(Func<AgentExecutionSettings>? settings = null) => _settings = settings ?? (() => new AgentExecutionSettings());
-    public int RunningCount => _jobs.Values.Count(job => !job.Done);
-    public int RunningForSession(AgentSessionIdentity identity) => _jobs.Values.Count(job => !job.Done && job.BelongsTo(identity));
-    public void StopSession(AgentSessionIdentity identity)
+    public ProcessToolSet(Func<AgentExecutionSettings>? settings = null,
+        Func<bool>? allowWindowsUacElevation = null, IAgentAuditSink? audit = null)
+    {
+        _settings = settings ?? (() => new AgentExecutionSettings());
+        _allowWindowsUacElevation = allowWindowsUacElevation ?? (() => false);
+        _audit = audit ?? NullAgentAuditSink.Instance;
+    }
+    public int RunningCount => _jobs.Values.Count(job => !job.Done) + _launched.Values.Count(job => !job.Done);
+    public int RunningForSession(AgentSessionIdentity identity) =>
+        _jobs.Values.Count(job => !job.Done && job.BelongsTo(identity)) +
+        _launched.Values.Count(job => !job.Done && job.BelongsTo(identity));
+    public void StopSession(AgentSessionIdentity identity, bool close)
     {
         lock (_startLock) foreach (var job in _jobs.Values.Where(job => job.BelongsTo(identity))) job.Cancel();
+        if (close)
+            foreach (var process in _launched.Values.Where(process => process.BelongsTo(identity)))
+                process.Stop("session_closed");
     }
 
     public IEnumerable<IAgentTool> Tools =>
     [
         new CodexProcessTool(this, "exec_command"),
-        new CodexProcessTool(this, "write_stdin")
+        new CodexProcessTool(this, "write_stdin"),
+        new LaunchProcessTool(this, "launch"),
+        new LaunchProcessTool(this, "get"),
+        new LaunchProcessTool(this, "stop")
     ];
 
     public void StopAll()
+    {
+        lock (_startLock) foreach (var job in _jobs.Values) job.Cancel();
+        foreach (var process in _launched.Values) process.Stop("agent_paused");
+    }
+
+    /// <summary>Transport reconnects stop terminal jobs but preserve durable direct launches.</summary>
+    public void StopTransient()
     {
         lock (_startLock) foreach (var job in _jobs.Values) job.Cancel();
     }
@@ -45,6 +70,7 @@ public sealed partial class ProcessToolSet : IDisposable
         {
             if (_disposed) return; _disposed = true;
             foreach (var job in _jobs.Values) job.Dispose();
+            foreach (var process in _launched.Values) process.Dispose();
         }
     }
 

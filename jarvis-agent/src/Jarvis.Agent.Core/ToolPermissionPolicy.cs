@@ -12,14 +12,17 @@ public sealed class ToolPermissionPolicy
 
     private FrozenSet<string> _grants = Array.Empty<string>().ToFrozenSet(StringComparer.Ordinal);
     private FrozenSet<string> _alwaysApprovedConstrained = Array.Empty<string>().ToFrozenSet(StringComparer.Ordinal);
+    private int _allowWindowsElevation;
     private readonly ConcurrentDictionary<string, LeaseRegistration> _leases = new(StringComparer.Ordinal);
     public event Action? PermissionsRevoked;
     public event Action? PermissionsChanged;
 
-    public ToolPermissionPolicy(IEnumerable<string>? grants = null, IEnumerable<string>? alwaysApprovedConstrainedTools = null)
+    public ToolPermissionPolicy(IEnumerable<string>? grants = null, IEnumerable<string>? alwaysApprovedConstrainedTools = null,
+        bool allowWindowsElevation = false)
     {
         Replace(grants ?? []);
         ReplaceAlwaysApprovedConstrainedTools(alwaysApprovedConstrainedTools ?? []);
+        SetWindowsElevationAllowed(allowWindowsElevation);
     }
 
     public static bool SupportsPermanentApproval(string toolId) => toolId == "unified_exec.exec_command";
@@ -27,6 +30,7 @@ public sealed class ToolPermissionPolicy
     public bool HasAlwaysApprovedConstrainedTool(string toolId) => Volatile.Read(ref _alwaysApprovedConstrained).Contains(toolId);
     public IReadOnlyList<string> FullPermissionTools => Volatile.Read(ref _grants).Order(StringComparer.Ordinal).ToArray();
     public IReadOnlyList<string> AlwaysApprovedConstrainedTools => Volatile.Read(ref _alwaysApprovedConstrained).Order(StringComparer.Ordinal).ToArray();
+    public bool AllowWindowsElevation => Volatile.Read(ref _allowWindowsElevation) == 1;
     public IReadOnlyList<ToolCapabilityLease> ActiveLeases => _leases.Values
         .Select(x => x.Lease).Where(x => x.ExpiresUtc > DateTimeOffset.UtcNow).OrderBy(x => x.ExpiresUtc).ToArray();
 
@@ -72,6 +76,15 @@ public sealed class ToolPermissionPolicy
         var changed = !previous.SetEquals(next);
         if (previous.Any(id => !next.Contains(id))) PermissionsRevoked?.Invoke();
         if (changed) PermissionsChanged?.Invoke();
+    }
+
+    public void SetWindowsElevationAllowed(bool allowed)
+    {
+        var next = allowed ? 1 : 0;
+        var previous = Interlocked.Exchange(ref _allowWindowsElevation, next);
+        if (previous == next) return;
+        if (previous == 1) PermissionsRevoked?.Invoke();
+        PermissionsChanged?.Invoke();
     }
 
     public void GrantAlwaysApprovedConstrainedTool(string toolId)
@@ -149,44 +162,50 @@ public sealed class ToolPermissionPolicy
             ? id : throw new ArgumentException("Permanent approval is supported only for unified_exec.exec_command.");
 }
 
-public sealed record ToolPermissionSettings(IReadOnlyList<string> FullPermissionTools, IReadOnlyList<string> AlwaysApprovedConstrainedTools);
+public sealed record ToolPermissionSettings(IReadOnlyList<string> FullPermissionTools,
+    IReadOnlyList<string> AlwaysApprovedConstrainedTools, bool AllowWindowsElevation = false);
 
 /// <summary>Separate from DPAPI enrollment credentials. Atomic writes; damaged files fail closed.</summary>
 public sealed class ToolPermissionStore(string filePath)
 {
-    private sealed record Document(int Version, string[] FullPermissionTools, string[]? AlwaysApprovedConstrainedTools = null);
+    private sealed record Document(int Version, string[] FullPermissionTools,
+        string[]? AlwaysApprovedConstrainedTools = null, bool AllowWindowsElevation = false);
 
     public IReadOnlyList<string> Load() => LoadSettings().FullPermissionTools;
 
     public ToolPermissionSettings LoadSettings()
     {
-        if (!File.Exists(filePath)) return new([], []);
+        if (!File.Exists(filePath)) return new([], [], false);
         var document = JsonSerializer.Deserialize<Document>(File.ReadAllText(filePath), WireJson.Options)
             ?? throw new InvalidDataException("Tool permission settings are empty.");
-        if (document.FullPermissionTools is null || document.Version is not (1 or 2))
+        if (document.FullPermissionTools is null || document.Version is not (1 or 2 or 3))
             throw new InvalidDataException("Unsupported tool permission settings.");
-        if (document.Version == 2 && document.AlwaysApprovedConstrainedTools is null)
+        if (document.Version is 2 or 3 && document.AlwaysApprovedConstrainedTools is null)
             throw new InvalidDataException("Unsupported tool permission settings.");
         var migrated = Migrate(document.FullPermissionTools,
-            document.Version == 1 ? [] : document.AlwaysApprovedConstrainedTools!);
-        var policy = new ToolPermissionPolicy(migrated.FullPermissionTools, migrated.AlwaysApprovedConstrainedTools);
-        return new(policy.FullPermissionTools, policy.AlwaysApprovedConstrainedTools);
+            document.Version == 1 ? [] : document.AlwaysApprovedConstrainedTools!,
+            document.Version >= 3 && document.AllowWindowsElevation);
+        var policy = new ToolPermissionPolicy(migrated.FullPermissionTools, migrated.AlwaysApprovedConstrainedTools,
+            migrated.AllowWindowsElevation);
+        return new(policy.FullPermissionTools, policy.AlwaysApprovedConstrainedTools, policy.AllowWindowsElevation);
     }
 
-    public void Save(IEnumerable<string> toolIds) => Save(new ToolPermissionSettings(toolIds.ToArray(), []));
+    public void Save(IEnumerable<string> toolIds) => Save(new ToolPermissionSettings(toolIds.ToArray(), [], false));
 
     public void Save(ToolPermissionSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var migrated = Migrate(settings.FullPermissionTools, settings.AlwaysApprovedConstrainedTools);
-        var policy = new ToolPermissionPolicy(migrated.FullPermissionTools, migrated.AlwaysApprovedConstrainedTools);
+        var migrated = Migrate(settings.FullPermissionTools, settings.AlwaysApprovedConstrainedTools,
+            settings.AllowWindowsElevation);
+        var policy = new ToolPermissionPolicy(migrated.FullPermissionTools, migrated.AlwaysApprovedConstrainedTools,
+            migrated.AllowWindowsElevation);
         var grants = policy.FullPermissionTools.ToArray();
         var always = policy.AlwaysApprovedConstrainedTools.ToArray();
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
         var temp = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllText(temp, JsonSerializer.Serialize(new Document(2, grants, always),
+            File.WriteAllText(temp, JsonSerializer.Serialize(new Document(3, grants, always, policy.AllowWindowsElevation),
                 new JsonSerializerOptions(WireJson.Options) { WriteIndented = true }));
             File.Move(temp, filePath, overwrite: true);
         }
@@ -194,7 +213,7 @@ public sealed class ToolPermissionStore(string filePath)
     }
 
     private static ToolPermissionSettings Migrate(IEnumerable<string> fullPermissions,
-        IEnumerable<string> alwaysApproved)
+        IEnumerable<string> alwaysApproved, bool allowWindowsElevation)
     {
         var full = new HashSet<string>(StringComparer.Ordinal);
         var always = new HashSet<string>(StringComparer.Ordinal);
@@ -227,7 +246,8 @@ public sealed class ToolPermissionStore(string filePath)
                     break;
             }
         }
-        return new(full.Order(StringComparer.Ordinal).ToArray(), always.Order(StringComparer.Ordinal).ToArray());
+        return new(full.Order(StringComparer.Ordinal).ToArray(), always.Order(StringComparer.Ordinal).ToArray(),
+            allowWindowsElevation);
     }
 
     private static string MigrateAlwaysApproved(string id) => id is "process.start" or "process.spawn"

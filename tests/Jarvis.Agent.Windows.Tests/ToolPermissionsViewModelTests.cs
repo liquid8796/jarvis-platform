@@ -49,13 +49,16 @@ public sealed class ToolPermissionsViewModelTests : IDisposable
             settingsRoot: _root, pluginDirectory: Path.Combine(_root, "plugins"));
         viewModel.ReplaceDescriptors(runtime.Connection.Descriptors);
 
-        Assert.Equal(103, runtime.Connection.Descriptors.Count);
+        Assert.Equal(110, runtime.Connection.Descriptors.Count);
         Assert.Equal(runtime.Connection.Descriptors.Count, viewModel.Items.Count);
         Assert.Equal(runtime.Connection.Descriptors.Select(tool => tool.Id).Order(),
             viewModel.Items.Select(item => item.Id).Order());
         Assert.Contains(viewModel.Items, item => item.Id == "artifact.create");
         Assert.Contains(viewModel.Items, item => item.Id == "async_input.request");
         Assert.Contains(viewModel.Items, item => item.Id == "blender.get_capabilities");
+        Assert.Contains(viewModel.Items, item => item.Id == "process.launch");
+        Assert.Contains(viewModel.Items, item => item.Id == "audit.query");
+        Assert.Contains(viewModel.Items, item => item.Id == "diagnostics.binary_inspect");
         Assert.True(viewModel.Items.Single(item => item.Id == "thread.create").FullPermission);
         Assert.Contains(viewModel.Items.Count.ToString(), viewModel.Status, StringComparison.Ordinal);
     }
@@ -84,6 +87,24 @@ public sealed class ToolPermissionsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void Windows_elevation_toggle_is_a_separate_saved_permission_draft()
+    {
+        Directory.CreateDirectory(_root);
+        var store = new ToolPermissionStore(Path.Combine(_root, "tool-permissions.json"));
+        store.Save(new ToolPermissionSettings(["process.launch"], [], false));
+        var policy = new ToolPermissionPolicy();
+        var viewModel = new ToolPermissionsViewModel(
+            [Descriptor("process.launch", "process_launch", "process")], policy, store);
+        Assert.False(viewModel.AllowWindowsElevation);
+        viewModel.AllowWindowsElevation = true;
+        Assert.True(viewModel.HasChanges);
+        viewModel.SaveCommand.Execute(null);
+        Assert.True(policy.AllowWindowsElevation);
+        Assert.True(store.LoadSettings().AllowWindowsElevation);
+        Assert.False(viewModel.HasChanges);
+    }
+
+    [Fact]
     public void Descriptor_only_runtime_extensions_match_their_executable_tool_sets()
     {
         Directory.CreateDirectory(_root);
@@ -96,6 +117,7 @@ public sealed class ToolPermissionsViewModelTests : IDisposable
             ArtifactRuntimeToolSet.Descriptors.Select(tool => tool.Id).Order());
         Assert.Equal(interactions.Tools.Select(tool => tool.Descriptor.Id).Order(),
             ThreadInteractionRuntimeToolSet.Descriptors.Select(tool => tool.Id).Order());
+        Assert.Single(Jarvis.Agent.Core.Auditing.AuditToolSet.Descriptors);
     }
 
     private static ToolDescriptor Descriptor(string id, string name, string category) =>

@@ -97,6 +97,11 @@ public sealed class BrowserOriginGate(BrowserBridge bridge, UiSettingsStore? set
         ToolExecutionContext context,
         CancellationToken cancellationToken)
     {
+        if (context.BypassBrowserOriginConsent)
+        {
+            return null;
+        }
+
         if (context.AskUserAsync is null)
         {
             // No UI to ask in (the CLI, a subagent): the permission gate that let

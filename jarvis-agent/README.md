@@ -1,4 +1,16 @@
-# Jarvis Agent - 1.0.97
+# Jarvis Agent - 1.0.100
+
+## Durable process launch and diagnostics (1.0.100)
+
+Use `process_launch` only from an explicit Jarvis session when a desktop/game/client executable must survive the end of a temporary shell. The launch call itself still requires Arm and normal Tool permissions. After it starts, a transient transport reconnect and `session__stop_work` preserve the owner/session-bound launch while transient work is cancelled. Continue with `process_get` to inspect bounded state and `process_stop` to terminate the owned tree. Session close, explicit local Pause, permission revocation, an optional timeout, natural tree exit, or Agent exit ends it; it is never an unowned orphan process.
+
+`run_as_administrator: true` uses the standard Windows `runas`/UAC path. It requires Full Permission for `process.launch` plus the separate **Allow Windows UAC elevation (Administrator)** checkbox in Tool permissions. UAC can still be denied. The feature does not create SYSTEM processes, duplicate or steal tokens, lower integrity boundaries, access protected processes, bypass anti-cheat, or disable operating-system/enterprise security.
+
+The read-only `binary_inspect`, `process_list`, and `process_inspect` tools return bounded file/process metadata without debugger attach, process-memory access, injection, thread-context changes, token manipulation, or protected-content decryption. `audit_query` reads the Agent's reason-coded local audit trail; records omit tool arguments, hash session correlation, rotate at 5 MiB, and expire after 14 days. Current-session reads are the default and cross-session reads require Full Permission.
+
+Browser calls that already hold local Full Permission bypass Jarvis' per-origin confirmation without altering the persisted Allowed Sites list. ImageGen state composition now deep-clones extension results before adding Agent-owned fields, preventing `JsonNode` parent collisions. All other browser, website, extension, Windows, Arm/Pause and ownership controls remain in force.
+
+The local Blender profile has been activated against managed runtime `2.1.1` and the matched addon protocol `11`. Live checks report 36/36 downstream tools, Blender 5.2.1 LTS compatibility and telemetry disabled. Tool discovery does not verify Premium-provider subscriptions or spend credits.
 
 ## Unity-prefixed MCP bridge names (1.0.97)
 

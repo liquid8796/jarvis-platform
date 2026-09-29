@@ -1,4 +1,21 @@
-# Blender upstream parity — Jarvis 1.0.99
+# Blender upstream parity and activation — Jarvis 1.0.100
+
+## Live activation on 2026-09-29
+
+The selected local Agent profile now points to the managed runtime at
+`%LOCALAPPDATA%\JarvisAgent\blender-runtimes\2.1.1-jarvis.1` and its bundled
+addon. A live `blender_get_capabilities(probeAddon: true)` check reported
+**36/36** catalog tools, no missing names, advanced Poly Haven/Hunyuan schemas,
+`addonState: compatible`, addon protocol **11**, Blender **5.2.1 LTS**, and
+telemetry consent **false**. The five names missing from the old 2.0.0 profile—
+`get_polyhaven_asset_preview`, `get_tripo_status`, `generate_tripo_model`,
+`poll_tripo_job_status`, and `import_generated_asset_tripo`—are all discoverable.
+
+The matching addon is running on loopback port 9876 in a user Blender process.
+This activation does not validate Premium-provider credentials, entitlement,
+quota, credits or paid-generation completion. No paid model generation was
+submitted. Save shared scenes before restarting Blender, and do not confuse
+catalog/addon compatibility with provider readiness.
 
 ## Reviewed baseline
 

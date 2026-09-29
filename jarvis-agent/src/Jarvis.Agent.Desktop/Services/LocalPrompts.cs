@@ -49,7 +49,10 @@ public sealed class LocalPrompts(Window owner, ToolPermissionPolicy permissions,
                         try
                         {
                             var next = permissions.AlwaysApprovedConstrainedTools.Append(tool.Id).Distinct(StringComparer.Ordinal).ToArray();
-                            permissionStore.Save(new ToolPermissionSettings(permissions.FullPermissionTools, next));
+                            permissionStore.Save(new ToolPermissionSettings(
+                                permissions.FullPermissionTools,
+                                next,
+                                permissions.AllowWindowsElevation));
                             permissions.GrantAlwaysApprovedConstrainedTool(tool.Id);
                             window.DialogResult = true;
                         }

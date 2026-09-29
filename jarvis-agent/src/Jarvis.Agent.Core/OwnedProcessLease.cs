@@ -26,6 +26,21 @@ internal sealed class OwnedProcessLease : IDisposable
     {
         lock (_sync) if (_job is { IsClosed: false, IsInvalid: false }) TerminateJobObject(_job, 1);
     }
+    public uint ActiveProcessCount
+    {
+        get
+        {
+            lock (_sync)
+            {
+                if (_job is not { IsClosed: false, IsInvalid: false }) return 0;
+                var info = new BasicAccountingInformation();
+                if (!QueryInformationJobObject(_job, 1, ref info,
+                        (uint)Marshal.SizeOf<BasicAccountingInformation>(), IntPtr.Zero))
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                return info.ActiveProcesses;
+            }
+        }
+    }
     public void Dispose() { lock (_sync) { _job?.Dispose(); _job = null; } }
     [StructLayout(LayoutKind.Sequential)] private struct BasicLimitInformation
     { public long ProcessTime, JobTime; public uint Flags; public nuint MinimumWorkingSet, MaximumWorkingSet; public uint ActiveProcesses; public nuint Affinity; public uint Priority, Scheduling; }
@@ -33,8 +48,15 @@ internal sealed class OwnedProcessLease : IDisposable
     { public ulong ReadOperations, WriteOperations, OtherOperations, ReadBytes, WriteBytes, OtherBytes; }
     [StructLayout(LayoutKind.Sequential)] private struct ExtendedLimitInformation
     { public BasicLimitInformation Basic; public IoCounters Io; public nuint ProcessMemory, JobMemory, PeakProcessMemory, PeakJobMemory; }
+    [StructLayout(LayoutKind.Sequential)] private struct BasicAccountingInformation
+    {
+        public long TotalUserTime, TotalKernelTime, ThisPeriodTotalUserTime, ThisPeriodTotalKernelTime;
+        public uint TotalPageFaultCount, TotalProcesses, ActiveProcesses, TotalTerminatedProcesses;
+    }
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] private static extern SafeFileHandle CreateJobObject(IntPtr attributes, string? name);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern bool SetInformationJobObject(SafeFileHandle job, int infoClass, ref ExtendedLimitInformation info, uint length);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern bool AssignProcessToJobObject(SafeFileHandle job, IntPtr process);
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern bool QueryInformationJobObject(
+        SafeFileHandle job, int infoClass, ref BasicAccountingInformation info, uint length, IntPtr returnLength);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern bool TerminateJobObject(SafeFileHandle job, uint exitCode);
 }

@@ -143,6 +143,7 @@ public sealed partial class BrowserServiceServer : IDisposable
                 WorkingDirectory = request.Context.WorkingDirectory,
                 AdditionalDirectories = request.Context.AdditionalDirectories,
                 EnforceWorkspaceFileScope = false,
+                BypassBrowserOriginConsent = request.Context.FullPermission,
                 CallId = request.Context.CallId,
                 SessionId = request.Context.ApplicationSessionId,
                 ShellTimeout = TimeSpan.FromSeconds(110),

@@ -61,8 +61,9 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
 {
     private readonly ToolPermissionPolicy _policy;
     private readonly ToolPermissionStore _store;
-    private ToolPermissionSettings _savedSettings = new([], []);
+    private ToolPermissionSettings _savedSettings = new([], [], false);
     private string _search = "", _status = "", _error = "";
+    private bool _allowWindowsElevation;
     public ObservableCollection<ToolPermissionItem> Items { get; }
     public ICollectionView FilteredTools { get; }
     public string Search
@@ -73,9 +74,19 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
     public string Status { get => _status; private set { _status = value; Changed(); } }
     public string Error { get => _error; private set { _error = value; Changed(); } }
     public string SelectionSummary => $"{Items.Count(i => i.FullPermission)} of {Items.Count} tools selected";
-    public string SavedSummary => $"{_policy.FullPermissionTools.Count} tools preapproved · {_policy.AlwaysApprovedConstrainedTools.Count} process tools always approved";
+    public string SavedSummary => $"{_policy.FullPermissionTools.Count} tools preapproved · {_policy.AlwaysApprovedConstrainedTools.Count} process tools always approved · Windows elevation {(_policy.AllowWindowsElevation ? "enabled" : "disabled")}";
+    public bool AllowWindowsElevation
+    {
+        get => _allowWindowsElevation;
+        set
+        {
+            if (_allowWindowsElevation == value) return;
+            _allowWindowsElevation = value;
+            Changed(); SelectionChanged();
+        }
+    }
     public bool HasChanges => !Items.Where(i => i.FullPermission).Select(i => i.Id).ToHashSet(StringComparer.Ordinal)
-        .SetEquals(_policy.FullPermissionTools);
+        .SetEquals(_policy.FullPermissionTools) || AllowWindowsElevation != _policy.AllowWindowsElevation;
     public ICommand SelectAllCommand { get; }
     public ICommand ClearAllCommand { get; }
     public ICommand SaveCommand { get; }
@@ -102,6 +113,7 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
             _savedSettings = settings;
             _policy.Replace(settings.FullPermissionTools.Where(installed.Contains));
             _policy.ReplaceAlwaysApprovedConstrainedTools(settings.AlwaysApprovedConstrainedTools.Where(installed.Contains));
+            _policy.SetWindowsElevationAllowed(settings.AllowWindowsElevation);
             Reset();
             Status = "Changes take effect only after Save permissions. Always-approved process tools can be revoked immediately below.";
         }
@@ -109,7 +121,8 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         {
             _policy.Replace([]);
             _policy.ReplaceAlwaysApprovedConstrainedTools([]);
-            _savedSettings = new([], []);
+            _policy.SetWindowsElevationAllowed(false);
+            _savedSettings = new([], [], false);
             Error = "Permissions were not loaded; no tools were preapproved. " + ex.Message;
         }
         _policy.PermissionsChanged += RefreshPermissionIndicators;
@@ -160,6 +173,7 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
             item.FullPermission = _policy.HasFullPermission(item.Id);
             item.AlwaysApproved = _policy.HasAlwaysApprovedConstrainedTool(item.Id);
         }
+        AllowWindowsElevation = _policy.AllowWindowsElevation;
         Status = "Restored the active permission selection."; Error = "";
         SelectionChanged();
     }
@@ -168,11 +182,13 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         try
         {
             var selected = Items.Where(i => i.FullPermission).Select(i => i.Id).ToArray();
-            var settings = new ToolPermissionSettings(selected, _policy.AlwaysApprovedConstrainedTools);
+            var settings = new ToolPermissionSettings(selected, _policy.AlwaysApprovedConstrainedTools,
+                AllowWindowsElevation);
             // Persist first. A failed write must not leave an unsaved permission active in memory.
             _store.Save(settings);
             _savedSettings = settings;
             _policy.Replace(selected);
+            _policy.SetWindowsElevationAllowed(AllowWindowsElevation);
             Error = "";
             Status = "Saved. Selected tools run without another Jarvis permission prompt while control is armed. Constrained process tools still require approval unless separately marked Always approved.";
             Changed(nameof(SavedSummary)); SelectionChanged();
@@ -186,7 +202,8 @@ public sealed class ToolPermissionsViewModel : INotifyPropertyChanged
         {
             var next = _savedSettings.AlwaysApprovedConstrainedTools
                 .Where(id => !StringComparer.Ordinal.Equals(id, item.Id)).ToArray();
-            var settings = new ToolPermissionSettings(_savedSettings.FullPermissionTools, next);
+            var settings = new ToolPermissionSettings(_savedSettings.FullPermissionTools, next,
+                _savedSettings.AllowWindowsElevation);
             _store.Save(settings);
             _savedSettings = settings;
             _policy.RevokeAlwaysApprovedConstrainedTool(item.Id);

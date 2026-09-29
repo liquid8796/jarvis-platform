@@ -1,6 +1,7 @@
 using System.Security.Principal;
 using System.Text.Json;
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Auditing;
 using Jarvis.Agent.Core.Diagnostics;
 using Jarvis.Agent.Core.Threads;
 using Jarvis.Protocol;
@@ -61,7 +62,7 @@ public static class Program
             using var tools = new ToolInventory(prompts, new FileArtifactSink(Environment.CurrentDirectory));
             using var processes = new ProcessToolSet();
             using var threads = new ThreadRuntimeToolSet(Path.Combine(AgentProfile.Root, "thread-runtime.db"));
-            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(tools.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor).Concat(AgentCoreHostTools.Descriptors).DistinctBy(t => t.Id),
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(tools.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor).Concat(AuditToolSet.Descriptors).Concat(AgentCoreHostTools.Descriptors).DistinctBy(t => t.Id),
                 new System.Text.Json.JsonSerializerOptions(Jarvis.Protocol.WireJson.Options) { WriteIndented = true })); return 0;
         }
         if (command != "connect") throw new ArgumentException("Unknown command. Run jarvis-agent help.");
@@ -91,7 +92,8 @@ public static class Program
         {
             var permissionSettings = new ToolPermissionStore(
                 Path.Combine(AgentProfile.Root, "tool-permissions.json")).LoadSettings();
-            permissions = new ToolPermissionPolicy(permissionSettings.FullPermissionTools, permissionSettings.AlwaysApprovedConstrainedTools);
+            permissions = new ToolPermissionPolicy(permissionSettings.FullPermissionTools,
+                permissionSettings.AlwaysApprovedConstrainedTools, permissionSettings.AllowWindowsElevation);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or ArgumentException)
         {

@@ -75,13 +75,31 @@ public sealed class ToolPermissionTests : IDisposable
         Assert.Throws<ArgumentException>(() => store.Save(["*"]));
         Assert.Equal(before, File.ReadAllText(file));
     }
-    [Fact] public void New_permission_documents_reserve_persistent_constrained_approvals()
+    [Fact] public void New_permission_documents_reserve_persistent_constrained_approvals_and_elevation_consent()
     {
         var file = Path.Combine(_root, "tool-permissions-v2.json"); var store = new ToolPermissionStore(file);
         store.Save(["shell.PowerShell"]);
         using var document = JsonDocument.Parse(File.ReadAllText(file));
-        Assert.Equal(2, document.RootElement.GetProperty("version").GetInt32());
+        Assert.Equal(3, document.RootElement.GetProperty("version").GetInt32());
         Assert.Equal(JsonValueKind.Array, document.RootElement.GetProperty("alwaysApprovedConstrainedTools").ValueKind);
+        Assert.False(document.RootElement.GetProperty("allowWindowsElevation").GetBoolean());
+    }
+    [Fact] public void Windows_elevation_is_separate_versioned_consent_and_revocation_notifies()
+    {
+        var file = Path.Combine(_root, "elevation.json");
+        var store = new ToolPermissionStore(file);
+        store.Save(new ToolPermissionSettings(["process.launch"], [], true));
+        var loaded = store.LoadSettings();
+        Assert.True(loaded.AllowWindowsElevation);
+        Assert.Equal(["process.launch"], loaded.FullPermissionTools);
+        var policy = new ToolPermissionPolicy(loaded.FullPermissionTools,
+            loaded.AlwaysApprovedConstrainedTools, loaded.AllowWindowsElevation);
+        var revoked = 0;
+        policy.PermissionsRevoked += () => revoked++;
+        policy.SetWindowsElevationAllowed(false);
+        Assert.False(policy.AllowWindowsElevation);
+        Assert.Equal(1, revoked);
+        Assert.True(policy.HasFullPermission("process.launch"));
     }
     [Fact] public void Legacy_v1_command_permission_migrates_to_exec_command_approval()
     {
@@ -90,6 +108,7 @@ public sealed class ToolPermissionTests : IDisposable
         var settings = new ToolPermissionStore(file).LoadSettings();
         Assert.Empty(settings.FullPermissionTools);
         Assert.Equal(new[] { "unified_exec.exec_command" }, settings.AlwaysApprovedConstrainedTools);
+        Assert.False(settings.AllowWindowsElevation);
     }
     [Fact] public void Permanent_approval_is_supported_only_for_exec_command()
     {

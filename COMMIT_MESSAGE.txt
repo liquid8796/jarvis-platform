@@ -1,1 +1,1 @@
-feat(blender): close upstream capability parity and harden runtime bridge
+feat(agent): add durable launches, diagnostics and audited permissions

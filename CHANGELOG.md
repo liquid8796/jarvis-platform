@@ -1,3 +1,14 @@
+## 1.0.100 - 2026-09-29
+
+- Add explicit-session `process_launch`, `process_get`, and `process_stop` tools for long-lived GUI/client processes. Direct launches remain owned, bounded and cancellable while surviving a temporary launcher-shell exit and transient Agent transport reconnect; descendant processes stay tracked through the Windows job object until the tree exits or an explicit lifecycle stop occurs.
+- Add a separate **Allow Windows UAC elevation (Administrator)** Tool permissions setting. Elevated direct launch requires the `process.launch` Full Permission grant, this additional local switch, and the normal Windows UAC consent. It does not grant SYSTEM, duplicate privileged tokens, lower integrity boundaries, or bypass protected processes, anti-cheat, enterprise policy, or other OS protections.
+- Add read-only sensitive native diagnostics for bounded PE/binary metadata, process listing, and query-only process inspection. The new tools do not attach a debugger, read/write process memory, inject code, manipulate thread context, duplicate tokens, or decrypt protected content.
+- Persist reason-coded Agent audit records with bounded fields, hashed session correlation, 5 MiB file rotation and 14-day retention. `audit_query` defaults to the current explicit session; cross-session reads require Full Permission. Tool arguments and sensitive payloads are not recorded.
+- Fix ImageGen state composition by cloning browser-returned `JsonNode` values before reparenting. Add regression coverage for the previous `The node already has a parent` failure.
+- Make browser-tool Full Permission act as standing origin consent for that invocation. It skips the Jarvis per-origin prompt without changing the saved Allowed Sites list and does not bypass browser/website authentication, Chrome policy, or Windows access controls.
+- Activate the reviewed `mcp-for-blender 2.1.1` runtime and matching protocol-11 addon on the local Agent profile. Live verification reports 36/36 downstream tools, including Poly Haven preview and all four Tripo lifecycle tools, addon compatibility with Blender 5.2.1 LTS, and telemetry consent disabled. No paid provider generation was requested.
+- Expand focused regressions for durable descendant lifetime, UAC permission separation, browser consent, ImageGen node ownership, persistent audit redaction, and read-only native diagnostics. Bump package to **1.0.100** and assembly/file to **1.0.100.0**.
+
 ## 1.0.99 - 2026-09-28
 
 - Pin the optional managed Blender runtime to `mcp-for-blender 2.1.1` at reviewed commit `41a184322db3ccdcb2fdbc1f6994afe71bf9163c`, expanding downstream discovery from 31 to 36 tools. Add Poly Haven preview and Tripo status/generate/poll/import; retain upstream advanced search, native .blend import, texture scaling and Hunyuan quality support.

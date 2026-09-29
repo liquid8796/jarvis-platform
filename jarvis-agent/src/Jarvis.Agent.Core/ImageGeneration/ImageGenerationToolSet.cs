@@ -39,8 +39,12 @@ public sealed class ImageGenerationToolSet : IDisposable
                         return new(JsonSerializer.Serialize(new { jobId = cancel.JobId, status = cancel.Status,
                             cancelRequested = true, message = "Local cancellation requested. Read the job for its final state; ChatGPT-side completion/quota restoration is not guaranteed." }, WireJson.Options));
                     default:
-                        var state = await owner._backend.GetStateAsync(context, ct).ConfigureAwait(false);
-                        state["jobs"] = new JsonArray(owner.Jobs.List(context).Take(25).Select(j => (JsonNode?)ImageGenerationJobs.Summary(j)).ToArray());
+                        // Browser runtimes may return a child JsonObject that is still parented by
+                        // their transport envelope. Clone before composing the Agent-owned result.
+                        var state = (await owner._backend.GetStateAsync(context, ct).ConfigureAwait(false))
+                            .DeepClone().AsObject();
+                        state["jobs"] = new JsonArray(owner.Jobs.List(context).Take(25)
+                            .Select(j => (JsonNode?)ImageGenerationJobs.Summary(j).DeepClone()).ToArray());
                         return new(state.ToJsonString(WireJson.Options));
                 }
             }

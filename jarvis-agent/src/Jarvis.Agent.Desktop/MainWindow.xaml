@@ -40,7 +40,7 @@
 <TextBlock Text="{Binding WorkspaceStatus}" TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="11"/>
 <CheckBox Content="Allow HTTP for localhost development only" IsChecked="{Binding AllowLoopbackHttp}" FontSize="10"/>
 <Button Content="{Binding ConnectLabel}" Command="{Binding ConnectCommand}" Style="{StaticResource Primary}" Margin="0,22,0,12"/>
-<TextBlock Text="Tokens are encrypted with Windows DPAPI for this user. The agent never starts remotely or elevates itself." Foreground="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap"/>
+<TextBlock Text="Tokens are encrypted with Windows DPAPI for this user. Jarvis never elevates itself; an explicitly requested child process may show Windows UAC only when the separate Administrator option is enabled in Tool permissions." Foreground="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap"/>
 <TextBlock Text="{Binding Error}" Foreground="#FFA5B7" FontSize="11" TextWrapping="Wrap" Margin="0,13,0,0"/>
 </StackPanel></Border>
 <StackPanel Grid.Column="2"><Border Style="{StaticResource Card}" Padding="20"><StackPanel><Grid><TextBlock Text="Browser bridge" FontSize="15" FontWeight="SemiBold"/><TextBlock Text="↗" HorizontalAlignment="Right" Foreground="#BBA2EF" FontSize="18"/></Grid><TextBlock Text="Connect Chrome, Edge or Cốc Cốc using the separate Jarvis Agent extension." Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,14"/><Button Content="Set up browser integration" Command="{Binding BrowserCommand}"/></StackPanel></Border>
@@ -58,19 +58,26 @@
 <TextBlock Text="Preapprove the tools you trust. Your choice, saved on this computer." Foreground="{StaticResource Muted}" Margin="0,8,0,16" TextWrapping="Wrap"/>
 <Border Background="#24203C" BorderBrush="#41335F" BorderThickness="1" CornerRadius="12" Padding="16">
 <StackPanel><TextBlock Text="Full permission = no repeated Jarvis approval for ordinary tools" FontWeight="SemiBold" Foreground="#C4AEFC"/>
-<TextBlock Text="process.start and process.spawn are constrained exceptions: Full permission alone still asks each time unless you choose Always approve in their prompt. Permanent approvals are listed below and can be revoked at any time. Arm control is still required; Pause stops control." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,7,0,0"/>
+<TextBlock Text="unified_exec.exec_command is a constrained exception: ordinary Full permission does not replace its separate persistent approval. Direct process.launch jobs remain session-owned, and Administrator launch additionally requires the Windows UAC switch below. Arm control is still required; Pause stops owned work." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,7,0,0"/>
 </StackPanel></Border>
 </StackPanel>
 <Grid Grid.Row="1" Margin="0,16,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
 <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search tool permissions" ToolTip="Search by name, category or tool ID" Margin="0,0,15,0"/>
 <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding SelectionSummary}"/><TextBlock Text="{Binding SavedSummary}" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/></StackPanel>
 </Grid>
-<WrapPanel Grid.Row="2" Margin="0,0,0,12">
+<StackPanel Grid.Row="2" Margin="0,0,0,12">
+<Border Background="#221E34" BorderBrush="#41335F" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+<StackPanel>
+<CheckBox Content="Allow Full Permission tools to request Windows UAC elevation (Administrator)" IsChecked="{Binding AllowWindowsElevation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Allow Windows UAC elevation"/>
+<TextBlock Text="Applies only to tools that explicitly expose an Administrator elevation option. Windows still displays UAC and may deny the request. This never grants SYSTEM, bypasses protected processes, or weakens anti-cheat/security boundaries." TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="10" Margin="24,6,0,0"/>
+</StackPanel></Border>
+<WrapPanel>
 <Button Content="Select all tools" Command="{Binding SelectAllCommand}" Padding="12,9" Margin="0,0,8,4"/>
 <Button Content="Clear all" Command="{Binding ClearAllCommand}" Padding="12,9" Margin="0,0,8,4"/>
 <Button Content="Reset changes" Command="{Binding ResetCommand}" Padding="12,9" Margin="0,0,8,4"/>
 <Button Content="Save permissions" Command="{Binding SaveCommand}" Style="{StaticResource Primary}" Padding="14,9" Margin="0,0,0,4"/>
 </WrapPanel>
+</StackPanel>
 <ListBox Grid.Row="3" ItemsSource="{Binding FilteredTools}" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" AutomationProperties.Name="Tool permission list">
 <ListBox.ItemTemplate><DataTemplate><Border Padding="12,10" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

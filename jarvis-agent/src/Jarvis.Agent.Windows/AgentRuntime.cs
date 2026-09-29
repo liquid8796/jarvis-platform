@@ -8,6 +8,7 @@ using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.RemoteTasks;
 using Jarvis.Agent.Core.Threads;
 using Jarvis.Agent.Core.Artifacts;
+using Jarvis.Agent.Core.Auditing;
 using Jarvis.Protocol;
 
 namespace Jarvis.Agent.Windows;
@@ -20,6 +21,8 @@ public sealed class AgentRuntime : IAsyncDisposable
     private readonly ThreadRuntimeToolSet _threads;
     private readonly ThreadInteractionRuntimeToolSet _threadInteractions;
     private readonly ArtifactRuntimeToolSet _artifacts;
+    private readonly FileAgentAuditLog _audit;
+    private readonly AuditToolSet _auditTools;
     private readonly PluginRuntimeBootstrap _plugins;
     private readonly IDisposable _pluginLifecycleBinding;
     private readonly CancellationTokenSource _stop = new();
@@ -39,26 +42,31 @@ public sealed class AgentRuntime : IAsyncDisposable
         IRemoteTaskAdaptiveCoordinator? adaptiveCoordinator = null, IEnumerable<IPluginLifecycleHook>? pluginHooks = null)
     {
         var root = settingsRoot ?? AgentProfile.Root;
+        _audit = new FileAgentAuditLog(System.IO.Path.Combine(root, "audit"));
+        _auditTools = new AuditToolSet(_audit);
         var execution = new ExecutionSettingsStore(System.IO.Path.Combine(root, "execution-settings.json")).Load();
         var promptSettings = new Jarvis.Agent.Core.Prompts.PromptInjectionStore(System.IO.Path.Combine(root, "prompt-injection.json")).Load();
-        _processes = new ProcessToolSet(() => Connection?.ExecutionSettings ?? new AgentExecutionSettings());
         if (permissions is not null) _permissions = permissions;
         else
         {
             var permissionSettings = new ToolPermissionStore(System.IO.Path.Combine(root, "tool-permissions.json")).LoadSettings();
-            _permissions = new ToolPermissionPolicy(permissionSettings.FullPermissionTools, permissionSettings.AlwaysApprovedConstrainedTools);
+            _permissions = new ToolPermissionPolicy(permissionSettings.FullPermissionTools,
+                permissionSettings.AlwaysApprovedConstrainedTools, permissionSettings.AllowWindowsElevation);
         }
+        _processes = new ProcessToolSet(() => Connection?.ExecutionSettings ?? new AgentExecutionSettings(),
+            () => _permissions.AllowWindowsElevation, _audit);
         _inventory = new ToolInventory(questions, artifacts, mainWindow, settingsRoot);
         _threads = new ThreadRuntimeToolSet(System.IO.Path.Combine(root, "thread-runtime.db"));
         _threadInteractions = new ThreadInteractionRuntimeToolSet(System.IO.Path.Combine(root, "thread-runtime.db"));
         _artifacts = new ArtifactRuntimeToolSet(System.IO.Path.Combine(root, "artifact-runtime.db"), artifacts.ShowAsync);
 
         var registry = new DynamicToolRegistry(_inventory.Tools.Concat(_processes.Tools).Concat(_threads.Tools)
-            .Concat(_threadInteractions.Tools).Concat(_artifacts.Tools));
+            .Concat(_threadInteractions.Tools).Concat(_artifacts.Tools).Concat(_auditTools.Tools));
         var lifecycle = new AgentLifecycleHub();
         var adaptive = adaptiveCoordinator ?? new DefaultRemoteTaskAdaptiveCoordinator(registry);
         Connection = new AgentConnection(registry, approvals, Gate, _permissions,
-            taskStorageRoot: System.IO.Path.Combine(root, "TaskRuns"), lifecycle: lifecycle, adaptiveCoordinator: adaptive);
+            taskStorageRoot: System.IO.Path.Combine(root, "TaskRuns"), lifecycle: lifecycle,
+            adaptiveCoordinator: adaptive, audit: _audit);
         Connection.ApplyExecutionSettings(execution);
         Connection.ConfigurePromptContext(promptSettings.CreateContext());
         Connection.SessionProcessCountProvider = _processes.RunningForSession;
@@ -73,10 +81,11 @@ public sealed class AgentRuntime : IAsyncDisposable
         _pluginLifecycleBinding = _plugins.BindLifecycle(lifecycle);
         _plugins.StartWatching();
 
-        _permissions.PermissionsRevoked += StopOwnedActivity;
-        // A temporary transport loss cancels jobs, never replays them, but preserves
-        // the user's arm choice for this process. Explicit Disconnect still disarms.
-        Connection.ConnectionChanged += connected => { if (!connected) StopOwnedActivity(); };
+        _permissions.PermissionsRevoked += StopAllOwnedActivity;
+        // A temporary transport loss cancels terminal/browser/provider calls, never replays
+        // them, and preserves durable direct launches. Explicit Pause, permission revocation,
+        // session close and Agent exit remain stopping boundaries for those launches.
+        Connection.ConnectionChanged += connected => { if (!connected) StopTransientActivity(); };
     }
 
     public Task StartAsync(AgentOptions options, string token)
@@ -99,8 +108,12 @@ public sealed class AgentRuntime : IAsyncDisposable
     }
     private void StopSessionOwnedActivity(AgentSessionIdentity identity)
     {
-        _processes.StopSession(identity);
         var close = Connection.Sessions.Get(identity, allowClosed: true).ClosedAt is not null;
+        _audit.Write(close ? "SESSION_CLOSED" : "SESSION_STOPPED", "session",
+            close ? "Session was closed; all session-owned activity was stopped." :
+            "Session work was stopped; durable process.launch jobs were preserved.",
+            sessionId: identity.SessionId);
+        _processes.StopSession(identity, close);
         if (close) _threadInteractions.CloseSession(identity);
         var key = Guid.NewGuid().ToString("N");
         var work = CleanSessionAsync(identity, close);
@@ -119,18 +132,25 @@ public sealed class AgentRuntime : IAsyncDisposable
         try { await task; } finally { _sessionCleanup.TryRemove(key, out _); }
     }
     public void Arm() => Gate.Arm();
-    public void Pause() { Connection.Pause(); StopOwnedActivity(); }
-    private void StopOwnedActivity() { _processes.StopAll(); _inventory.Pause(); }
+    public void Pause() { Connection.Pause(); StopAllOwnedActivity(); }
+    private void StopAllOwnedActivity() { _processes.StopAll(); _inventory.Pause(); }
+    private void StopTransientActivity()
+    {
+        _processes.StopTransient();
+        _inventory.Pause();
+        _audit.Write("TRANSPORT_LOST", "connection",
+            "Transient terminal/browser/provider work stopped; durable process.launch jobs were preserved.");
+    }
     private void ApplyPluginCatalog(PluginCatalogSnapshot snapshot) => Connection.ApplyPluginCatalog(snapshot);
 
     public async ValueTask DisposeAsync()
     {
-        _permissions.PermissionsRevoked -= StopOwnedActivity;
+        _permissions.PermissionsRevoked -= StopAllOwnedActivity;
         _plugins.Changed -= ApplyPluginCatalog;
         Pause(); _stop.Cancel(); await Connection.DisposeAsync();
         if (_connectionTask is not null) try { await _connectionTask.WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
         try { await Task.WhenAll(_sessionCleanup.Values).WaitAsync(TimeSpan.FromSeconds(6)); } catch (Exception) { }
         _inventory.BrowserSessionStopRequested -= StopBrowserSession;
-        _pluginLifecycleBinding.Dispose(); _plugins.Dispose(); _artifacts.Dispose(); _threadInteractions.Dispose(); _threads.Dispose(); _processes.Dispose(); _inventory.Dispose(); _stop.Dispose();
+        _pluginLifecycleBinding.Dispose(); _plugins.Dispose(); _artifacts.Dispose(); _threadInteractions.Dispose(); _threads.Dispose(); _processes.Dispose(); _inventory.Dispose(); _audit.Dispose(); _stop.Dispose();
     }
 }

@@ -106,6 +106,7 @@ public sealed class LegacyToolAdapter : IAgentTool
         var context = new ToolExecutionContext { WorkingDirectory = workingDirectory, CallId = execution.CallId,
             AdditionalDirectories = execution.AdditionalDirectories,
             EnforceWorkspaceFileScope = false,
+            BypassBrowserOriginConsent = Descriptor.Category == "browser" && execution.FullPermission,
             SessionId = execution.SessionId, ShellTimeout = TimeSpan.FromSeconds(110), MaxOutputChars = 60000,
             AskUserAsync = _questions.AskAsync, SessionLifetime = cancellationToken };
         var filePath = Descriptor.Category == "filesystem" ? (args["file_path"] ?? args["notebook_path"])?.GetValue<string>() : null;

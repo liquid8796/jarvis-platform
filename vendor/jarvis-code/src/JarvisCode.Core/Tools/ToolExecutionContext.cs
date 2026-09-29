@@ -14,6 +14,12 @@ public sealed record ToolExecutionContext
     /// <summary>Host-controlled file-upload scope. Jarvis Agent uses folders as context, not a boundary.</summary>
     public bool EnforceWorkspaceFileScope { get; init; } = true;
 
+    /// <summary>
+    /// Host-controlled standing consent for browser origins. Jarvis Agent sets this
+    /// only for a browser tool invocation that already has local Full Permission.
+    /// </summary>
+    public bool BypassBrowserOriginConsent { get; init; }
+
     /// <summary>Hard cap applied to tool output before it is sent to the model.</summary>
     public int MaxOutputChars { get; init; } = 60_000;
 

@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using Jarvis.Agent.Core;
 using Jarvis.Agent.Core.Artifacts;
+using Jarvis.Agent.Core.Auditing;
 using Jarvis.Agent.Core.Threads;
 using Jarvis.Protocol;
 using Jarvis.Agent.Desktop.Infrastructure;
@@ -67,6 +68,7 @@ public sealed partial class MainViewModel : INotifyPropertyChanged, IAsyncDispos
             var descriptors = inventory.Tools.Concat(processes.Tools).Concat(threads.Tools).Select(t => t.Descriptor)
                 .Concat(ThreadInteractionRuntimeToolSet.Descriptors)
                 .Concat(ArtifactRuntimeToolSet.Descriptors)
+                .Concat(AuditToolSet.Descriptors)
                 .Concat(AgentCoreHostTools.Descriptors).DistinctBy(t => t.Id).ToArray();
             foreach (var tool in descriptors) Tools.Add(tool.Name);
             Permissions = new ToolPermissionsViewModel(descriptors, _permissions, _permissionStore);

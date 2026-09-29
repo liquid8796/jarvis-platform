@@ -8,13 +8,13 @@ namespace Jarvis.Core.Tests;
 public sealed class ProcessTests
 {
     [Fact]
-    public void Codex_process_surface_exposes_only_exec_command_and_write_stdin()
+    public void Process_surface_exposes_terminal_and_durable_direct_launch_tools()
     {
         using var tools = new ProcessToolSet();
         var ids = tools.Tools.Select(tool => tool.Descriptor.Id).ToArray();
-        Assert.Equal(["unified_exec.exec_command", "unified_exec.write_stdin"], ids);
+        Assert.Equal(["unified_exec.exec_command", "unified_exec.write_stdin", "process.launch", "process.get", "process.stop"], ids);
         Assert.Equal("exec_command", tools.Tools.First().Descriptor.Name);
-        Assert.Equal("write_stdin", tools.Tools.Last().Descriptor.Name);
+        Assert.Equal("process_stop", tools.Tools.Last().Descriptor.Name);
     }
 
     [Fact]
@@ -129,8 +129,104 @@ public sealed class ProcessTests
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    [Fact]
+    public async Task Direct_launch_survives_root_launcher_exit_and_transient_disconnect_until_explicit_stop()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var tools = new ProcessToolSet();
+        var context = ExplicitContext("launch") with { FullPermission = true };
+        var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "WindowsPowerShell", "v1.0", "powershell.exe");
+        var childPath = powershell.Replace("'", "''", StringComparison.Ordinal);
+        var script = "Start-Sleep -Milliseconds 500; Start-Process -FilePath '" + childPath +
+            "' -ArgumentList @('-NoLogo','-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 30')";
+        var launched = await Tool(tools, "process.launch").ExecuteAsync(WireJson.Element(new
+        {
+            file_path = powershell,
+            arguments = new[] { "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script },
+            timeout_seconds = 30
+        }), context, CancellationToken.None);
+        Assert.False(launched.IsError, launched.Text);
+        using var started = JsonDocument.Parse(launched.Text);
+        var launchId = started.RootElement.GetProperty("launch_id").GetString()!;
+
+        JsonElement snapshot = default;
+        for (var attempt = 0; attempt < 50; attempt++)
+        {
+            var reply = await Tool(tools, "process.get").ExecuteAsync(
+                WireJson.Element(new { launch_id = launchId }), context, CancellationToken.None);
+            using var json = JsonDocument.Parse(reply.Text);
+            snapshot = json.RootElement.Clone();
+            if (snapshot.GetProperty("root_exited").GetBoolean() && snapshot.GetProperty("running").GetBoolean()) break;
+            await Task.Delay(100);
+        }
+        Assert.True(snapshot.GetProperty("root_exited").GetBoolean());
+        Assert.True(snapshot.GetProperty("running").GetBoolean());
+        Assert.True(snapshot.GetProperty("active_process_count").GetUInt32() >= 1);
+
+        tools.StopTransient();
+        var afterDisconnect = await Tool(tools, "process.get").ExecuteAsync(
+            WireJson.Element(new { launch_id = launchId }), context, CancellationToken.None);
+        using (var json = JsonDocument.Parse(afterDisconnect.Text))
+            Assert.True(json.RootElement.GetProperty("running").GetBoolean());
+
+        await Tool(tools, "process.stop").ExecuteAsync(
+            WireJson.Element(new { launch_id = launchId }), context, CancellationToken.None);
+        for (var attempt = 0; attempt < 50 && tools.RunningCount > 0; attempt++) await Task.Delay(100);
+        Assert.Equal(0, tools.RunningCount);
+    }
+
+    [Fact]
+    public async Task Durable_launch_survives_stop_work_but_session_close_terminates_it()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var tools = new ProcessToolSet();
+        var context = ExplicitContext("session-lifetime") with { FullPermission = true };
+        var identity = new AgentSessionIdentity(context.OwnerId!, context.AgentDeviceId!, context.SessionId);
+        var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "WindowsPowerShell", "v1.0", "powershell.exe");
+        var launched = await Tool(tools, "process.launch").ExecuteAsync(WireJson.Element(new
+        {
+            file_path = powershell,
+            arguments = new[] { "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Start-Sleep -Seconds 30" },
+            timeout_seconds = 0
+        }), context, CancellationToken.None);
+        Assert.False(launched.IsError, launched.Text);
+        using var started = JsonDocument.Parse(launched.Text);
+        var launchId = started.RootElement.GetProperty("launch_id").GetString()!;
+
+        tools.StopSession(identity, close: false);
+        var afterStopWork = await Tool(tools, "process.get").ExecuteAsync(
+            WireJson.Element(new { launch_id = launchId }), context, CancellationToken.None);
+        using (var json = JsonDocument.Parse(afterStopWork.Text))
+            Assert.True(json.RootElement.GetProperty("running").GetBoolean());
+
+        tools.StopSession(identity, close: true);
+        for (var attempt = 0; attempt < 50 && tools.RunningCount > 0; attempt++) await Task.Delay(100);
+        Assert.Equal(0, tools.RunningCount);
+    }
+
+    [Fact]
+    public async Task Administrator_launch_requires_full_permission_and_separate_local_elevation_consent()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var tools = new ProcessToolSet(allowWindowsUacElevation: () => false);
+        var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "WindowsPowerShell", "v1.0", "powershell.exe");
+        var context = ExplicitContext("uac") with { FullPermission = true, WindowsElevationAllowed = false };
+        var reply = await Tool(tools, "process.launch").ExecuteAsync(
+            WireJson.Element(new { file_path = powershell, run_as_administrator = true }),
+            context, CancellationToken.None);
+        Assert.True(reply.IsError);
+        Assert.Contains("elevation", reply.Text, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static AgentExecutionContext Context(string suffix) =>
         new(Path.GetTempPath(), "call-" + suffix, "session-" + suffix)
+        { OwnerId = "owner", AgentDeviceId = "device" };
+
+    private static AgentExecutionContext ExplicitContext(string suffix) =>
+        new(Path.GetTempPath(), "call-" + suffix, "js_" + new string('a', 32))
         { OwnerId = "owner", AgentDeviceId = "device" };
 
     private static IAgentTool Tool(ProcessToolSet tools, string id) =>

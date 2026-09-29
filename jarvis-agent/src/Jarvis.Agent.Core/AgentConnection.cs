@@ -6,6 +6,7 @@ using Jarvis.Agent.Core.Plugins;
 using Jarvis.Agent.Core.RemoteTasks;
 using Jarvis.Agent.Core.Execution;
 using Jarvis.Agent.Core.ToolPrograms;
+using Jarvis.Agent.Core.Auditing;
 using Jarvis.Protocol;
 namespace Jarvis.Agent.Core;
 
@@ -23,6 +24,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
     private readonly SessionToolReplHost _toolRepl;
     private readonly CollaborationWorkerHost _collaborationWorkers;
     private readonly LocalControlGate _gate;
+    private readonly IAgentAuditSink _audit;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _running = new();
     private readonly ConcurrentDictionary<string, Task> _tasks = new();
     private readonly ConcurrentDictionary<string, (DateTimeOffset At, ToolReply Reply)> _completed = new();
@@ -51,15 +53,18 @@ public sealed partial class AgentConnection : IAsyncDisposable
         foreach (var handler in ReachabilityChanged?.GetInvocationList() ?? [])
             try { ((Action<AgentReachabilityStatus>)handler)(next); } catch (Exception) { }
         Emit("connection", $"[{code}] {detail}");
+        _audit.Write(code, "connection", detail);
     }
 
     public AgentConnection(IEnumerable<IAgentTool> tools, IApprovalService approval, LocalControlGate gate, ToolPermissionPolicy? permissions = null,
-        string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null)
-        : this(new DynamicToolRegistry(tools), approval, gate, permissions, taskStorageRoot, socketConnector) { }
+        string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null,
+        IAgentAuditSink? audit = null)
+        : this(new DynamicToolRegistry(tools), approval, gate, permissions, taskStorageRoot, socketConnector,
+            audit: audit) { }
 
     public AgentConnection(DynamicToolRegistry registry, IApprovalService approval, LocalControlGate gate, ToolPermissionPolicy? permissions = null,
         string? taskStorageRoot = null, Func<Uri, string, CancellationToken, Task<WebSocket>>? socketConnector = null, AgentLifecycleHub? lifecycle = null,
-        IRemoteTaskAdaptiveCoordinator? adaptiveCoordinator = null)
+        IRemoteTaskAdaptiveCoordinator? adaptiveCoordinator = null, IAgentAuditSink? audit = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _approval = approval; _gate = gate;
@@ -67,6 +72,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
         _socketConnector = socketConnector ?? ConnectSocketAsync;
         _lifecycle = lifecycle ?? new AgentLifecycleHub();
         _adaptiveCoordinator = adaptiveCoordinator;
+        _audit = audit ?? NullAgentAuditSink.Instance;
         _toolRepl = new SessionToolReplHost(InvokeInstalledToolAsync, () => _registry.Snapshot);
         _collaborationWorkers = new CollaborationWorkerHost(InvokeInstalledToolAsync, () => _registry.Snapshot);
         _gate.Changed += OnGateChanged;
@@ -147,12 +153,14 @@ public sealed partial class AgentConnection : IAsyncDisposable
     private void OnGateChanged(bool armed)
     {
         if (armed) return;
+        _audit.Write("PAUSED", "security", "Local control was paused.");
         _remoteTasks?.CancelAll("CANCELLED");
         _toolRepl.CancelAll("Local control paused.");
         _collaborationWorkers.CancelAll("Local control paused.");
     }
     private void CancelInFlight()
     {
+        _audit.Write("PERMISSION_REVOKED", "security", "Standing tool permission changed or was revoked.");
         _remoteTasks?.CancelAll("CANCELLED");
         _toolRepl.CancelAll("Tool permissions changed or were revoked.");
         _collaborationWorkers.CancelAll("Tool permissions changed or were revoked.");
@@ -292,7 +300,14 @@ public sealed partial class AgentConnection : IAsyncDisposable
         // The receive loop never waits for approval or a long-running command.
         var admission = TryAdmit(id, AgentSessionRules.IsControlTool(message.ToolId));
         if (admission == Admission.Duplicate) return;
-        if (admission == Admission.Full) { Track(id + "-busy", ReplyAsync(wire, id, ToolReply.Error("QUEUE_FULL: Agent request queue is full; no tool was started."), sessionToken)); return; }
+        if (admission == Admission.Full)
+        {
+            _audit.Write("QUEUE_FULL", "tool", "Agent request queue is full; no tool was started.",
+                message.ToolId, callId: id);
+            Track(id + "-busy", ReplyAsync(wire, id,
+                ToolReply.Error("QUEUE_FULL: Agent request queue is full; no tool was started."), sessionToken));
+            return;
+        }
         AgentExecutionContext context;
         try { context = PrepareContext(message, workspace); }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
@@ -337,6 +352,18 @@ public sealed partial class AgentConnection : IAsyncDisposable
             var message = ex is OperationCanceledException ? "Call cancelled or deadline exceeded; do not replay mutating actions blindly."
                 : ex is UnauthorizedAccessException or InvalidOperationException or ArgumentException ? ex.Message
                 : "Tool failed: " + ex.GetType().Name;
+            var code = ex switch
+            {
+                AgentRequestException request => request.Code,
+                OperationCanceledException => "DEADLINE_OR_CANCELLED",
+                UnauthorizedAccessException when message.Contains("denied", StringComparison.OrdinalIgnoreCase) => "LOCAL_APPROVAL_DENIED",
+                UnauthorizedAccessException when message.Contains("paused", StringComparison.OrdinalIgnoreCase) => "PAUSED",
+                UnauthorizedAccessException => "ACCESS_DENIED",
+                ArgumentException => "INVALID_ARGUMENT",
+                InvalidOperationException => "INVALID_OPERATION",
+                _ => "TOOL_EXCEPTION"
+            };
+            _audit.Write(code, "tool", message, call.ToolId, context.SessionId, context.CallId);
             _completed[id] = (DateTimeOffset.UtcNow, ToolReply.Error(message));
             using var responseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             try { await ReplyAsync(wire, id, ToolReply.Error(message), responseTimeout.Token); }
@@ -411,9 +438,13 @@ public sealed partial class AgentConnection : IAsyncDisposable
             var result = await tool.ExecuteAsync(arguments, context with
             {
                 FullPermission = _permissions.HasFullPermission(toolId, arguments, context),
+                WindowsElevationAllowed = _permissions.AllowWindowsElevation,
                 RetainResources = resourceLease is null ? null : resourceLease.Retain
             }, ct);
             Emit("tool", (result.IsError ? "Failed " : "Completed ") + tool.Descriptor.Name);
+            _audit.Write(result.IsError ? "TOOL_FAILED" : "TOOL_COMPLETED", "tool",
+                result.IsError ? "Tool returned an error result." : "Tool completed successfully.",
+                toolId, context.SessionId, context.CallId);
             return result;
         }
         finally

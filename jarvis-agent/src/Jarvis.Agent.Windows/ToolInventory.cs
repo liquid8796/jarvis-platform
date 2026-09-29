@@ -18,6 +18,7 @@ public sealed class ToolInventory : IDisposable
     private readonly BlenderMcpToolSet _blender;
     private readonly SessionFileObservations _fileObservations = new();
     private readonly SessionBrowserToolSet _browserTools;
+    private readonly NativeInspectionToolSet _nativeInspection;
     public event Action<string>? BrowserSessionStopRequested;
     private readonly TeachController? _teach;
     private readonly ComputerStateTracker _computerStates = new();
@@ -26,6 +27,7 @@ public sealed class ToolInventory : IDisposable
         IBrowserRuntimeClient? browserRuntime = null)
     {
         var root = settingsRoot ?? AgentProfile.Root;
+        _nativeInspection = new NativeInspectionToolSet(root);
         var settings = new UiSettingsStore(Path.Combine(root, "computer-settings.json"));
         settings.Current.ComputerUseFullPermissionProvider = () => ToolConsentScope.IsFullPermission;
         settings.Current.ComputerUseEnabled = true;
@@ -52,6 +54,7 @@ public sealed class ToolInventory : IDisposable
         _imageGen = new ImageGenerationToolSet(Path.Combine(root, "imagegen"),
             new ChatGptExtensionImageBackend(_browser, new ImageGenBrowserBindingStore(root)), new ImageArtifactStore());
         tools.AddRange(_imageGen.Tools);
+        tools.AddRange(_nativeInspection.Tools);
         Add("visualize", VisualizeTools.Create());
         Add("filesystem", [new ReadFileTool(), new ReadDocumentTool(), new ListDirectoryTool(), new GlobTool(), new GrepTool()]);
         tools.Add(new CodexApplyPatchTool(_fileObservations, root));

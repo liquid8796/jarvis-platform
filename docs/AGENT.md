@@ -1,3 +1,17 @@
+## 1.0.100 durable launches, UAC consent, diagnostics and audit
+
+`process_launch` starts a directly owned executable instead of launching it through a short-lived shell. It requires an explicit Jarvis application session and returns a `launch_id`; use `process_get` and `process_stop` with the same session. On Windows, a non-elevated process tree stays in an Agent-owned job object. The initial executable may exit after starting a child, but the launch remains running while descendants remain in that job. A transient transport reconnect and `session__stop_work` do not reap the durable tree. Natural tree exit, `process_stop`, application-session close, explicit local Pause, permission revocation, optional timeout, or Agent exit ends it.
+
+Tool permissions has an independent **Allow Full Permission tools to request Windows UAC elevation (Administrator)** setting. A caller must also hold Full Permission for `process.launch`, request `run_as_administrator: true`, and complete the normal Windows UAC prompt. The option is not persisted in the ordinary tool-ID set and can be revoked independently. It does not grant SYSTEM, duplicate privileged tokens, cross integrity boundaries without UAC, access protected processes, bypass anti-cheat, or circumvent browser/enterprise/OS protections.
+
+`binary_inspect` reads bounded file size/hash/version/Authenticode-certificate/PE-header/section data and printable string samples without executing the file. `process_list` and `process_inspect` use query-only process APIs for basic identity, architecture, elevation/integrity and an optional bounded module list. These tools do not implement debugger attach, process-memory reads/writes, injection, thread manipulation, token duplication or protection bypass.
+
+Agent audit records now persist reason codes such as pause, permission revocation, transport interruption, queue rejection, process start/stop/timeout and tool completion/failure. Files rotate at 5 MiB and records older than 14 days are removed. Session identifiers are stored as short SHA-256 correlation values; arguments, prompts, file contents, command text and browser payloads are not recorded. `audit_query` defaults to the current explicit session; `all_sessions: true` requires Full Permission.
+
+Browser Full Permission now supplies standing origin consent to Jarvis' browser-origin gate for the current invocation. It does not add the domain to Allowed Sites and does not override website authentication, browser extension selection, Chrome/Edge policy, denied applications or Windows permissions. ImageGen deep-clones browser state before composing responses so a transport-owned `JsonNode` cannot fail with `The node already has a parent`.
+
+The active local Blender configuration points to the managed `mcp-for-blender 2.1.1` Python runtime and its bundled protocol-11 addon. Live probing on 2026-09-29 reported all 36 tools, addon compatibility with Blender 5.2.1 LTS and telemetry disabled. Poly Haven preview plus all four Tripo lifecycle names are present; no Premium generation or credit-spending operation was used to certify the activation.
+
 ## 1.0.82 mouse wheel routing
 
 The desktop shell now captures mouse-wheel input before child controls can consume it. When the cursor is inside nested containers, lists or other components, the nearest scrollable parent receives the wheel movement while preserving normal edge behavior.

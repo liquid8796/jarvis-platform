@@ -52,7 +52,10 @@ public sealed partial class BrowserServiceServer
                 if (selected.Length == 1)
                 {
                     using var session = _bridge.EnterApplicationSession(request.Context.ApplicationSessionId!);
-                    result["tab"] = await _bridge.RequestForExtensionInstanceAsync(binding!.ExtensionInstanceId, "imagegen_state", new JsonObject(), ct).ConfigureAwait(false);
+                    // The bridge may return a node still attached to its transport envelope.
+                    // Clone before composing this response so JsonNode parent ownership stays valid.
+                    result["tab"] = (await _bridge.RequestForExtensionInstanceAsync(binding!.ExtensionInstanceId,
+                        "imagegen_state", new JsonObject(), ct).ConfigureAwait(false)).DeepClone();
                 }
             }
             else
