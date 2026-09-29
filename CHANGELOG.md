@@ -6,6 +6,7 @@
 - Stabilize the Tool Catalog reconciliation regression by serializing its stale-row fixture setup with the router's initial reconciliation pass; production reconciliation semantics are unchanged.
 - Add focused coverage for normal durable-stop confirmation and dispatch-level audit redaction. Bump package to **1.0.101** and assembly/file to **1.0.101.0**.
 - Verify the full Release build with **0 warnings / 0 errors** and all **654** maintained tests passing: Core 320, Windows Agent 193, Server 141.
+- Publish and validate the self-contained Desktop/CLI outputs plus Blender support bundle. The release ZIP is **254,840,410 bytes** with SHA-256 `4cbf40df1d55bb7099329d089150e65116e4499a9238a9ba7f401853430ecc1f`.
 
 ## 1.0.100 - 2026-09-29
 
