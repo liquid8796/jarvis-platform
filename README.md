@@ -1,4 +1,10 @@
-# Jarvis Control - 1.0.100
+# Jarvis Control - 1.0.101
+
+## Process termination and audit hardening (1.0.101)
+
+Durable-process stop results now distinguish a confirmed termination request from a Windows access failure. Non-elevated trees still terminate through their Agent-owned Job Object, but TerminateJobObject failures are checked instead of discarded. When a medium-integrity Agent cannot terminate an elevated root process, process_stop leaves the launch running and exposes termination_unconfirmed as true until process_get observes the real exit. A benign race where the target exits between inspection and Kill is not reported as a failed stop. Because an elevated child cannot join the medium-integrity Agent's Job Object, it may outlive an Agent exit when Windows refuses termination; verify or close it as an operator.
+
+Persistent audit records no longer copy runtime exception messages. The caller still receives the actionable local error, while disk audit retains a bounded reason code and generic description without command text, file paths, tool arguments, or exception payloads. The server test suite also serializes its stale Tool Catalog fixture with initial reconciliation, removing a full-suite race without changing production catalog policy. Package **1.0.101**, assembly/file **1.0.101.0**.
 
 ## Durable launches, diagnostics and local audit (1.0.100)
 

@@ -1,8 +1,10 @@
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Channels;
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Auditing;
 using Jarvis.Protocol;
 namespace Jarvis.Core.Tests;
 
@@ -27,6 +29,19 @@ public sealed class InvocationPermissionTests
             if (wait) await Task.Delay(Timeout.Infinite, ct);
             return new ToolReply("synthetic success");
         }
+    }
+    private sealed class ThrowingTool : IAgentTool
+    {
+        public ToolDescriptor Descriptor { get; } = new("test.throwing", "test_throwing", "test",
+            "Synthetic throwing tool", WireJson.Element(new { type = "object", additionalProperties = false }),
+            false, true);
+        public Task<ToolReply> ExecuteAsync(JsonElement args, AgentExecutionContext context, CancellationToken ct) =>
+            throw new ArgumentException("sensitive-marker-value");
+    }
+    private sealed class AuditSink : IAgentAuditSink
+    {
+        public ConcurrentQueue<AgentAuditRecord> Records { get; } = new();
+        public void Write(AgentAuditRecord record) => Records.Enqueue(record);
     }
     private sealed class Socket : WebSocket
     {
@@ -115,5 +130,17 @@ public sealed class InvocationPermissionTests
         await using var connection = new AgentConnection([], approval, gate, new(["future.tool"]));
         using var socket = new Socket();
         Assert.True((await Invoke(connection, socket, "future.tool")).Result!.IsError); Assert.Equal(0, approval.Calls);
+    }
+    [Fact] public async Task Dispatch_keeps_actionable_client_errors_but_redacts_exception_text_from_audit()
+    {
+        var tool = new ThrowingTool(); var gate = new LocalControlGate(); gate.Arm(); var audit = new AuditSink();
+        await using var connection = new AgentConnection([tool], new Approval(), gate,
+            new([tool.Descriptor.Id]), audit: audit);
+        using var socket = new Socket(); var response = await Invoke(connection, socket, tool.Descriptor.Id);
+        Assert.True(response.Result!.IsError);
+        Assert.Contains("sensitive-marker-value", response.Result.Text, StringComparison.Ordinal);
+        var record = Assert.Single(audit.Records, item => item.Code == "INVALID_ARGUMENT");
+        Assert.Equal("The tool call was rejected because its arguments were invalid.", record.Message);
+        Assert.DoesNotContain("sensitive-marker-value", record.Message, StringComparison.Ordinal);
     }
 }

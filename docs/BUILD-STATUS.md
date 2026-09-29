@@ -1,4 +1,13 @@
 # Build / test status
+## 1.0.101 process termination and audit hardening - executed verification (2026-09-29)
+
+- Durable process termination now checks the Windows Job Object result instead of discarding a failed TerminateJobObject call. Successful job/root termination requests remain confirmed even if the process exits during the HasExited/Kill race. When both termination paths are rejected and the elevated root remains alive, process_stop reports termination_unconfirmed and process_get keeps the launch running until an observed exit.
+- Tool-call exception text is no longer copied into persistent audit records. The immediate caller still receives the actionable validation/access error; the audit file receives only a bounded reason code and generic description. Focused persistence coverage verifies that a secret present in both arguments and the thrown exception is absent from the JSONL record.
+- The Tool Catalog stale-row regression now waits for the router's initial reconciliation before inserting its fixture rows, eliminating a full-suite ordering race without changing production reconciliation behavior.
+- Focused Release checks passed **22/22** Core process/audit/dispatch tests and **8/8** Tool Catalog reconciliation tests. The full Release solution build completed with **0 warnings / 0 errors**. Maintained suites passed **654/654**, **0 failed / 0 skipped**: Core **320**, Windows Agent **193**, Server **141**.
+- Version verification passed for package **1.0.101** and assembly/file **1.0.101.0**. Evidence is under artifacts/test-results/1.0.101: build.log, core.trx, windows.trx and server.trx.
+- This patch is source/build/test verification only. It does not hot-replace the running Agent, restart Blender, or deploy the OCI MCP service. An elevated child cannot be placed in the medium-integrity Agent's Job Object and may outlive the Agent if Windows rejects termination; treat termination_unconfirmed as requiring operator verification.
+
 ## 1.0.100 durable launches, diagnostics, audit and live Blender activation - executed verification (2026-09-29)
 
 - Added explicit-session `process_launch`, `process_get` and `process_stop` tools. Non-elevated launches remain in a Windows Job Object but are monitored by active descendant count, so a short-lived launcher can exit without reaping the GUI client. Transient Agent transport loss and resumable `session__stop_work` preserve these durable launches; local Pause, permission revocation, explicit stop, session close, timeout, natural tree exit and Agent shutdown stop them. Standard terminal `exec_command` jobs retain the previous conservative cancellation behavior.

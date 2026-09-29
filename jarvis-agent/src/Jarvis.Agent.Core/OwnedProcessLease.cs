@@ -24,7 +24,11 @@ internal sealed class OwnedProcessLease : IDisposable
     }
     public void Stop()
     {
-        lock (_sync) if (_job is { IsClosed: false, IsInvalid: false }) TerminateJobObject(_job, 1);
+        lock (_sync)
+        {
+            if (_job is not { IsClosed: false, IsInvalid: false }) return;
+            if (!TerminateJobObject(_job, 1)) throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
     }
     public uint ActiveProcessCount
     {

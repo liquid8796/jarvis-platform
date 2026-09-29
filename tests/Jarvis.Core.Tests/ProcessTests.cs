@@ -170,10 +170,17 @@ public sealed class ProcessTests
         using (var json = JsonDocument.Parse(afterDisconnect.Text))
             Assert.True(json.RootElement.GetProperty("running").GetBoolean());
 
-        await Tool(tools, "process.stop").ExecuteAsync(
+        var stop = await Tool(tools, "process.stop").ExecuteAsync(
             WireJson.Element(new { launch_id = launchId }), context, CancellationToken.None);
+        using (var stopJson = JsonDocument.Parse(stop.Text))
+            Assert.False(stopJson.RootElement.GetProperty("termination_unconfirmed").GetBoolean());
         for (var attempt = 0; attempt < 50 && tools.RunningCount > 0; attempt++) await Task.Delay(100);
         Assert.Equal(0, tools.RunningCount);
+        var stopped = await Tool(tools, "process.get").ExecuteAsync(
+            WireJson.Element(new { launch_id = launchId }), context, CancellationToken.None);
+        using var stoppedJson = JsonDocument.Parse(stopped.Text);
+        Assert.False(stoppedJson.RootElement.GetProperty("running").GetBoolean());
+        Assert.False(stoppedJson.RootElement.GetProperty("termination_unconfirmed").GetBoolean());
     }
 
     [Fact]

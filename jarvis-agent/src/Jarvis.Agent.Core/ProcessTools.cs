@@ -441,9 +441,13 @@ public sealed partial class ProcessToolSet : IDisposable
 
         private void Kill()
         {
-            _lease.Stop();
+            try { _lease.Stop(); }
+            catch (Win32Exception ex)
+            {
+                Add("system", $"\n[jarvis: job-object termination failed with Win32 error {ex.NativeErrorCode}; trying process-tree termination]\n");
+            }
             try { if (!_process.HasExited) _process.Kill(entireProcessTree: true); }
-            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception) { }
+            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or ObjectDisposedException) { }
         }
 
         public override void Dispose() => Cancel();
@@ -617,9 +621,13 @@ public sealed partial class ProcessToolSet : IDisposable
 
         private void Kill()
         {
-            _lease.Stop();
+            try { _lease.Stop(); }
+            catch (Win32Exception ex)
+            {
+                Add("system", $"\n[jarvis: PTY job-object termination failed with Win32 error {ex.NativeErrorCode}; trying process-tree termination]\n");
+            }
             try { if (!_process.HasExited) _process.Kill(entireProcessTree: true); }
-            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception) { }
+            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or ObjectDisposedException) { }
         }
 
         private void CloseConsole()

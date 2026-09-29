@@ -37,9 +37,9 @@ public sealed partial class ProcessToolSet
             "process",
             operation switch
             {
-                "launch" => "Launch an executable directly as a session-owned durable process so it is not reaped when a temporary shell exits. It survives temporary transport loss and session stop-work, but ends when the process tree exits, process_stop is called, the application session is closed, local control is paused, an optional timeout expires, permission is revoked, or the Agent exits. run_as_administrator uses the standard Windows UAC prompt only and requires both Full permission and the separate local elevation switch.",
+                "launch" => "Launch an executable directly as a session-owned durable process so it is not reaped when a temporary shell exits. A non-elevated Windows process tree remains in an Agent-owned job object and survives temporary transport loss and session stop-work. run_as_administrator uses the standard Windows UAC prompt only, requires both Full permission and the separate local elevation switch, and is tracked as an elevated root process because a medium-integrity Agent cannot place it in the same job object.",
                 "get" => "Read status for a session-owned process launched by process_launch.",
-                _ => "Stop a session-owned process launched by process_launch. Elevated processes may still require Windows permission to terminate."
+                _ => "Request termination of a session-owned process launched by process_launch. Non-elevated trees are terminated through their Agent-owned job object. Windows may refuse termination of an elevated root process from a medium-integrity Agent; status remains running and termination_unconfirmed is reported until it actually exits."
             },
             operation == "launch" ? LaunchSchema() : IdSchema(),
             ReadOnly: operation == "get",
@@ -134,7 +134,11 @@ public sealed partial class ProcessToolSet
         context.RequireSessionIdentity();
         var process = OwnedLaunched(arguments, context);
         process.Stop("explicit_stop");
-        _audit.Write(new(DateTimeOffset.UtcNow, "PROCESS_STOP_REQUESTED", "Session-owned process stop requested.",
+        var code = process.TerminationUnconfirmed ? "PROCESS_STOP_FAILED" : "PROCESS_STOP_REQUESTED";
+        var message = process.TerminationUnconfirmed
+            ? "Windows did not confirm termination of the session-owned process."
+            : "Session-owned process stop requested.";
+        _audit.Write(new(DateTimeOffset.UtcNow, code, message,
             "process.stop", context.SessionId, context.CallId, process.ProcessId));
         return new ToolReply(process.Snapshot());
     }
@@ -200,6 +204,7 @@ public sealed partial class ProcessToolSet
         private bool _done;
         private int? _exitCode;
         private string? _stopReason;
+        private bool _terminationUnconfirmed;
         private int _disposeRequested;
         private int _resourcesDisposed;
 
@@ -259,6 +264,7 @@ public sealed partial class ProcessToolSet
         public bool Elevated { get; }
         public bool Done { get { lock (_sync) return _done; } }
         public string? StopReason { get { lock (_sync) return _stopReason; } }
+        public bool TerminationUnconfirmed { get { lock (_sync) return _terminationUnconfirmed; } }
 
         public bool BelongsTo(AgentExecutionContext context)
         {
@@ -296,6 +302,7 @@ public sealed partial class ProcessToolSet
                     elevated = Elevated,
                     started_at = StartedUtc,
                     stop_reason = _stopReason,
+                    termination_unconfirmed = _terminationUnconfirmed,
                     root_exited = rootExited,
                     active_process_count = activeProcesses
                 }, WireJson.Options);
@@ -305,33 +312,37 @@ public sealed partial class ProcessToolSet
         {
             using var deadline = new CancellationTokenSource();
             if (timeoutSeconds > 0) deadline.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token, deadline.Token);
+            var terminationAttempted = false;
             try
             {
                 while (true)
                 {
-                    linked.Token.ThrowIfCancellationRequested();
+                    var timedOut = timeoutSeconds > 0 && deadline.IsCancellationRequested;
+                    var stopRequested = _stop.IsCancellationRequested;
+                    if ((timedOut || stopRequested) && !terminationAttempted)
+                    {
+                        lock (_sync)
+                            if (_stopReason is null && timedOut)
+                                _stopReason = "timeout";
+                        TryKill();
+                        terminationAttempted = true;
+                    }
                     var rootExited = false;
                     try { rootExited = _process.HasExited; } catch (InvalidOperationException) { rootExited = true; }
                     if (rootExited && SafeActiveProcessCount(rootExited) == 0) break;
-                    await Task.Delay(250, linked.Token).ConfigureAwait(false);
+                    await Task.Delay(250).ConfigureAwait(false);
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                lock (_sync)
-                    if (_stopReason is null && timeoutSeconds > 0 && deadline.IsCancellationRequested)
-                        _stopReason = "timeout";
-                TryKill();
-                var until = DateTimeOffset.UtcNow.AddSeconds(5);
-                while (DateTimeOffset.UtcNow < until && SafeActiveProcessCount(rootExited: false) > 0)
-                    await Task.Delay(50).ConfigureAwait(false);
             }
             finally
             {
                 int? exit = null;
                 try { if (_process.HasExited) exit = _process.ExitCode; } catch (Exception) { }
-                lock (_sync) { _exitCode = exit; _done = true; }
+                lock (_sync)
+                {
+                    _exitCode = exit;
+                    _terminationUnconfirmed = false;
+                    _done = true;
+                }
                 _lease?.Dispose();
                 _completed(this);
                 if (Volatile.Read(ref _disposeRequested) == 1) DisposeResources();
@@ -347,9 +358,44 @@ public sealed partial class ProcessToolSet
 
         private void TryKill()
         {
-            _lease?.Stop();
-            try { if (!_process.HasExited) _process.Kill(entireProcessTree: true); }
-            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or ObjectDisposedException) { }
+            var confirmed = false;
+            var jobTerminationFailed = false;
+            if (_lease is not null)
+            {
+                try { _lease.Stop(); confirmed = true; }
+                catch (Win32Exception) { jobTerminationFailed = true; }
+            }
+
+            // A successful job-object termination is authoritative for the complete
+            // non-elevated tree. Only fall back to the root-process API when that request
+            // failed, or for elevated launches which cannot join the Agent's job object.
+            if (_lease is null || jobTerminationFailed)
+            {
+                try
+                {
+                    if (_process.HasExited) confirmed = ObservedStopped();
+                    else { _process.Kill(entireProcessTree: true); confirmed = true; }
+                }
+                catch (InvalidOperationException) { confirmed = ObservedStopped(); }
+                catch (Win32Exception) { }
+            }
+            if (confirmed)
+            {
+                lock (_sync) _terminationUnconfirmed = false;
+                return;
+            }
+
+            lock (_sync) _terminationUnconfirmed = !ObservedStopped();
+        }
+
+        private bool ObservedStopped()
+        {
+            try
+            {
+                var rootExited = _process.HasExited;
+                return rootExited && (_lease is null || _lease.ActiveProcessCount == 0);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception) { return false; }
         }
 
         public void Dispose()

@@ -1,3 +1,9 @@
+## 1.0.101 process-stop truthfulness and audit redaction
+
+Durable process status is observation-based. For non-elevated launches, Jarvis checks the Windows Job Object termination result and continues monitoring descendants until the tree is gone. Elevated launches cannot be assigned to the medium-integrity Agent's Job Object; when Windows rejects Kill, process_stop returns state with termination_unconfirmed as true and the launch remains running until a later process_get observes its actual exit. Do not interpret a stop request as proof that an elevated application closed. If the Agent exits while Windows is rejecting termination, that elevated child can remain alive and must be verified or closed by the operator.
+
+The immediate tool response still contains the actionable validation or access error. Persistent Agent audit files instead record a bounded reason code and generic failure description, preventing command text, paths, arguments and exception payloads from being copied to disk. Package **1.0.101**, assembly/file **1.0.101.0**.
+
 ## 1.0.100 durable launches, UAC consent, diagnostics and audit
 
 `process_launch` starts a directly owned executable instead of launching it through a short-lived shell. It requires an explicit Jarvis application session and returns a `launch_id`; use `process_get` and `process_stop` with the same session. On Windows, a non-elevated process tree stays in an Agent-owned job object. The initial executable may exit after starting a child, but the launch remains running while descendants remain in that job. A transient transport reconnect and `session__stop_work` do not reap the durable tree. Natural tree exit, `process_stop`, application-session close, explicit local Pause, permission revocation, optional timeout, or Agent exit ends it.

@@ -1,4 +1,10 @@
-# Jarvis Agent - 1.0.100
+# Jarvis Agent - 1.0.101
+
+## Confirmed process stops and redacted audit failures (1.0.101)
+
+process_stop now checks the Windows Job Object termination result. A normal non-elevated process tree remains owned and stops as before. If Windows refuses to terminate an elevated root process from the medium-integrity Agent, the launch is not falsely marked complete: process_get continues to report running as true with termination_unconfirmed as true until the process actually exits. Exit races after a successful stop request are treated as completion rather than a failure. An elevated child is outside the Agent Job Object and can outlive Agent exit when Windows denies termination, so termination_unconfirmed requires operator verification.
+
+Tool-call exceptions remain visible in the immediate response so an operator can diagnose the failed action, but persistent audit records store only bounded reason codes and generic descriptions. Command text, arguments, paths and exception payloads are not copied into the audit file. Package **1.0.101**, assembly/file **1.0.101.0**.
 
 ## Durable process launch and diagnostics (1.0.100)
 

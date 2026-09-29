@@ -17,6 +17,12 @@ public sealed class ToolCatalogReconciliationTests
         using var app = new ServerFixture();
         using var admin = await app.Admin();
         await using var peer = await TaskAgentPeer.ConnectAsync(app, admin);
+        // The Agent receives welcome before the router's initial reconciliation finishes.
+        // Serialize with that pass before inserting stale fixtures, otherwise a slower full-suite
+        // run can legitimately remove them before the explicit admin import observes them.
+        using (var stable = app.Services.CreateScope())
+            await stable.ServiceProvider.GetRequiredService<ToolCatalogReconciler>()
+                .ReconcileAsync(CancellationToken.None);
 
         const string activeId = "unified_exec.exec_command";
         const string retiredId = "computer.screenshot";

@@ -1,3 +1,12 @@
+## 1.0.101 - 2026-09-29
+
+- Make durable-process termination reporting truthful when Windows rejects a stop. Job-object termination failures are no longer ignored; an elevated root process that remains alive stays running and reports termination_unconfirmed instead of being marked complete.
+- Avoid false failure status when a process exits during the normal HasExited/Kill race, and keep successful non-elevated tree termination behavior unchanged.
+- Redact runtime exception text from persistent Agent audit records while preserving the actionable error returned to the caller. Audit records retain bounded reason codes and generic failure descriptions rather than command arguments, paths, or exception payloads.
+- Stabilize the Tool Catalog reconciliation regression by serializing its stale-row fixture setup with the router's initial reconciliation pass; production reconciliation semantics are unchanged.
+- Add focused coverage for normal durable-stop confirmation and dispatch-level audit redaction. Bump package to **1.0.101** and assembly/file to **1.0.101.0**.
+- Verify the full Release build with **0 warnings / 0 errors** and all **654** maintained tests passing: Core 320, Windows Agent 193, Server 141.
+
 ## 1.0.100 - 2026-09-29
 
 - Add explicit-session `process_launch`, `process_get`, and `process_stop` tools for long-lived GUI/client processes. Direct launches remain owned, bounded and cancellable while surviving a temporary launcher-shell exit and transient Agent transport reconnect; descendant processes stay tracked through the Windows job object until the tree exits or an explicit lifecycle stop occurs.

@@ -1,1 +1,1 @@
-feat(agent): add durable launches, diagnostics and audited permissions
+fix(agent): harden process termination and audit redaction

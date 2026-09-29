@@ -363,7 +363,17 @@ public sealed partial class AgentConnection : IAsyncDisposable
                 InvalidOperationException => "INVALID_OPERATION",
                 _ => "TOOL_EXCEPTION"
             };
-            _audit.Write(code, "tool", message, call.ToolId, context.SessionId, context.CallId);
+            var auditMessage = code switch
+            {
+                "LOCAL_APPROVAL_DENIED" => "Local approval denied the tool call.",
+                "PAUSED" => "Local control was paused before the tool call completed.",
+                "ACCESS_DENIED" => "The tool call was denied by a local or operating-system boundary.",
+                "INVALID_ARGUMENT" => "The tool call was rejected because its arguments were invalid.",
+                "INVALID_OPERATION" => "The tool call was rejected in the current runtime state.",
+                "DEADLINE_OR_CANCELLED" => "The tool call was cancelled or exceeded its deadline.",
+                _ => "The tool call failed before completion."
+            };
+            _audit.Write(code, "tool", auditMessage, call.ToolId, context.SessionId, context.CallId);
             _completed[id] = (DateTimeOffset.UtcNow, ToolReply.Error(message));
             using var responseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             try { await ReplyAsync(wire, id, ToolReply.Error(message), responseTimeout.Token); }
