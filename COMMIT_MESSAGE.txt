@@ -1,1 +1,1 @@
-fix(browser): restore automatic extension reconnect
+docs(agent): correct 1.0.102 package checksum
