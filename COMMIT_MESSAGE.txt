@@ -1,1 +1,1 @@
-docs(agent): correct 1.0.102 package checksum
+fix(session): synchronize permanent deletion with server

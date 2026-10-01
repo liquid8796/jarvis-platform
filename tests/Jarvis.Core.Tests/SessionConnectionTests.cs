@@ -44,7 +44,7 @@ public sealed class SessionConnectionTests
     }
 
     [Fact]
-    public async Task Forged_owner_and_closed_session_fail_before_the_tool_runs()
+    public async Task Forged_owner_closed_and_deleted_sessions_fail_before_the_tool_runs()
     {
         var root = Path.Combine(Path.GetTempPath(), "jarvis-session-wire-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -66,7 +66,39 @@ public sealed class SessionConnectionTests
             var closed = await Call(connection, socket, identity, "test.context", root);
             Assert.True(closed.IsError);
             Assert.Contains("SESSION_CLOSED", closed.Text);
+            store.Delete(identity);
+            var deleted = await Call(connection, socket, identity, "test.context", root);
+            Assert.True(deleted.IsError);
+            Assert.Contains("SESSION_DELETED", deleted.Text);
             Assert.Equal(0, tool.Calls);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public async Task Local_delete_exposes_closed_state_to_cleanup_handlers_before_removing_the_registry_row()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "jarvis-session-delete-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            using var store = new AgentSessionStore(Path.Combine(root, "sessions.db"));
+            var identity = new AgentSessionIdentity("owner", "device", AgentSessionRules.NewSessionId());
+            store.Open(identity, "Delete me", new WorkspaceDirectories(root));
+            await using var connection = new AgentConnection([], new Approve(), new LocalControlGate());
+            Inject(connection, "_sessions", store);
+            Inject(connection, "_deviceId", "device");
+            AgentSessionSnapshot? observedByCleanup = null;
+            connection.SessionStopped += stopped => observedByCleanup = store.Get(stopped, allowClosed: true);
+
+            connection.DeleteSession(identity);
+            connection.DeleteSession(identity);
+
+            Assert.NotNull(observedByCleanup);
+            Assert.NotNull(observedByCleanup!.ClosedAt);
+            Assert.DoesNotContain(store.ListLocal(identity.DeviceId), row => row.Identity == identity);
+            var deleted = Assert.Throws<AgentRequestException>(() => store.Get(identity, allowClosed: true));
+            Assert.Equal("SESSION_DELETED", deleted.Code);
         }
         finally { Directory.Delete(root, true); }
     }

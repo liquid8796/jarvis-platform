@@ -21,7 +21,8 @@ internal static class PublishedPtySmoke
             name.Equals("conpty.dll", StringComparison.OrdinalIgnoreCase)
                 ? System.Runtime.InteropServices.NativeLibrary.Load(Path.Combine(publish, "conpty.dll"))
                 : IntPtr.Zero);
-        using var tools = (IDisposable)Activator.CreateInstance(core.GetType("Jarvis.Agent.Core.ProcessToolSet", true)!, new object?[] { null })!;
+        using var tools = (IDisposable)Activator.CreateInstance(core.GetType("Jarvis.Agent.Core.ProcessToolSet", true)!,
+            new object?[] { null, null, null })!;
         var toolInterface = core.GetType("Jarvis.Agent.Core.IAgentTool", true)!;
         var execute = toolInterface.GetMethod("ExecuteAsync")!;
         var descriptor = toolInterface.GetProperty("Descriptor")!;

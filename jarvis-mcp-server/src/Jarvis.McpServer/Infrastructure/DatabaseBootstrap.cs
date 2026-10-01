@@ -7,7 +7,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace Jarvis.McpServer.Infrastructure;
 public static class DatabaseBootstrap
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration configuration)
     {
@@ -50,11 +50,31 @@ public static class DatabaseBootstrap
                 );
                 """);
             await db.Database.ExecuteSqlRawAsync("UPDATE Tools SET Enabled=CASE WHEN PublicationMode='Hidden' THEN 0 ELSE 1 END;");
-            schema.Version = CurrentSchemaVersion;
+            schema.Version = 2;
             await db.SaveChangesAsync();
             await migration.CommitAsync();
         }
-        else if (schema.Version != CurrentSchemaVersion)
+        if (schema.Version == 2)
+        {
+            await using var migration = await db.Database.BeginTransactionAsync();
+            await db.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS ApplicationSessionTombstones (
+                    OwnerId TEXT NOT NULL,
+                    DeviceId TEXT NOT NULL,
+                    SessionId TEXT NOT NULL,
+                    DeletedAt INTEGER NOT NULL,
+                    CONSTRAINT PK_ApplicationSessionTombstones PRIMARY KEY (OwnerId, DeviceId, SessionId),
+                    CONSTRAINT FK_ApplicationSessionTombstones_Devices_DeviceId FOREIGN KEY (DeviceId)
+                        REFERENCES Devices (Id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS IX_ApplicationSessionTombstones_DeviceId
+                    ON ApplicationSessionTombstones (DeviceId);
+                """);
+            schema.Version = 3;
+            await db.SaveChangesAsync();
+            await migration.CommitAsync();
+        }
+        if (schema.Version != CurrentSchemaVersion)
         {
             throw new InvalidOperationException("Unsupported Jarvis database schema. No automatic destructive upgrade is allowed.");
         }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Jarvis.Agent.Core;
+using Jarvis.McpServer.Domain;
 using Jarvis.McpServer.Infrastructure;
 using Jarvis.Protocol;
 using Microsoft.EntityFrameworkCore;
@@ -106,6 +107,39 @@ public sealed partial class AgentTaskMcpTests
         var auditEntry = await db.Audit.SingleAsync(a => a.Action == "tool.workspace__get");
         Assert.Equal("rejected:SESSION_REQUIRED", auditEntry.Outcome);
         Assert.False(string.IsNullOrWhiteSpace(auditEntry.CorrelationId));
+    }
+
+    [Fact]
+    public async Task Agent_list_delete_removes_local_history_and_revokes_the_existing_server_handle()
+    {
+        using var app = new ServerFixture(); using var admin = await app.Admin();
+        await using var peer = await TaskAgentPeer.ConnectAsync(app, admin, new SessionContextProbe());
+        using var client = await GrantAsync(app, admin, peer.DeviceId);
+        var opened = ParseText(await RawSessionCall(client, "session__open", new { label = "Delete from Agent list" }));
+        var handle = opened.GetProperty("sessionHandle").GetString()!;
+        var sessionId = opened.GetProperty("sessionId").GetString()!;
+        var local = peer.Connection.GetLocalSessionOverview().Single(item => item.Identity.SessionId == sessionId);
+
+        app.Services.GetRequiredService<IAgentRouter>().DisconnectDevice(peer.DeviceId);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        while (peer.Connection.IsConnected) await Task.Delay(25, timeout.Token);
+        peer.Connection.DeleteSession(local.Identity);
+        Assert.DoesNotContain(peer.Connection.GetLocalSessionOverview(), item => item.Identity.SessionId == sessionId);
+
+        while (!peer.Connection.IsConnected) await Task.Delay(25, timeout.Token);
+        while (true)
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            if (await db.ApplicationSessionTombstones.AsNoTracking().AnyAsync(
+                row => row.DeviceId == peer.DeviceId && row.SessionId == sessionId, timeout.Token)) break;
+            await Task.Delay(50, timeout.Token);
+        }
+
+        var revoked = await RawSessionCall(client, "test__session_context",
+            new { _jarvis = new { sessionHandle = handle } });
+        Assert.True(revoked.GetProperty("isError").GetBoolean(), revoked.GetRawText());
+        Assert.Contains("SESSION_DELETED", revoked.GetRawText(), StringComparison.Ordinal);
     }
 
     private static async Task<JsonElement> RawSessionCall(HttpClient client, string name, object arguments) =>

@@ -1,4 +1,12 @@
-# Jarvis Agent - 1.0.102
+# Jarvis Agent - 1.0.103
+
+## Permanent session deletion and server synchronization (1.0.103)
+
+The **Sessions** page now exposes **Delete session / Delete selected** instead of treating a terminal close as deletion. Confirmed deletion cancels work owned by the selected session, removes its local metadata and mailbox events, and writes a durable tombstone. A deleted `js_...` identity cannot be reopened by replaying its old protected handle. Retained closed sessions are selectable for cleanup; **Stop work** is still available only for open sessions and leaves them resumable.
+
+When the connected MCP server negotiates `application-session-deletion-sync-v1`, the Agent sends bounded deletion pages and replays every local tombstone on each reconnect. Delivery is idempotent. If the server or connection is temporarily unavailable, local deletion still succeeds and synchronization resumes later. Owner/device scope is not accepted from the UI or wire payload; it comes from the local session identity and authenticated Agent enrollment.
+
+Install matching Agent/server **1.0.103** to obtain end-to-end handle revocation. Package **1.0.103**, assembly/file **1.0.103.0**.
 
 ## Browser extension reconnect recovery (1.0.102)
 

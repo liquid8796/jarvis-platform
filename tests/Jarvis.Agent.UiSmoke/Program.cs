@@ -168,10 +168,10 @@ internal static class Program
             }
             var queryResult = typeof(IReadOnlyList<>).MakeGenericType(overviewType);
             var query = Expression.Lambda(typeof(Func<>).MakeGenericType(queryResult), Expression.Convert(Expression.Constant(previews), queryResult)).Compile();
-            var idParameter = Expression.Parameter(identityType); var closeParameter = Expression.Parameter(typeof(bool));
-            var stop = Expression.Lambda(typeof(Action<,>).MakeGenericType(identityType, typeof(bool)), Expression.Empty(), idParameter, closeParameter).Compile();
+            var idParameter = Expression.Parameter(identityType);
+            var sessionAction = Expression.Lambda(typeof(Action<>).MakeGenericType(identityType), Expression.Empty(), idParameter).Compile();
             var sessionsType = assembly.GetType("Jarvis.Agent.Desktop.ViewModels.SessionsViewModel", true)!;
-            var previewModel = Activator.CreateInstance(sessionsType, [query, (Func<bool>)(() => true), stop, null])!;
+            var previewModel = Activator.CreateInstance(sessionsType, [query, (Func<bool>)(() => true), sessionAction, sessionAction, null])!;
             Execute(previewModel, "RefreshCommand");
             var previewItems = ((IEnumerable)Property(previewModel, "Items")).Cast<object>().ToArray();
             Put(previewModel, "Selected", previewItems[0]);
@@ -184,7 +184,7 @@ internal static class Program
             sessionsView.DataContext = previewModel;
             Capture("agent-sessions-minimum.png");
             var bulkChecks = Descendants(sessionsView).OfType<CheckBox>()
-                .Where(box => Equals(box.ToolTip, "Select this session for Stop selected or Close selected")).ToArray();
+                .Where(box => Equals(box.ToolTip, "Select this session for Stop selected or Delete selected. Closed sessions can only be deleted.")).ToArray();
             if (bulkChecks.Length != 3) throw new InvalidOperationException("Session rows must expose one bulk-selection checkbox each.");
             Execute(previewModel, "SelectAllCommand"); window.UpdateLayout();
             if ((int)Property(previewModel, "BulkSelectedCount") != 3 || bulkChecks.Any(box => box.IsChecked != true))
@@ -231,13 +231,15 @@ internal static class Program
             string[] savedFullPermissions;
             using (var saved = JsonDocument.Parse(File.ReadAllText(permissionFile)))
             {
-                if (saved.RootElement.GetProperty("version").GetInt32() != 2) throw new InvalidOperationException("Permission settings did not migrate to v2.");
+                if (saved.RootElement.GetProperty("version").GetInt32() != 3) throw new InvalidOperationException("Permission settings did not migrate to v3.");
                 if (saved.RootElement.GetProperty("fullPermissionTools").GetArrayLength() != 1) throw new InvalidOperationException("Single-tool save failed.");
                 if (saved.RootElement.GetProperty("alwaysApprovedConstrainedTools").GetArrayLength() != 0) throw new InvalidOperationException("Fresh permission save unexpectedly granted permanent process approval.");
+                if (saved.RootElement.GetProperty("allowWindowsElevation").GetBoolean()) throw new InvalidOperationException("Fresh permission save unexpectedly enabled Windows elevation.");
                 savedFullPermissions = saved.RootElement.GetProperty("fullPermissionTools").EnumerateArray().Select(value => value.GetString()!).ToArray();
             }
-            File.WriteAllText(permissionFile, JsonSerializer.Serialize(new { version = 2, fullPermissionTools = savedFullPermissions,
-                alwaysApprovedConstrainedTools = new[] { "unified_exec.exec_command" } }, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(permissionFile, JsonSerializer.Serialize(new { version = 3, fullPermissionTools = savedFullPermissions,
+                alwaysApprovedConstrainedTools = new[] { "unified_exec.exec_command" }, allowWindowsElevation = false },
+                new JsonSerializerOptions { WriteIndented = true }));
             // Reload the real view model using isolated settings only, never the current user's profile.
             var reloaded = Activator.CreateInstance(modelType, [window, settingsRoot, false])!;
             var reloadedPermissions = modelType.GetProperty("Permissions")!.GetValue(reloaded)!;
@@ -268,7 +270,7 @@ internal static class Program
                 iconLoaded = true, makePrimaryPassed = true, removeDirectoryPassed = true,
                 settingsSidebarNavigationPassed = true, runtimeVersionLabelPassed = true, imageGenSettingsPassed = true,
                 installedTools = items.Length, permissionTabRendered = true, singleToolSave = true,
-                reloadPersistence = true, permissionSettingsV2 = true, alwaysApprovalReload = true, alwaysApprovalRevoke = true,
+                reloadPersistence = true, permissionSettingsV3 = true, alwaysApprovalReload = true, alwaysApprovalRevoke = true,
                 selectAllIncludesFilteredOut = true, draftDoesNotApplyBeforeSave = true,
                 resetRestoresSaved = true, clearAllRevokes = true, isolatedPermissionSettingsOnly = true,
                 executionLimitsRendered = true, invalidLimitsBlocked = true, executionLimitsReload = true,

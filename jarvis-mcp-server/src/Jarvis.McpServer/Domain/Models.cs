@@ -140,6 +140,13 @@ public sealed class AuditEvent
     public string? CorrelationId { get; set; }
     public long DurationMs { get; set; }
 }
+public sealed class ApplicationSessionTombstone
+{
+    public string OwnerId { get; set; } = "";
+    public string DeviceId { get; set; } = "";
+    public string SessionId { get; set; } = "";
+    public long DeletedAt { get; set; }
+}
 public sealed record DeviceView(string Id, string Name, bool Enabled, bool Online, string Platform,
     string AgentVersion, long LastSeenAt, int ToolCount, string Revision);
 public sealed record EnrollmentResult(string DeviceId, string ServerUrl, string Token);

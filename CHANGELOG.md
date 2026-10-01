@@ -1,3 +1,11 @@
+## 1.0.103 - 2026-10-01
+
+- Replace the Agent Sessions page's local-only close action with confirmed permanent deletion for both open and retained closed sessions. Deletion cancels only owned work, removes local session metadata/mailbox events, and leaves unrelated sessions untouched; Stop work remains resumable.
+- Persist local deletion tombstones so a previously issued protected handle cannot recreate the same `js_...` identity after Agent restart. Repeated deletion is idempotent and returns the original tombstone.
+- Negotiate `application-session-deletion-sync-v1`; send bounded 200-row deletion pages immediately and replay all local tombstones after reconnect. Owner/device scope is taken only from the authenticated enrolled Agent connection, never the deletion payload.
+- Add server-side `ApplicationSessionTombstones`, database schema **v3**, monotonic idempotent upsert, and pre-dispatch `SESSION_DELETED` rejection for old protected handles. Older Agent/server combinations remain staged-upgrade compatible.
+- Add local SQLite, desktop MVVM, protocol/migration and real OAuth/MCP/WebSocket integration regressions. Bump package to **1.0.103** and assembly/file to **1.0.103.0**.
+
 ## 1.0.102 - 2026-09-30
 
 - Upgrade Jarvis Agent Browser to **1.4.1** and keep native-host recovery alive across Manifest V3 service-worker suspension. A durable chrome.alarms wake-up now retries every 30 seconds while disconnected, with immediate in-memory retries plus browser startup/install wake paths.

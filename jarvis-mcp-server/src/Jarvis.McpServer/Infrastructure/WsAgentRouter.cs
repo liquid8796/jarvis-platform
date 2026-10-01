@@ -10,7 +10,8 @@ namespace Jarvis.McpServer.Infrastructure;
 
 /// <summary>One broker process per deployment. Never retries a dispatched command after a lost connection.</summary>
 public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contexts, JarvisOptions options,
-    ILogger<WsAgentRouter> logger, ToolCatalogReconciler catalogReconciler, McpToolCatalogChangeHub changeHub) : IAgentRouter
+    ILogger<WsAgentRouter> logger, ToolCatalogReconciler catalogReconciler, McpToolCatalogChangeHub changeHub,
+    ApplicationSessionDeletionStore sessionDeletions) : IAgentRouter
 {
     private readonly ConcurrentDictionary<string, Peer> _peers = new();
     [GeneratedRegex("^[A-Za-z0-9_.-]{1,100}$")] private static partial Regex IdPattern();
@@ -68,6 +69,7 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             {
                 ProtocolVersion = peer.ProtocolVersion,
                 Capabilities = peer.Capabilities,
+                OwnerId = peer.OwnerId,
                 ExecutionSettingsRevision = peer.SupportsExecutionSettings ? peer.ExecutionSettings.Revision : null
             }, stop.Token);
             await catalogReconciler.ReconcileAsync(stop.Token);
@@ -91,6 +93,10 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
                         case "catalog.changed":
                             await ApplyCatalogChangedAsync(peer, message, stop.Token);
                             break;
+                        case "session.deletions.changed" when peer.Capabilities.Contains(
+                            AgentProtocolCapabilities.SessionDeletionSync, StringComparer.Ordinal):
+                            await sessionDeletions.ApplyAsync(peer.OwnerId, peer.DeviceId, message.SessionDeletions, stop.Token);
+                            break;
                         case "task.result" when message.Id is not null && message.TaskReply is not null:
                             if (peer.TaskPending.TryRemove(message.Id, out var taskCompletion)) taskCompletion.TrySetResult(message.TaskReply);
                             break;
@@ -103,7 +109,7 @@ public sealed partial class WsAgentRouter(IDbContextFactory<AppDbContext> contex
             }
             finally { stop.Cancel(); try { await heartbeat; } catch (OperationCanceledException) { } }
         }
-        catch (Exception ex) when (ex is WebSocketException or IOException or JsonException or ArgumentException or OperationCanceledException or ObjectDisposedException or DbUpdateException)
+        catch (Exception ex) when (ex is WebSocketException or IOException or InvalidDataException or JsonException or ArgumentException or OperationCanceledException or ObjectDisposedException or DbUpdateException)
         { logger.LogInformation("Agent disconnected device={DeviceId} reason={Reason}", device.Id, ex.GetType().Name); }
         finally
         {

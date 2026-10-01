@@ -66,9 +66,9 @@ public sealed class SessionProcessOwnershipTests
         var idB = await Start(tools, b);
         stop.Cancel();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        while (tools.RunningForSession(new(a.OwnerId, a.AgentDeviceId, a.SessionId)) > 0)
+        while (tools.RunningForSession(new(a.OwnerId!, a.AgentDeviceId!, a.SessionId)) > 0)
             await Task.Delay(25, timeout.Token);
-        Assert.Equal(1, tools.RunningForSession(new(b.OwnerId, b.AgentDeviceId, b.SessionId)));
+        Assert.Equal(1, tools.RunningForSession(new(b.OwnerId!, b.AgentDeviceId!, b.SessionId)));
         await Stdin(tools, b, idB, "\u0003", 0);
     }
 

@@ -1,4 +1,13 @@
 # Build / test status
+## 1.0.103 synchronized permanent session deletion - executed local verification (2026-10-01)
+
+- Implemented confirmed Agent-list deletion for open and retained closed sessions. Local SQLite removes the session row and cascading mailbox history while preserving a durable deletion tombstone; open/get/dispatch reject resurrection with `SESSION_DELETED` after restart.
+- Added negotiated `application-session-deletion-sync-v1`, bounded 200-row replay after reconnect, authenticated peer-derived owner/device scope, schema-v3 server tombstones, monotonic idempotent upsert and pre-dispatch protected-handle revocation. Malformed deletion pages are rejected before their transaction and close only the offending Agent connection.
+- Fresh Release verification passed all maintained .NET suites: Core **322/322**, Windows Agent **195/195**, Server **142/142** — **659/659**, 0 failed and 0 skipped. Browser session regressions passed **8/8**; Python session-UI and publish-asset checks passed **5/5** and **7/7**.
+- The isolated source build completed with **0 errors** and **39 existing warnings**, all emitted from vendored `vendor/jarvis-code` sources. Published desktop UI smoke, desktop/CLI native PTY final-output smoke, package/assembly/file version verification, desktop validator, CLI validator and ZIP CRC verification all passed. Evidence: `artifacts/verification/multi-session-1.0.103/final-complete-4`.
+- Release artifacts: `artifacts/Jarvis-Agent-1.0.103-win-x64.zip` is **254,854,928 bytes**, SHA-256 `99a00eb955ce60f597f6ca024b38a9a6c0cc00c1ec0cf24f9e504664a4664b3c`; `artifacts/jarvis-mcp-server-1.0.103-linux-arm64.tar.gz` is **51,316,385 bytes**, SHA-256 `07282c3e82f4bd241fa74bfbd6321bf853420ab4e49566d002e0963a9afcbd3a`.
+- Local verification does not imply production deployment. At this checkpoint the public MCP server still reports **1.0.101**; OCI backup, schema migration, service promotion and live deletion acceptance are recorded after deployment.
+
 ## 1.0.102 browser extension detection and reconnect recovery - executed verification (2026-09-30)
 
 - Reproduced the reported empty **Connected profiles** state with the installed Agent **1.0.101.0** running elevated: both `Jarvis.Agent.Desktop` and `jarvis-browser-service` were high-integrity processes while Chrome remained non-elevated. The native-host manifest, extension ID, executable path and Windows account were intact; the extension-facing named pipe inherited high mandatory integrity and rejected Chromium's native-messaging host before the ready handshake.

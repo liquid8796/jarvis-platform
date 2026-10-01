@@ -1,4 +1,12 @@
-# Jarvis Control - 1.0.102
+# Jarvis Control - 1.0.103
+
+## Synchronized permanent session deletion (1.0.103)
+
+Deleting a row from the Jarvis Agent **Sessions** page now means permanent deletion rather than a local-only close. The Agent cancels work owned by that session, removes its local metadata and mailbox events, and stores a compact non-resurrectable tombstone. Open and legacy closed rows can both be selected for deletion; **Stop work** remains the separate resumable action for open sessions.
+
+Agent and server negotiate `application-session-deletion-sync-v1`. Deletion batches contain only the `js_...` ID and timestamp; the MCP server derives owner/device identity from the authenticated enrolled WebSocket peer, persists an indefinite revocation tombstone, and rejects every later use of the old protected handle with `SESSION_DELETED` before dispatch. The Agent replays all local tombstones after reconnect, so a deletion made while transport delivery fails synchronizes when connectivity returns. Repeated delivery and repeated delete are idempotent.
+
+Server database schema **v3** adds `ApplicationSessionTombstones` without recreating existing data. A 1.0.103 server remains compatible with older Agents, while a 1.0.103 Agent connected to an older server still enforces deletion locally and retains tombstones until a capable server is available. Package **1.0.103**, assembly/file **1.0.103.0**.
 
 ## Automatic browser-extension reconnect (1.0.102)
 

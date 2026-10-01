@@ -36,5 +36,7 @@ public sealed class AgentProtocolV2Tests
         Assert.Equal(AgentProtocolVersion.Current, welcome.ProtocolVersion);
         Assert.Contains(AgentProtocolCapabilities.CatalogSync, welcome.Capabilities!);
         Assert.Contains(AgentProtocolCapabilities.CapabilityLeases, welcome.Capabilities!);
+        Assert.Contains(AgentProtocolCapabilities.SessionDeletionSync, welcome.Capabilities!);
+        Assert.False(string.IsNullOrWhiteSpace(welcome.OwnerId));
     }
 }

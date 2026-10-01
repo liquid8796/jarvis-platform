@@ -43,7 +43,7 @@ public sealed class AgenticSkillContextTests
 
             Assert.NotNull(coordinator.Context);
             Assert.Contains(coordinator.Context.AvailableSkills, skill => skill.Id == descriptor.Id);
-            var skillLayer = Assert.Single(coordinator.Context.PromptLayers.Where(layer => layer.Name == "skills"));
+            var skillLayer = Assert.Single(coordinator.Context.PromptLayers, layer => layer.Name == "skills");
             Assert.Contains("demo/frontend-testing", skillLayer.Content, StringComparison.Ordinal);
             Assert.Contains("Rendered frontend QA", skillLayer.Content, StringComparison.Ordinal);
             Assert.DoesNotContain("SECRET FULL SKILL", skillLayer.Content, StringComparison.Ordinal);

@@ -17,9 +17,12 @@ public static class AgentProtocolCapabilities
     public const string TaskV1 = "task-v1";
     public const string CatalogSync = "catalog-sync-v1";
     public const string CapabilityLeases = "capability-leases-v1";
+    public const string SessionDeletionSync = "application-session-deletion-sync-v1";
 
-    public static IReadOnlyList<string> Agent { get; } = [TaskV1, CatalogSync, CapabilityLeases, AgentSessionRules.Capability, AgentExecutionSettings.Capability, UserPromptContext.Capability];
-    public static IReadOnlyList<string> Server { get; } = [TaskV1, CatalogSync, CapabilityLeases, AgentSessionRules.Capability, AgentExecutionSettings.Capability, UserPromptContext.Capability];
+    public static IReadOnlyList<string> Agent { get; } = [TaskV1, CatalogSync, CapabilityLeases, SessionDeletionSync,
+        AgentSessionRules.Capability, AgentExecutionSettings.Capability, UserPromptContext.Capability];
+    public static IReadOnlyList<string> Server { get; } = [TaskV1, CatalogSync, CapabilityLeases, SessionDeletionSync,
+        AgentSessionRules.Capability, AgentExecutionSettings.Capability, UserPromptContext.Capability];
 
     public static IReadOnlyList<string> Negotiate(IReadOnlyList<string>? requested)
     {

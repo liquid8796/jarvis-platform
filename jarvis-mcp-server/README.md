@@ -1,6 +1,12 @@
 # jarvis-mcp-server
 
-See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.102**, assembly/file: **1.0.102.0**. Source publication and local packaging do not deploy or restart the live service. The 1.0.102 behavior change is Agent/extension-side and remains wire-compatible with server 1.0.101.
+See [root README](../README.md), [OAuth](../docs/OAUTH-MCP.md), [task gateway](../docs/AGENT-TASK-GATEWAY.md) and [OCI deployment](../docs/DEPLOYMENT-OCI.md). Current package: **1.0.103**, assembly/file: **1.0.103.0**. Source publication and local packaging do not deploy or restart the live service.
+
+## Application-session deletion revocation (1.0.103)
+
+The server negotiates `application-session-deletion-sync-v1` with matching Agents. Each deletion message carries only bounded session-ID/timestamp rows; `WsAgentRouter` supplies the authenticated owner and enrolled device, then persists monotonic tombstones in schema-v3 `ApplicationSessionTombstones`. `McpGateway` checks this index after validating a protected handle and before dispatch, returning `SESSION_DELETED` even when the Agent is offline.
+
+The migration is additive and preserves existing OAuth, device, catalog, task, audit and Data Protection state. Replayed batches are idempotent. Older Agents simply do not negotiate the capability; a new Agent retains local tombstones and replays them after it reaches a capable server.
 
 ## Connection profile and whoami (1.0.98)
 

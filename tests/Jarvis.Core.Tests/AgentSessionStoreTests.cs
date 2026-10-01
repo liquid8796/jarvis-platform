@@ -1,4 +1,5 @@
 using Jarvis.Agent.Core;
+using Jarvis.Agent.Core.Sessions;
 using Jarvis.Protocol;
 
 namespace Jarvis.Core.Tests;
@@ -59,6 +60,43 @@ public sealed class AgentSessionStoreTests
         Assert.Equal("SESSION_CLOSED", closed.Code);
         Assert.Throws<AgentRequestException>(() => store.Open(a, "Do not resurrect", new WorkspaceDirectories(""), null));
         Assert.Null(((AgentSessionSnapshot)store.Get(b)).ClosedAt);
+    }
+
+    [Fact]
+    public void Permanent_delete_removes_metadata_and_events_and_retains_a_non_resurrectable_tombstone()
+    {
+        using var fixture = new StoreFixture();
+        dynamic store = fixture.Open();
+        var source = Identity(); var deleted = Identity();
+        store.Open(source, "Source", new WorkspaceDirectories(""), null);
+        store.Open(deleted, "Delete me", new WorkspaceDirectories(fixture.Root), null);
+        store.SendMessage(source, deleted.SessionId, "This mailbox row must be removed with the session.");
+
+        AgentSessionDeletion tombstone = store.Delete(deleted);
+        Assert.Equal(deleted.SessionId, tombstone.SessionId);
+        Assert.True(tombstone.DeletedAtUnixMilliseconds > 0);
+        Assert.DoesNotContain((IReadOnlyList<AgentSessionSnapshot>)store.List(
+            deleted.OwnerId, deleted.DeviceId, 0, 100, true), item => item.SessionId == deleted.SessionId);
+        Assert.DoesNotContain((IReadOnlyList<LocalSessionEntry>)store.ListLocal(deleted.DeviceId),
+            item => item.Identity.SessionId == deleted.SessionId);
+        Assert.Equal(tombstone, (AgentSessionDeletion)store.Delete(deleted));
+        Assert.Equal(tombstone, Assert.Single((IReadOnlyList<AgentSessionDeletion>)store.ListDeletions(
+            deleted.OwnerId, deleted.DeviceId, 0, 200)));
+
+        var get = Assert.Throws<AgentRequestException>(() => store.Get(deleted));
+        Assert.Equal("SESSION_DELETED", get.Code);
+        var reopen = Assert.Throws<AgentRequestException>(() => store.Open(
+            deleted, "Do not resurrect", new WorkspaceDirectories(""), null));
+        Assert.Equal("SESSION_DELETED", reopen.Code);
+        var events = Assert.Throws<AgentRequestException>(() => store.ReadEvents(deleted, 0L, 50));
+        Assert.Equal("SESSION_DELETED", events.Code);
+
+        fixture.Close();
+        store = fixture.Open();
+        var afterRestart = Assert.Throws<AgentRequestException>(() => store.Get(deleted));
+        Assert.Equal("SESSION_DELETED", afterRestart.Code);
+        Assert.Equal(tombstone, Assert.Single((IReadOnlyList<AgentSessionDeletion>)store.ListDeletions(
+            deleted.OwnerId, deleted.DeviceId, 0, 200)));
     }
 
     private static AgentSessionIdentity Identity() => new("owner", "agent", AgentSessionRules.NewSessionId());

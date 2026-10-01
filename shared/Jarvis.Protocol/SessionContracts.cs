@@ -3,6 +3,12 @@ namespace Jarvis.Protocol;
 /// <summary>Authenticated application-session identity; client transport identity is deliberately separate.</summary>
 public sealed record AgentSessionIdentity(string OwnerId, string DeviceId, string SessionId);
 
+/// <summary>
+/// Monotonic deletion tombstone synchronized from the authenticated Agent to its MCP server.
+/// Owner and device identity always come from the enrolled WebSocket peer, never this payload.
+/// </summary>
+public sealed record AgentSessionDeletion(string SessionId, long DeletedAtUnixMilliseconds);
+
 public static class AgentSessionRules
 {
     public const string Capability = "application-sessions-v1";

@@ -22,13 +22,13 @@
       <Grid Margin="0,10,0,0">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <WrapPanel VerticalAlignment="Center">
-          <Button Content="Select all" Command="{Binding SelectAllCommand}" Style="{StaticResource SessionButton}" Padding="10,7" Margin="0,0,8,0" ToolTip="Select every visible open session"/>
+          <Button Content="Select all" Command="{Binding SelectAllCommand}" Style="{StaticResource SessionButton}" Padding="10,7" Margin="0,0,8,0" ToolTip="Select every visible session, including retained closed sessions"/>
           <Button Content="Clear" Command="{Binding ClearSelectionCommand}" Style="{StaticResource SessionButton}" Padding="10,7" Margin="0,0,10,0" ToolTip="Clear the multi-session selection"/>
           <TextBlock Text="{Binding BulkSelectionSummary}" Style="{StaticResource SessionHint}" VerticalAlignment="Center"/>
         </WrapPanel>
         <WrapPanel Grid.Column="1">
           <Button Content="Stop selected" Command="{Binding StopSelectedSessionsCommand}" Style="{StaticResource SessionButton}" Padding="10,7" Margin="0,0,8,0"/>
-          <Button Content="Close selected" Command="{Binding CloseSelectedSessionsCommand}" Style="{StaticResource SessionButton}" Foreground="{DynamicResource Danger}" Padding="10,7" ToolTip="Permanently close the selected session handles"/>
+          <Button Content="Delete selected" Command="{Binding DeleteSelectedSessionsCommand}" Style="{StaticResource SessionButton}" Foreground="{DynamicResource Danger}" Padding="10,7" ToolTip="Permanently remove local session history and revoke the selected server handles"/>
         </WrapPanel>
       </Grid>
     </StackPanel>
@@ -37,7 +37,7 @@
         <ListBox.ItemTemplate><DataTemplate>
           <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="16,14">
             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/><ColumnDefinition Width="105"/></Grid.ColumnDefinitions>
-              <CheckBox IsChecked="{Binding IsBulkSelected, Mode=TwoWay}" IsEnabled="{Binding CanBulkSelect}" VerticalAlignment="Top" Margin="0,3,10,0" AutomationProperties.Name="Select session for bulk action" ToolTip="Select this session for Stop selected or Close selected"/>
+              <CheckBox IsChecked="{Binding IsBulkSelected, Mode=TwoWay}" IsEnabled="{Binding CanBulkSelect}" VerticalAlignment="Top" Margin="0,3,10,0" AutomationProperties.Name="Select session for bulk action" ToolTip="Select this session for Stop selected or Delete selected. Closed sessions can only be deleted."/>
               <StackPanel Grid.Column="1" Margin="0,0,12,0">
                 <TextBox Text="{Binding Label, Mode=OneWay}" Style="{StaticResource SessionSelectableText}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.Name="Session name" AutomationProperties.HelpText="Selectable text. Drag with the mouse, then copy." ToolTip="Drag to select the session name; Ctrl+C or right-click to copy."/>
                 <TextBox Text="{Binding SessionId, Mode=OneWay}" Style="{StaticResource SessionSelectableText}" Foreground="{DynamicResource Muted}" FontFamily="Consolas" FontSize="12" Margin="0,4,0,0" AutomationProperties.Name="Session ID" AutomationProperties.HelpText="Selectable text. Drag with the mouse, then copy." ToolTip="Drag to select the session ID; Ctrl+C or right-click to copy."/>
@@ -60,7 +60,7 @@
       <StackPanel>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <StackPanel Margin="0,0,12,0"><TextBlock Text="{Binding Selected.Label}" Style="{StaticResource SessionBody}" FontWeight="SemiBold"/><TextBlock Text="{Binding Selected.WorkspaceRevision}" Style="{StaticResource SessionHint}" Margin="0,4,0,0"/></StackPanel>
-          <WrapPanel Grid.Column="1"><Button Content="Stop work" Command="{Binding StopCommand}" Style="{StaticResource SessionButton}" Margin="0,0,8,0" Padding="12,9"/><Button Content="Close session" Command="{Binding CloseCommand}" Style="{StaticResource SessionButton}" Foreground="{DynamicResource Danger}" Padding="12,9"/></WrapPanel>
+          <WrapPanel Grid.Column="1"><Button Content="Stop work" Command="{Binding StopCommand}" Style="{StaticResource SessionButton}" Margin="0,0,8,0" Padding="12,9"/><Button Content="Delete session" Command="{Binding DeleteCommand}" Style="{StaticResource SessionButton}" Foreground="{DynamicResource Danger}" Padding="12,9"/></WrapPanel>
         </Grid>
         <Expander Header="Identity and held resources" Foreground="{DynamicResource Text}" Margin="0,12,0,0" AutomationProperties.Name="Selected session details">
           <ScrollViewer MaxHeight="180" Margin="0,8,0,0"><StackPanel>
@@ -80,7 +80,7 @@
     <StackPanel Grid.Row="4" Margin="0,12,0,0">
       <TextBlock Text="{Binding ActionMessage}" Style="{StaticResource SessionHint}" AutomationProperties.LiveSetting="Polite"/>
       <TextBlock Text="{Binding Error}" Style="{StaticResource SessionError}"/>
-      <TextBlock Text="Stop work affects only the selected or checked sessions. Select all checks every currently visible open session. Close is permanent for each handle. To stop every session globally, use the separate Pause control." Style="{StaticResource SessionHint}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+      <TextBlock Text="Stop work affects only checked open sessions. Delete permanently removes local metadata/mailbox history, retains a non-resurrectable tombstone, and synchronizes handle revocation to the MCP server. To stop every session globally, use the separate Pause control." Style="{StaticResource SessionHint}" Margin="0,8,0,0" TextWrapping="Wrap"/>
     </StackPanel>
   </Grid>
   </ScrollViewer>

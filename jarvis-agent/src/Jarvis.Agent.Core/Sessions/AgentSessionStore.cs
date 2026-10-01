@@ -43,8 +43,14 @@ public sealed class AgentSessionStore : IDisposable
                 FOREIGN KEY(owner_id, device_id, session_id)
                     REFERENCES agent_sessions(owner_id, device_id, session_id) ON DELETE CASCADE
             );
+            CREATE TABLE IF NOT EXISTS deleted_agent_sessions (
+                owner_id TEXT NOT NULL, device_id TEXT NOT NULL, session_id TEXT NOT NULL,
+                deleted_ms INTEGER NOT NULL,
+                PRIMARY KEY(owner_id, device_id, session_id)
+            );
             CREATE INDEX IF NOT EXISTS ix_session_mailbox ON session_events(owner_id, device_id, session_id, cursor);
             CREATE INDEX IF NOT EXISTS ix_session_activity ON agent_sessions(owner_id, device_id, last_active_ms);
+            CREATE INDEX IF NOT EXISTS ix_deleted_session_sync ON deleted_agent_sessions(owner_id, device_id, deleted_ms, session_id);
             """;
         command.ExecuteNonQuery();
     }
@@ -59,6 +65,7 @@ public sealed class AgentSessionStore : IDisposable
         {
             CheckOpen();
             using var tx = _db.BeginTransaction();
+            ThrowIfDeleted(identity, tx);
             var existing = Find(identity, tx);
             if (existing is not null)
             {
@@ -94,7 +101,10 @@ public sealed class AgentSessionStore : IDisposable
         lock (_sync)
         {
             CheckOpen();
-            return allowClosed ? Find(identity) ?? throw Missing() : Require(identity);
+            var value = Find(identity);
+            if (value is null) { ThrowIfDeleted(identity); throw Missing(); }
+            if (!allowClosed) RequireActive(value);
+            return value;
         }
     }
 
@@ -245,7 +255,8 @@ public sealed class AgentSessionStore : IDisposable
         {
             CheckOpen();
             using var tx = _db.BeginTransaction();
-            var before = Find(identity, tx) ?? throw Missing();
+            var before = Find(identity, tx);
+            if (before is null) { ThrowIfDeleted(identity, tx); throw Missing(); }
             if (before.ClosedAt is not null) { tx.Commit(); return before; }
             using (var update = Bound("""
                 UPDATE agent_sessions SET closed_ms=$now,last_active_ms=$now
@@ -257,6 +268,70 @@ public sealed class AgentSessionStore : IDisposable
         }
         NotifyChanged();
         return result;
+    }
+
+    /// <summary>
+    /// Permanently removes local session metadata and mailbox history while retaining a monotonic
+    /// tombstone so an old protected server handle can never recreate the same session identity.
+    /// Repeated deletion is idempotent and returns the original tombstone.
+    /// </summary>
+    public AgentSessionDeletion Delete(AgentSessionIdentity identity)
+    {
+        Validate(identity);
+        AgentSessionDeletion result;
+        var changed = false;
+        lock (_sync)
+        {
+            CheckOpen();
+            using var tx = _db.BeginTransaction();
+            var existing = Find(identity, tx);
+            var deletedAt = FindDeletedAt(identity, tx);
+            if (existing is null && deletedAt is null) throw Missing();
+            if (deletedAt is null)
+            {
+                deletedAt = Now();
+                using var tombstone = Bound("""
+                    INSERT INTO deleted_agent_sessions(owner_id,device_id,session_id,deleted_ms)
+                    VALUES($owner,$device,$session,$deleted)
+                    ON CONFLICT(owner_id,device_id,session_id) DO UPDATE SET deleted_ms=MAX(deleted_ms,excluded.deleted_ms)
+                    """, identity, tx, ("$deleted", deletedAt.Value));
+                tombstone.ExecuteNonQuery();
+                changed = true;
+            }
+            if (existing is not null)
+            {
+                using var delete = Bound("""
+                    DELETE FROM agent_sessions WHERE owner_id=$owner AND device_id=$device AND session_id=$session
+                    """, identity, tx);
+                delete.ExecuteNonQuery();
+                changed = true;
+            }
+            tx.Commit();
+            result = new(identity.SessionId, deletedAt.Value);
+        }
+        if (changed) NotifyChanged();
+        return result;
+    }
+
+    public IReadOnlyList<AgentSessionDeletion> ListDeletions(string ownerId, string deviceId, int offset = 0, int limit = 200)
+    {
+        if (string.IsNullOrWhiteSpace(ownerId) || ownerId.Length > 256 || string.IsNullOrWhiteSpace(deviceId) || deviceId.Length > 100)
+            throw new ArgumentException("Authenticated owner and enrolled device are required.");
+        if (offset < 0 || limit is < 1 or > 200)
+            throw new ArgumentException("Deletion page limit must be 1..200 and offset nonnegative.");
+        lock (_sync)
+        {
+            CheckOpen();
+            using var command = Command("""
+                SELECT session_id,deleted_ms FROM deleted_agent_sessions
+                WHERE owner_id=$owner AND device_id=$device
+                ORDER BY deleted_ms,session_id LIMIT $limit OFFSET $offset
+                """, null, ("$owner", ownerId), ("$device", deviceId), ("$limit", limit), ("$offset", offset));
+            using var reader = command.ExecuteReader();
+            var result = new List<AgentSessionDeletion>();
+            while (reader.Read()) result.Add(new(reader.GetString(0), reader.GetInt64(1)));
+            return result;
+        }
     }
 
     private AgentSessionEvent AddEvent(AgentSessionIdentity identity, string kind, string? sender, string text, SqliteTransaction tx)
@@ -300,9 +375,24 @@ public sealed class AgentSessionStore : IDisposable
     }
     private AgentSessionSnapshot Require(AgentSessionIdentity identity, SqliteTransaction? tx = null)
     {
-        var value = Find(identity, tx) ?? throw Missing();
+        var value = Find(identity, tx);
+        if (value is null) { ThrowIfDeleted(identity, tx); throw Missing(); }
         RequireActive(value);
         return value;
+    }
+    private long? FindDeletedAt(AgentSessionIdentity identity, SqliteTransaction? tx = null)
+    {
+        using var command = Bound("""
+            SELECT deleted_ms FROM deleted_agent_sessions
+            WHERE owner_id=$owner AND device_id=$device AND session_id=$session
+            """, identity, tx);
+        var value = command.ExecuteScalar();
+        return value is null or DBNull ? null : Convert.ToInt64(value);
+    }
+    private void ThrowIfDeleted(AgentSessionIdentity identity, SqliteTransaction? tx = null)
+    {
+        if (FindDeletedAt(identity, tx) is not null)
+            throw new AgentRequestException("SESSION_DELETED", "This session was permanently deleted and its handle has been revoked.");
     }
     private static AgentSessionSnapshot Read(SqliteDataReader reader) => new(reader.GetString(0), reader.GetString(1), reader.GetString(2),
         reader.GetString(3), Array.AsReadOnly(JsonSerializer.Deserialize<string[]>(reader.GetString(4), WireJson.Options) ?? []), reader.GetInt64(5),

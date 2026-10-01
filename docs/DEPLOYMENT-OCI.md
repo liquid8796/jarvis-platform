@@ -35,7 +35,7 @@ Review output before adding `-Install`. The script uploads only this app's artif
 
 Application releases: `~/.local/share/jarvis-mcp-server/releases/<release>`; active symlink `current`; persistent data sibling `data`; configuration/PFX `~/.config/jarvis-mcp-server`; user unit `~/.config/systemd/user/jarvis-mcp-server.service`. Bind only `127.0.0.1:18765`, not the public NIC. User unit has memory768MiB, CPU100% (one CPU capacity), TasksMax256 and mode0077. Review resource limits against VM size; no benchmark or capacity guarantee is implied.
 
-Tar entries are validated (no traversal, link or special-device entries), checksum checked, release IDs constrained, and an existing unrelated unit is not overwritten. A health failure attempts rollback of the Jarvis binary symlink only. It cannot roll back data already changed by the application; this version uses only schema1 with no destructive upgrade.
+Tar entries are validated (no traversal, link or special-device entries), checksum checked, release IDs constrained, and an existing unrelated unit is not overwritten. A health failure attempts rollback of the Jarvis binary symlink only. It cannot roll back data already changed by the application. Server 1.0.103 uses additive database schema **v3**: v2 introduced Tool Catalog publication state and v3 adds `ApplicationSessionTombstones`. Neither migration drops existing tables, but application rollback does not reverse a migrated database, so create and verify a consistent backup before promotion.
 
 ## Shared ingress
 
@@ -46,5 +46,7 @@ The application trusts forwarded headers from loopback by default. A proxy in an
 ## Backup, rollback and cleanup
 
 Back up SQLite with a consistent SQLite backup operation or stop **only** this user service before copying its DB/WAL/key data. Back up OAuth PFX + configuration + Data Protection keys encrypted together. Do not copy only `jarvis.db` while active WAL transactions exist. Keep at least the previous verified release. After first successful admin creation, remove Bootstrap from the private configuration and retain only approved credentials in your password manager.
+
+For a 1.0.103 promotion, verify the backup with `PRAGMA quick_check`, record the current `SchemaInfo.Version`, then confirm the restarted service reports version 1.0.103 and schema version 3. Verify `ApplicationSessionTombstones` exists before testing deletion synchronization. An older application binary may not understand a newer schema even though the migration is additive; use the reviewed release/backup rollback plan rather than deleting or editing migration rows manually.
 
 Inspect `journalctl --user -u jarvis-mcp-server.service`. To roll back a reviewed release, stop only the Jarvis user unit, point `current` to a known previous application release, and start the same unit. Do not delete data as a troubleshooting step. A service restart disconnects agents/MCP calls and clears in-memory routing. Verify user status, local agent arm and job completion before retrying work.

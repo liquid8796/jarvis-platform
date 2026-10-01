@@ -39,6 +39,7 @@ public sealed record WireMessage(string Type)
     public long? CatalogGeneration { get; init; }
     public string? CatalogDigest { get; init; }
     public IReadOnlyList<ToolDescriptor>? CatalogTools { get; init; }
+    public IReadOnlyList<AgentSessionDeletion>? SessionDeletions { get; init; }
     public DateTimeOffset? DeadlineUtc { get; init; }
     public JsonElement? Arguments { get; init; }
     public AgentHello? Hello { get; init; }

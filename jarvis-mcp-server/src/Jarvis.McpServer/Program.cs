@@ -81,6 +81,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllersWithViews().AddJsonOptions(o => o.JsonSerializerOptions.PropertyNameCaseInsensitive = true);
 builder.Services.AddSingleton<McpToolCatalogChangeHub>();
 builder.Services.AddSingleton<ToolCatalogReconciler>();
+builder.Services.AddSingleton<ApplicationSessionDeletionStore>();
 builder.Services.AddScoped<DeviceToolCatalog>();
 builder.Services.AddScoped<ConnectionIdentityService>();
 builder.Services.AddSingleton<WsAgentRouter>();

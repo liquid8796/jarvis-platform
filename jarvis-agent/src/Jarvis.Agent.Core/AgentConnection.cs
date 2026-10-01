@@ -215,6 +215,10 @@ public sealed partial class AgentConnection : IAsyncDisposable
                     welcomeTimeout.CancelAfter(TimeSpan.FromSeconds(15));
                     var welcome = await wire.ReceiveAsync(welcomeTimeout.Token).ConfigureAwait(false);
                     _sessionProtocol = welcome?.Capabilities?.Contains(AgentSessionRules.Capability, StringComparer.Ordinal) == true;
+                    _sessionDeletionProtocol = welcome?.Capabilities?.Contains(AgentProtocolCapabilities.SessionDeletionSync, StringComparer.Ordinal) == true;
+                    _authenticatedOwnerId = _sessionDeletionProtocol ? welcome?.OwnerId : null;
+                    if (_sessionDeletionProtocol && string.IsNullOrWhiteSpace(_authenticatedOwnerId))
+                        throw new InvalidDataException("Server negotiated session deletion sync without authenticated owner identity.");
                     _settingsProtocol = welcome?.Capabilities?.Contains(AgentExecutionSettings.Capability, StringComparer.Ordinal) == true;
                     _promptContextProtocol = welcome?.Capabilities?.Contains(UserPromptContext.Capability, StringComparer.Ordinal) == true;
                     if (_settingsProtocol) AcknowledgeExecutionSettings(welcome?.ExecutionSettingsRevision);
@@ -224,6 +228,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
                 Interlocked.Exchange(ref _lastPong, Environment.TickCount64);
                 IsConnected = true; ConnectionChanged?.Invoke(true); attempt = 0;
                 SetReachability("CONNECTED_HEALTHY", "Connected. Local tool-permission settings apply; control must be armed locally.", true);
+                QueueSessionDeletionSync();
                 var heartbeat = HeartbeatAsync(wire, session.Token);
                 try
                 {
@@ -263,6 +268,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
             finally
             {
                 IsConnected = false; ConnectionChanged?.Invoke(false); _current = null;
+                _sessionDeletionProtocol = false; _authenticatedOwnerId = null;
                 if (!stop.IsCancellationRequested && Reachability.Online)
                     SetReachability("TRANSPORT_INTERRUPTED", "Server connection ended; reconnecting without replaying interrupted calls.", false);
             }

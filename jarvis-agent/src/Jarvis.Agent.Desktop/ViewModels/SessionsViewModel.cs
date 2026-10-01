@@ -24,13 +24,12 @@ public sealed class SessionRowViewModel : ObservableViewModel
     public string Parent => _value.Session.ParentSessionId ?? "No parent session";
     public string Status => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(_value.Activity.State(_value.Session.ClosedAt));
     public bool IsClosed => _value.Session.ClosedAt is not null;
-    public bool CanBulkSelect => !IsClosed;
+    public bool CanBulkSelect => true;
     public bool IsBulkSelected
     {
         get => _isBulkSelected;
         set
         {
-            if (IsClosed && value) return;
             if (Set(ref _isBulkSelected, value)) _bulkSelectionChanged?.Invoke();
         }
     }
@@ -49,12 +48,6 @@ public sealed class SessionRowViewModel : ObservableViewModel
     public void Update(LocalSessionOverview value)
     {
         _value = value;
-        if (IsClosed && _isBulkSelected)
-        {
-            _isBulkSelected = false;
-            Changed(nameof(IsBulkSelected));
-            _bulkSelectionChanged?.Invoke();
-        }
         Changed(null);
     }
 }
@@ -64,8 +57,9 @@ public sealed class SessionsViewModel : ObservableViewModel
 {
     private readonly Func<IReadOnlyList<LocalSessionOverview>> _query;
     private readonly Func<bool> _connected;
-    private readonly Action<AgentSessionIdentity, bool> _stop;
-    private readonly Func<IReadOnlyList<SessionRowViewModel>, bool> _confirmClose;
+    private readonly Action<AgentSessionIdentity> _stop;
+    private readonly Action<AgentSessionIdentity> _delete;
+    private readonly Func<IReadOnlyList<SessionRowViewModel>, bool> _confirmDelete;
     private readonly Dictionary<AgentSessionIdentity, SessionRowViewModel> _rows = new();
     private IReadOnlyList<LocalSessionOverview> _latest = [];
     private SessionRowViewModel? _selected;
@@ -75,7 +69,7 @@ public sealed class SessionsViewModel : ObservableViewModel
     public SessionRowViewModel? Selected
     {
         get => _selected;
-        set { if (Set(ref _selected, value)) { StopCommand.Refresh(); CloseCommand.Refresh(); Changed(nameof(HasSelection)); } }
+        set { if (Set(ref _selected, value)) { StopCommand.Refresh(); DeleteCommand.Refresh(); Changed(nameof(HasSelection)); } }
     }
     public string Search { get => _search; set { if (Set(ref _search, value ?? "")) UpdateVisible(); } }
     public bool ShowClosed { get => _showClosed; set { if (Set(ref _showClosed, value)) UpdateVisible(); } }
@@ -87,7 +81,7 @@ public sealed class SessionsViewModel : ObservableViewModel
     public int ActiveSessions => _latest.Count(s => s.Session.ClosedAt is null);
     public int RunningCount => _latest.Sum(s => s.Activity.RunningCalls);
     public int QueuedCount => _latest.Sum(s => s.Activity.QueuedCalls);
-    public int BulkSelectedCount => Items.Count(row => row.IsBulkSelected && !row.IsClosed);
+    public int BulkSelectedCount => Items.Count(row => row.IsBulkSelected);
     public string BulkSelectionSummary => $"{BulkSelectedCount} selected";
     public string Summary => $"{ActiveSessions} open sessions · {RunningCount} active calls · {QueuedCount} queued";
     public string EmptyMessage => !_connected() ? "Connect the agent, then open a session from each chat. No workspace is required."
@@ -96,28 +90,31 @@ public sealed class SessionsViewModel : ObservableViewModel
         : "No sessions yet. Call session__open in each chat; use workspace__set whenever you need a working folder.";
     public RelayCommand RefreshCommand { get; }
     public RelayCommand StopCommand { get; }
-    public RelayCommand CloseCommand { get; }
+    public RelayCommand DeleteCommand { get; }
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand ClearSelectionCommand { get; }
     public RelayCommand StopSelectedSessionsCommand { get; }
-    public RelayCommand CloseSelectedSessionsCommand { get; }
+    public RelayCommand DeleteSelectedSessionsCommand { get; }
 
     public SessionsViewModel(Func<IReadOnlyList<LocalSessionOverview>> query, Func<bool> connected,
-        Action<AgentSessionIdentity, bool> stop, Func<IReadOnlyList<SessionRowViewModel>, bool>? confirmClose = null)
+        Action<AgentSessionIdentity> stop, Action<AgentSessionIdentity> delete,
+        Func<IReadOnlyList<SessionRowViewModel>, bool>? confirmDelete = null)
     {
-        _query = query; _connected = connected; _stop = stop; _confirmClose = confirmClose ?? (_ => false);
+        _query = query; _connected = connected; _stop = stop; _delete = delete; _confirmDelete = confirmDelete ?? (_ => false);
         RefreshCommand = new(Refresh);
-        StopCommand = new(() => StopSelected(false), CanStop);
-        CloseCommand = new(() => StopSelected(true), CanStop);
+        StopCommand = new(StopSelected, CanStop);
+        DeleteCommand = new(DeleteSelected, CanDelete);
         SelectAllCommand = new(SelectAllVisible, CanSelectAll);
         ClearSelectionCommand = new(ClearBulkSelection, CanClearSelection);
-        StopSelectedSessionsCommand = new(() => StopBulkSelected(false), CanBulkAction);
-        CloseSelectedSessionsCommand = new(() => StopBulkSelected(true), CanBulkAction);
+        StopSelectedSessionsCommand = new(StopBulkSelected, CanBulkStop);
+        DeleteSelectedSessionsCommand = new(DeleteBulkSelected, CanBulkDelete);
     }
     private bool CanStop() => _connected() && Selected is { IsClosed: false };
+    private bool CanDelete() => _connected() && Selected is not null;
     private bool CanSelectAll() => _connected() && Items.Any(row => row.CanBulkSelect && !row.IsBulkSelected);
     private bool CanClearSelection() => _rows.Values.Any(row => row.IsBulkSelected);
-    private bool CanBulkAction() => _connected() && BulkSelectedRows().Length > 0;
+    private bool CanBulkStop() => _connected() && BulkSelectedRows(openOnly: true).Length > 0;
+    private bool CanBulkDelete() => _connected() && BulkSelectedRows().Length > 0;
     public void ReportWarning(string text) => Error = text;
     public void Refresh()
     {
@@ -134,7 +131,7 @@ public sealed class SessionsViewModel : ObservableViewModel
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException)
         { Error = "Session metadata could not be refreshed. Reconnect or refresh to retry."; }
-        StopCommand.Refresh(); CloseCommand.Refresh(); RefreshBulkSelectionState();
+        StopCommand.Refresh(); DeleteCommand.Refresh(); RefreshBulkSelectionState();
     }
     private void UpdateVisible()
     {
@@ -169,7 +166,8 @@ public sealed class SessionsViewModel : ObservableViewModel
         foreach (var row in _rows.Values.Where(row => row.IsBulkSelected).ToArray()) row.IsBulkSelected = false;
         RefreshBulkSelectionState();
     }
-    private SessionRowViewModel[] BulkSelectedRows() => Items.Where(row => row.IsBulkSelected && !row.IsClosed).ToArray();
+    private SessionRowViewModel[] BulkSelectedRows(bool openOnly = false) => Items
+        .Where(row => row.IsBulkSelected && (!openOnly || !row.IsClosed)).ToArray();
     private void RefreshBulkSelectionState()
     {
         Changed(nameof(BulkSelectedCount));
@@ -177,22 +175,32 @@ public sealed class SessionsViewModel : ObservableViewModel
         SelectAllCommand.Refresh();
         ClearSelectionCommand.Refresh();
         StopSelectedSessionsCommand.Refresh();
-        CloseSelectedSessionsCommand.Refresh();
+        DeleteSelectedSessionsCommand.Refresh();
     }
-    private void StopSelected(bool close)
+    private void StopSelected()
     {
         if (Selected is not { } row || !CanStop()) return;
-        StopRows([row], close, row.Label);
+        StopRows([row], row.Label);
     }
-    private void StopBulkSelected(bool close)
+    private void StopBulkSelected()
+    {
+        var rows = BulkSelectedRows(openOnly: true);
+        if (rows.Length == 0 || !_connected()) return;
+        StopRows(rows, null);
+    }
+    private void DeleteSelected()
+    {
+        if (Selected is not { } row || !CanDelete()) return;
+        DeleteRows([row], row.Label);
+    }
+    private void DeleteBulkSelected()
     {
         var rows = BulkSelectedRows();
         if (rows.Length == 0 || !_connected()) return;
-        StopRows(rows, close, null);
+        DeleteRows(rows, null);
     }
-    private void StopRows(IReadOnlyList<SessionRowViewModel> rows, bool close, string? singleLabel)
+    private void StopRows(IReadOnlyList<SessionRowViewModel> rows, string? singleLabel)
     {
-        if (close && !_confirmClose(rows)) return;
         Error = "";
         var requested = 0;
         var failed = 0;
@@ -200,7 +208,7 @@ public sealed class SessionsViewModel : ObservableViewModel
         {
             try
             {
-                _stop(row.Identity, close);
+                _stop(row.Identity);
                 requested++;
                 row.IsBulkSelected = false;
             }
@@ -212,13 +220,42 @@ public sealed class SessionsViewModel : ObservableViewModel
         if (requested > 0)
         {
             ActionMessage = singleLabel is not null
-                ? $"{(close ? "Close" : "Stop")} requested for {singleLabel}. Other sessions were not paused."
-                : $"{(close ? "Close" : "Stop")} requested for {requested} selected {(requested == 1 ? "session" : "sessions")}. Other sessions were not paused.";
+                ? $"Stop requested for {singleLabel}. Other sessions were not paused."
+                : $"Stop requested for {requested} selected {(requested == 1 ? "session" : "sessions")}. Other sessions were not paused.";
         }
         if (failed > 0)
             Error = singleLabel is not null
-                ? $"This session could not be {(close ? "closed" : "stopped")}. Refresh its state before retrying."
-                : $"{failed} selected {(failed == 1 ? "session" : "sessions")} could not be {(close ? "closed" : "stopped")}. Refresh state before retrying.";
+                ? "This session could not be stopped. Refresh its state before retrying."
+                : $"{failed} selected {(failed == 1 ? "session" : "sessions")} could not be stopped. Refresh state before retrying.";
+        Refresh();
+    }
+    private void DeleteRows(IReadOnlyList<SessionRowViewModel> rows, string? singleLabel)
+    {
+        if (!_confirmDelete(rows)) return;
+        Error = "";
+        var deleted = 0;
+        var failed = 0;
+        foreach (var row in rows)
+        {
+            try
+            {
+                _delete(row.Identity);
+                deleted++;
+                row.IsBulkSelected = false;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException or UnauthorizedAccessException)
+            { failed++; }
+        }
+        if (deleted > 0)
+        {
+            ActionMessage = singleLabel is not null
+                ? $"Deleted {singleLabel}. Local history was removed and its server handle revocation is synchronized automatically."
+                : $"Deleted {deleted} selected {(deleted == 1 ? "session" : "sessions")}. Local history was removed and server handle revocations are synchronized automatically.";
+        }
+        if (failed > 0)
+            Error = singleLabel is not null
+                ? "This session could not be deleted. Refresh its state before retrying."
+                : $"{failed} selected {(failed == 1 ? "session" : "sessions")} could not be deleted. Refresh state before retrying.";
         Refresh();
     }
 }

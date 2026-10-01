@@ -1,26 +1,34 @@
 # Security boundaries and threat model
 
+## 1.0.103 permanent session deletion and handle revocation
+
+Deleting a session in the Agent UI is a destructive operator action distinct from resumable stop and terminal close. The local transaction removes metadata/mailbox events and keeps an indefinite `(owner, device, session)` tombstone. Every later local open/get/dispatch checks that tombstone and returns `SESSION_DELETED`; replaying a formerly valid protected handle cannot recreate the identity.
+
+The deletion synchronization payload cannot choose an account or device. Only an authenticated enrolled Agent peer that negotiated `application-session-deletion-sync-v1` may send bounded session-ID/timestamp rows, and the server supplies `OwnerId`/`DeviceId` from that peer before a monotonic upsert. The MCP gateway validates the protected handle first, then checks the exact owner/device/session revocation tuple before Agent routing. This prevents cross-tenant deletion and keeps revocation effective when the Agent is offline.
+
+Tombstones are intentionally retained while handles have no fixed expiry. Device deletion cascades server tombstones. A transport failure can delay server synchronization but cannot undo local deletion; reconnect replay is idempotent. This mechanism does not revoke OAuth grants, affect sibling sessions, authorize any tool, or erase data already exported to external systems.
+
 ## 1.0.76 application-session handle lifetime
 
-Application-session handles no longer expire solely on a fixed wall-clock timer. They remain protected correlation capabilities bound to the authenticated owner and enrolled execution device, not authorization tokens: every call still requires live OAuth/device authorization, the Agent validates the `js_...` session and closed state again at dispatch, and explicit session close remains terminal. Legacy v1 embedded expiry timestamps are ignored only after those stronger checks; persisted Data Protection keys are still required to resume an existing handle after server restart.
+Application-session handles no longer expire solely on a fixed wall-clock timer. They remain protected correlation capabilities bound to the authenticated owner and enrolled execution device, not authorization tokens: every call still requires live OAuth/device authorization, the server checks synchronized deletion revocation, and the Agent validates the `js_...` open/closed/deleted state again at dispatch. Legacy v1 embedded expiry timestamps are ignored only after those stronger checks; persisted Data Protection keys are still required to resume an existing non-revoked handle after server restart.
 
 ## 1.0.65 sessionless security scope
 
 Ordinary calls without an explicit application session are still authenticated by the OAuth owner and enrolled agent. Local state that must survive later prompts in this mode is scoped to that owner+agent pair; use `session__open` when separate chats require stricter workspace, mailbox or browser isolation. Explicit session/workspace operations still require a validated handle.
 
-A sessionless resource remains bound to owner+agent plus its opaque resource ID; an explicit-session resource also requires its `js_...` session. `session__stop_work` is the resumable cancellation path. Destructive `session__close` remains available to the operator/UI but is not advertised in normal model discovery. Gateway rejection audit stores metadata and error codes, not tool arguments or session handles.
+A sessionless resource remains bound to owner+agent plus its opaque resource ID; an explicit-session resource also requires its `js_...` session. `session__stop_work` is the resumable cancellation path. Destructive `session__close` remains a non-advertised raw compatibility path; the operator UI uses permanent synchronized deletion. Gateway rejection audit stores metadata and error codes, not tool arguments or session handles.
 
 ## 1.0.64 multi-session boundaries
 
 In the 1.0.64 contract, application handles were protected with the server's existing persisted Data Protection key ring, bound to authenticated owner and enrolled execution device, expired after 30 days, and were never returned by list/metadata operations. Version 1.0.76 supersedes only that fixed expiry. They are not a replacement for OAuth, per-tool approval, persistent constrained-process grants, or Arm/Pause. Retain and protect the server data directory during upgrades. Never log or copy handles into inter-session messages.
 
-The local session store validates owner/device/session and closed state again at dispatch. Queued calls keep immutable workspace snapshots. Per-session process/task ownership prevents a sibling from reading stdin/output or cancelling another chat's job by guessing an ID. The native bridge stamps session identity outside browser arguments; extension ownership checks include read/origin/close paths. Separate per-session browser origin gates and computer-service state do not weaken denied-app or OS/UIPI boundaries.
+The local session store validates owner/device/session plus closed/deleted state again at dispatch. Queued calls keep immutable workspace snapshots. Per-session process/task ownership prevents a sibling from reading stdin/output or cancelling another chat's job by guessing an ID. The native bridge stamps session identity outside browser arguments; extension ownership checks include read/origin/close paths. Separate per-session browser origin gates and computer-service state do not weaken denied-app or OS/UIPI boundaries.
 
 Global desktop exclusion and shared observation invalidation prevent stale-coordinate actions after another session changes the desktop. File and repository claims use canonical paths; protected agent directories stay excluded even through filesystem links. Existing-file writes require a current session-local SHA-256 observation. These are coordination safeguards for managed calls, not an OS sandbox, a browser-profile boundary or an atomic transaction against unrelated external file writers.
 
 Registry/mailbox responses contain only explicitly stored metadata and coordination events. Messages from another agent are untrusted data, not user consent or higher-priority instructions. No chat transcript harvesting, automatic transcript sharing, cross-account routing or idle-chat wakeup is implemented. Explicitly invoked durable project journals retain their existing project-scoped sharing semantics.
 
-Queue, mailbox, session and browser-history capacities are bounded. Legacy clients talking to a modern agent must open a session; old agents are supported only through explicitly negotiated compatibility. Update the browser extension rather than bypassing capability checks. Emergency Pause remains global; Stop/Close on the Sessions page is scoped. All runtime/permission UI validation in this release uses isolated test fixtures, not live protected Agent controls.
+Queue, mailbox, session and browser-history capacities are bounded. Deletion sync pages are capped at 200 rows; permanent tombstones are compact and intentionally retained because handles do not expire. Legacy clients talking to a modern agent must open a session; old agents are supported only through explicitly negotiated compatibility. Update the browser extension rather than bypassing capability checks. Emergency Pause remains global; Stop/Delete on the Sessions page is scoped. All runtime/permission UI validation in this release uses isolated test fixtures, not live protected Agent controls.
 
 ## Protected access
 

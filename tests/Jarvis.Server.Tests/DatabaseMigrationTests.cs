@@ -36,6 +36,7 @@ public sealed class DatabaseMigrationTests
                         Action TEXT NOT NULL,
                         Outcome TEXT NOT NULL
                     );
+                    CREATE TABLE Devices (Id TEXT NOT NULL PRIMARY KEY);
                     INSERT INTO Tools VALUES ('auto-id','auto_tool','auto.tool','imported disabled','fixture',0,'r1');
                     INSERT INTO Tools VALUES ('hidden-id','hidden_tool','hidden.tool','explicitly disabled','fixture',0,'r2');
                     INSERT INTO Tools VALUES ('published-id','published_tool','published.tool','enabled tool','fixture',1,'r3');
@@ -56,6 +57,10 @@ public sealed class DatabaseMigrationTests
             var schema = verify.CreateCommand();
             schema.CommandText = "SELECT Version FROM Schema WHERE Id=1;";
             Assert.Equal(DatabaseBootstrap.CurrentSchemaVersion, Convert.ToInt32(await schema.ExecuteScalarAsync()));
+
+            var tombstones = verify.CreateCommand();
+            tombstones.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ApplicationSessionTombstones';";
+            Assert.Equal(1L, Convert.ToInt64(await tombstones.ExecuteScalarAsync()));
 
             var rows = new Dictionary<string, (string Mode, long Enabled)>(StringComparer.Ordinal);
             var tools = verify.CreateCommand();

@@ -22,6 +22,7 @@ public sealed class McpGateway(
     IHttpContextAccessor http,
     AgentTaskService tasks,
     McpSessionContext sessions,
+    ApplicationSessionDeletionStore sessionDeletions,
     DeviceToolCatalog deviceTools,
     ConnectionIdentityService identityService)
 {
@@ -146,6 +147,7 @@ public sealed class McpGateway(
                 else if (handle is not null)
                 {
                     sessionId = sessions.Resolve(user.Id, device.Id, handle);
+                    await sessionDeletions.ThrowIfDeletedAsync(user.Id, device.Id, sessionId, ct);
                 }
                 else if (RequiresExplicitSession(request.Name))
                 {

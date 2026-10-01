@@ -1,5 +1,13 @@
 # API overview
 
+## Permanent application-session deletion — 1.0.103
+
+Permanent deletion is an Agent-operator action, not a model-discoverable MCP tool. The Desktop **Delete session / Delete selected** controls remove the selected session's local metadata and mailbox events, cancel only its owned work and create an indefinite local tombstone. The existing `session__stop_work` call remains resumable, while raw `session__close` remains a terminal-close compatibility operation that can retain metadata until the operator deletes it.
+
+Agent/server peers negotiate `application-session-deletion-sync-v1`. The Agent sends `session.deletions.changed` with 1..200 `{sessionId, deletedAtUnixMilliseconds}` rows and replays all local tombstones after reconnect. The message deliberately contains no owner/device selector. `WsAgentRouter` supplies those values from the authenticated enrollment, performs a monotonic idempotent upsert, and schema-v3 `ApplicationSessionTombstones` retains revocation state.
+
+For every request carrying an existing protected handle, `McpGateway` first validates its owner/device binding and then checks the revocation index. A match returns `SESSION_DELETED` before Agent routing, including while the Agent is offline. A new server with an old Agent simply receives no deletion frames; a new Agent with an old server enforces deletion locally and replays tombstones after a capable server is installed.
+
 ## OAuth connection profile and identity — 1.0.98
 
 `jarvis__profile` and `jarvis__whoami` are server-owned MCP tools. Call either with `{}` (or omitted arguments), without `_jarvis`. Both require the normal validated `mcp:tools` OAuth grant, active account, enabled device and matching ownership/security stamp. They do not select an account/device, enumerate other connections, open a session, dispatch an Agent command or require local Arm. An offline/paused Agent does not prevent identity reads. Account/device/session arguments, including `_jarvis`, are rejected.
@@ -18,7 +26,7 @@ Contract reference: [OpenAI authenticated profile tools](https://developers.open
 
 ## Session lifetime and interactive cancellation — 1.0.76
 
-Explicit application-session handles no longer have an absolute 30-day expiry. A handle is a protected correlation token bound to the authenticated owner and selected enrolled device; it is not authorization by itself. Each call still requires live OAuth and device authorization, and the Agent still rejects closed/missing sessions. New handles omit `handleExpiresAt`; legacy v1 handles whose embedded timestamp has passed continue to resolve so an otherwise-open session can resume. Explicit session close remains terminal, while `session__stop_work` remains resumable.
+Explicit application-session handles no longer have an absolute 30-day expiry. A handle is a protected correlation token bound to the authenticated owner and selected enrolled device; it is not authorization by itself. Each call still requires live OAuth and device authorization, and the Agent still rejects closed, missing or permanently deleted sessions. New handles omit `handleExpiresAt`; legacy v1 handles whose embedded timestamp has passed continue to resolve only while the underlying session remains valid. Explicit session close remains terminal, synchronized delete additionally revokes the server handle, and `session__stop_work` remains resumable.
 
 Calls in both the `browser` and `computer` categories release their call-owned interactive resource lease when that call is cancelled. This includes `computer.request_access`, so a timed-out permission/grant dialog cannot keep the shared `desktop` resource occupied while its UI unwinds and block a later browser QA call. Filesystem/shell/process retention rules are unchanged.
 
@@ -26,7 +34,7 @@ Calls in both the `browser` and `computer` categories release their call-owned i
 
 Ordinary tools and `agent_task_*` accept `_jarvis.sessionHandle` when the client has one, but no longer require it. If omitted, the gateway generates a bounded `call_<random>` execution ID for that invocation and dispatches it to the authenticated enrolled agent. Sessionless state that legitimately spans later calls is keyed to a stable owner/device isolation scope; explicit `js_...` sessions still use the protected handle for strict workspace/mailbox/browser/session ownership.
 
-`session__open` is optional for ordinary execution and remains the entry point for explicit per-chat coordination. `session__get`, `session__list`, `session__send_message`, `session__read_events`, `session__stop_work`, `workspace__get` and `workspace__set` require an explicit handle. `session__close` is intentionally omitted from normal `tools/list`; the raw/operator/UI close path remains for deliberate terminal cleanup. `session__stop_work` cancels owned work without closing the session.
+`session__open` is optional for ordinary execution and remains the entry point for explicit per-chat coordination. `session__get`, `session__list`, `session__send_message`, `session__read_events`, `session__stop_work`, `workspace__get` and `workspace__set` require an explicit handle. `session__close` is intentionally omitted from normal `tools/list`; the raw call remains for deliberate terminal close. The Agent operator UI uses permanent deletion and server revocation instead. `session__stop_work` cancels owned work without closing or deleting the session.
 
 A missing/invalid handle on an ordinary filesystem/Git/shell/process/computer/browser/task call must not produce `SESSION_REQUIRED`; the same error is still correct for explicit session/workspace management. Gateway rejections before dispatch are audited as `rejected:<code>` with correlation/user/device metadata only; arguments and opaque handles are not persisted.
 
@@ -38,7 +46,7 @@ Open a fresh logical chat session:
 ```json
 {"label":"Code review"}
 ```
-Call `session__open` with that payload; retain the handle returned in its JSON result. Passing its existing valid handle resumes through `session.get`, not by recreating a closed row. Subsequent file, shell, browser, computer and task calls carry:
+Call `session__open` with that payload; retain the handle returned in its JSON result. Passing its existing valid handle resumes through `session.get`, not by recreating a closed row. A handle whose session was permanently deleted returns `SESSION_DELETED` and cannot recreate the old `js_...` identity. Subsequent file, shell, browser, computer and task calls carry:
 ```json
 {"_jarvis":{"sessionHandle":"<this chat's opaque handle>"},"file_path":"D:\\Work\\App\\README.md"}
 ```
@@ -52,7 +60,7 @@ Published tools: `session__open`, `session__get`, `session__list`, `session__sen
 
 Process read/stdin/resize/cancel and durable task/artifact operations check creator session ownership as well as account/device. Session close is idempotent, cancels owned work and does not pause siblings. Status/cancel/close use independent bounded capacity; mutating session operations still obey the existing Arm and approval gates. Queue expiry fails before tool execution; disconnected or timed-out mutations with unknown completion must not be replayed automatically.
 
-Key actionable errors: SESSION_REQUIRED, SESSION_CLOSED, WORKSPACE_REQUIRED, WORKSPACE_REVISION_CONFLICT, QUEUE_FULL, QUEUE_TIMEOUT, FILE_READ_REQUIRED and FILE_CHANGED. HTTP 429 is the separate server rate limiter. Existing-file writes require this session's successful current Read, not a revision supplied by another session. Tool-local parameter names and exact schemas remain the discovery source of truth.
+Key actionable errors: SESSION_REQUIRED, SESSION_CLOSED, SESSION_DELETED, WORKSPACE_REQUIRED, WORKSPACE_REVISION_CONFLICT, QUEUE_FULL, QUEUE_TIMEOUT, FILE_READ_REQUIRED and FILE_CHANGED. HTTP 429 is the separate server rate limiter. Existing-file writes require this session's successful current Read, not a revision supplied by another session. Tool-local parameter names and exact schemas remain the discovery source of truth.
 
 Execution settings travel over authenticated agent WSS, not an MCP permission-changing tool: AgentHello advertises capability/settings, execution.settings.changed carries a revision and execution.settings.ack confirms it. Settings control execution capacity, never authorization.
 
@@ -81,11 +89,11 @@ Read the actual controller contracts for exact JSON fields. `/api` uses cookie a
 
 ## Agent wire envelope v1 / capability protocol v2
 
-Text JSON frames still use `WireMessage.version = 1`, one logical envelope max 8 MiB and no compression. Fields use camelCase. Initial `hello` contains `{deviceId,version,platform,machineName,tools}` plus additive `protocolVersion`, `capabilities`, task-protocol and catalog identity fields; server returns `welcome` with the negotiated protocol/capability subset. Missing protocol metadata is normalized to legacy protocol 1, so existing peers retain ordinary tool behavior. Capability names are feature discovery only, never authorization.
+Text JSON frames still use `WireMessage.version = 1`, one logical envelope max 8 MiB and no compression. Fields use camelCase. Initial `hello` contains `{deviceId,version,platform,machineName,tools}` plus additive `protocolVersion`, `capabilities`, task-protocol and catalog identity fields; server returns `welcome` with the negotiated protocol/capability subset and authenticated `ownerId` when deletion synchronization is negotiated. Missing protocol metadata is normalized to legacy protocol 1, so existing peers retain ordinary tool behavior. Capability names are feature discovery only, never authorization.
 
 Manifest is capped at 256 tools, schemas 64 KiB each. `ping` and `pong` contain monotonic timestamps. `catalog.changed` carries the immutable tool generation/digest/descriptors and receives `catalog.ack` after server validation/persistence. Later `call` frames may carry expected catalog generation/digest; the agent rejects stale identity before tool execution. `call` otherwise includes ID, toolId, sessionId, deadlineUtc and arguments. `result` includes ID and `{text,isError,images?,widget?}`. `cancel` targets an in-flight ID. TLS and enrollment authorization are mandatory outside explicitly configured loopback development.
 
-Protocol v2 currently negotiates `task-v1`, `catalog-sync-v1` and `capability-leases-v1`. Unsupported capability names are not negotiated. `jarvis-agent doctor --json` is a local diagnostic command, not a remote RPC; it emits redacted health metadata and no credential, raw local path or tool argument/result.
+Protocol v2 currently negotiates `task-v1`, `catalog-sync-v1`, `capability-leases-v1`, application sessions/settings/prompt context, and `application-session-deletion-sync-v1`. Unsupported capability names are not negotiated. `session.deletions.changed` accepts only a bounded deletion array from an authenticated Agent peer; it cannot choose owner/device scope. `jarvis-agent doctor --json` is a local diagnostic command, not a remote RPC; it emits redacted health metadata and no credential, raw local path or tool argument/result.
 
 Server heartbeat 15s; stale peer threshold 50s. Deadlines max five minutes on agent, server default120s/max240s. Four server calls/device; agent bounds parallelism and queues. TCP/WebSocket disconnect cannot indicate whether a mutating tool completed: clients must inspect state, not blindly replay.
 

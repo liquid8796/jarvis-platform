@@ -15,6 +15,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<ToolEntry> Tools => Set<ToolEntry>();
     public DbSet<AuditEvent> Audit => Set<AuditEvent>();
+    public DbSet<ApplicationSessionTombstone> ApplicationSessionTombstones => Set<ApplicationSessionTombstone>();
     public DbSet<SchemaInfo> Schema => Set<SchemaInfo>();
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -30,6 +31,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         model.Entity<ToolEntry>().Property(x => x.Revision).IsConcurrencyToken();
         model.Entity<AuditEvent>().HasKey(x => x.Id);
         model.Entity<AuditEvent>().HasIndex(x => new { x.UserId, x.Time });
+        model.Entity<ApplicationSessionTombstone>().HasKey(x => new { x.OwnerId, x.DeviceId, x.SessionId });
+        model.Entity<ApplicationSessionTombstone>().HasIndex(x => x.DeviceId);
+        model.Entity<ApplicationSessionTombstone>().HasOne<Device>().WithMany().HasForeignKey(x => x.DeviceId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<SchemaInfo>().HasKey(x => x.Id);
     }
 }

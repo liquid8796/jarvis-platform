@@ -32,16 +32,17 @@ public sealed partial class MainViewModel
                 MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
         Sessions = new(() => _runtime?.Connection.GetLocalSessionOverview() ?? [],
             () => _runtime?.Connection.IsConnected == true,
-            (identity, close) => _runtime!.Connection.StopSession(identity, close),
+            identity => _runtime!.Connection.StopSession(identity),
+            identity => _runtime!.Connection.DeleteSession(identity),
             rows =>
             {
                 var many = rows.Count > 1;
                 var target = many ? $"{rows.Count} selected sessions" : rows[0].Label;
                 var consequences = many
-                    ? "Their queued work and owned processes will be cancelled. Their session handles cannot resume after closing. Other sessions will not be paused."
-                    : "Its queued work and owned processes will be cancelled. Its session handle cannot resume after closing. Other sessions will not be paused.";
-                return MessageBox.Show(_owner, $"Close {target}?\n\n{consequences}",
-                    many ? "Close selected sessions" : "Close this session",
+                    ? "Their queued work and owned processes will be cancelled. Local metadata and mailbox history will be permanently removed, and their protected handles will be revoked on the server. Other sessions will not be paused."
+                    : "Its queued work and owned processes will be cancelled. Local metadata and mailbox history will be permanently removed, and its protected handle will be revoked on the server. Other sessions will not be paused.";
+                return MessageBox.Show(_owner, $"Delete {target}?\n\n{consequences}",
+                    many ? "Delete selected sessions" : "Delete this session",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
             });
         ClearWorkspaceCommand = new(() => { Workspace = ""; AdditionalDirectories.Clear(); SelectedDirectory = null; WorkspaceStatus = "No default workspace. Save or reconnect to apply this default to new sessions."; });
