@@ -265,7 +265,7 @@ public sealed partial class ProcessToolSet : IDisposable
         }
 
         private static string[] ShellArgv(string command) => OperatingSystem.IsWindows()
-            ? ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command]
+            ? ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", WithWindowsPowerShellUtf8(command)]
             : ["/bin/bash", "-lc", command];
     }
 
@@ -387,6 +387,19 @@ public sealed partial class ProcessToolSet : IDisposable
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
+            // Match UTF-8 stdout/stderr only when the child shell actually emits
+            // UTF-8. An explicitly spawned legacy powershell.exe can still use OEM.
+            var shell = Path.GetFileNameWithoutExtension(argv[0]);
+            var utf8PowerShell = OperatingSystem.IsWindows() &&
+                (shell.Equals("pwsh", StringComparison.OrdinalIgnoreCase) ||
+                 (shell.Equals("powershell", StringComparison.OrdinalIgnoreCase) &&
+                  argv.Any(arg => arg.StartsWith("$OutputEncoding = [Console]::OutputEncoding", StringComparison.Ordinal))));
+            if (utf8PowerShell)
+            {
+                start.StandardInputEncoding = new UTF8Encoding(false);
+                start.StandardOutputEncoding = new UTF8Encoding(false);
+                start.StandardErrorEncoding = new UTF8Encoding(false);
+            }
             for (var i = 1; i < argv.Count; i++) start.ArgumentList.Add(argv[i]);
             if (environment is not null) foreach (var pair in environment) start.Environment[pair.Key] = pair.Value;
             _process = new Process { StartInfo = start };

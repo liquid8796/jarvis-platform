@@ -218,8 +218,17 @@ public sealed partial class ProcessToolSet
             : requestedShell.Trim();
         var name = Path.GetFileNameWithoutExtension(shell).ToLowerInvariant();
         if (name is "powershell" or "pwsh")
+        {
+            if (OperatingSystem.IsWindows() && name == "powershell")
+                command = WithWindowsPowerShellUtf8(command);
             return login ? [shell, "-NoLogo", "-Command", command] : [shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command];
+        }
         if (name is "cmd") return [shell, "/d", "/s", "/c", command];
         return [shell, login ? "-lc" : "-c", command];
     }
+
+    // Windows PowerShell 5.1 defaults to OEM output and ANSI file writes.
+    private static string WithWindowsPowerShellUtf8(string command) =>
+        "$OutputEncoding = [Console]::OutputEncoding = [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false); " +
+        "$PSDefaultParameterValues['*:Encoding'] = 'utf8'; " + command;
 }

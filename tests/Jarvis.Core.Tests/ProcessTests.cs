@@ -31,6 +31,31 @@ public sealed class ProcessTests
     }
 
     [Fact]
+    public async Task Windows_exec_command_round_trips_unicode_output_and_file_writes()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        using var tools = new ProcessToolSet();
+        var path = Path.Combine(Path.GetTempPath(), "jarvis-unicode-" + Guid.NewGuid().ToString("N") + ".txt");
+        try
+        {
+            var escapedPath = path.Replace("'", "''", StringComparison.Ordinal);
+            var command = "$glyphs = -join @([char]0x2192, [char]0x2014, [char]0x00E9); " +
+                "Write-Output $glyphs; Set-Content -LiteralPath '" + escapedPath + "' -Value $glyphs";
+            var reply = await Exec(tools, Context("unicode"), command, yieldMs: 10_000, tty: false);
+            Assert.False(reply.IsError, reply.Text);
+            using var result = JsonDocument.Parse(reply.Text);
+            Assert.Equal(0, result.RootElement.GetProperty("exit_code").GetInt32());
+            Assert.Contains("\u2192\u2014\u00e9", result.RootElement.GetProperty("output").GetString());
+            Assert.Equal("\u2192\u2014\u00e9", (await File.ReadAllTextAsync(path)).TrimEnd('\r', '\n'));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Exec_command_streams_partial_output_before_completion()
     {
         using var tools = new ProcessToolSet();
