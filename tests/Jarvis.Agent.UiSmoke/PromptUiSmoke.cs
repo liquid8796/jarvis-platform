@@ -30,6 +30,24 @@ internal static class PromptUiSmoke
         var text = inputs.Single(box => AutomationProperties.GetName(box) == "Prompt text");
         var global = Descendants(view).OfType<CheckBox>().Single(box => AutomationProperties.GetName(box) == "Enable prompt injection");
         var selected = Descendants(view).OfType<CheckBox>().Single(box => AutomationProperties.GetName(box) == "Enable selected prompt");
+        var selectAll = Descendants(view).OfType<CheckBox>().Single(box => AutomationProperties.GetName(box) == "Select all prompts");
+        if (!selectAll.IsEnabled || selectAll.IsChecked != false)
+            throw new InvalidOperationException("Select all should start unchecked and enabled for default prompts.");
+        selectAll.SetCurrentValue(CheckBox.IsCheckedProperty, true);
+        selectAll.GetBindingExpression(CheckBox.IsCheckedProperty)!.UpdateSource();
+        if (!((IEnumerable)Get(vm, "Items")).Cast<object>().All(row => (bool)Get(row, "Enabled")) || selectAll.IsChecked != true)
+            throw new InvalidOperationException("Select all did not enable every draft prompt.");
+        Set(((IEnumerable)Get(vm, "Items")).Cast<object>().First(), "Enabled", false);
+        if (selectAll.IsChecked != null)
+            throw new InvalidOperationException("Select all must show an indeterminate state for a partial selection.");
+        selectAll.SetCurrentValue(CheckBox.IsCheckedProperty, true);
+        selectAll.GetBindingExpression(CheckBox.IsCheckedProperty)!.UpdateSource();
+        if (((IEnumerable)Get(vm, "Items")).Cast<object>().Any(row => !(bool)Get(row, "Enabled")))
+            throw new InvalidOperationException("Select all did not restore a partial selection.");
+        selectAll.SetCurrentValue(CheckBox.IsCheckedProperty, false);
+        selectAll.GetBindingExpression(CheckBox.IsCheckedProperty)!.UpdateSource();
+        if (((IEnumerable)Get(vm, "Items")).Cast<object>().Any(row => (bool)Get(row, "Enabled")) || selectAll.IsChecked != false)
+            throw new InvalidOperationException("Unchecking Select all did not disable every draft prompt.");
         Execute(vm, "AddCommand"); window.UpdateLayout();
         title.SetCurrentValue(TextBox.TextProperty, "UI smoke example");
         const string body = " \r\n    Ghi r\u00f5 \u0111\u1ed9 tin c\u1eady. \U0001F9EA\r\n  Synthetic test context only.\r\n ";
@@ -64,7 +82,7 @@ internal static class PromptUiSmoke
         if (persisted.GetProperty("text").GetString() != body)
             throw new InvalidOperationException("Saved JSON changed the prompt body whitespace or Unicode.");
         var result = new { promptTabRendered = true, defaultCount = 7, defaultsDisabled = true,
-            titleAndTextBindings = true, toggleBindings = true, addAndSave = true, reload = true,
+            titleAndTextBindings = true, toggleBindings = true, selectAllDraftToggle = true, addAndSave = true, reload = true,
             disablePersisted = true, previewRendered = true, minimumSizeRendered = true,
             exactBodyPreview = true, exactBodyPersistence = true,
             isolatedSettingsOnly = true, connectionStarted = false, controlArmed = false };

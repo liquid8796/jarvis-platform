@@ -26,7 +26,7 @@ public partial class MainWindow : Window
         _model = new MainViewModel(this, settingsRoot, loadProfile); DataContext = _model;
         if (_model.InitialProfile is { } profile) try { TokenBox.Password = AgentProfile.GetToken(profile); } catch (Exception) { }
         _trayIcon = LoadTrayIcon();
-        _tray = new Forms.NotifyIcon { Text = "Jarvis Agent â€” local tool permissions", Icon = _trayIcon, Visible = true };
+        _tray = new Forms.NotifyIcon { Text = "Jarvis Agent \u2014 local tool permissions", Icon = _trayIcon, Visible = true };
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Open Jarvis Agent", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Pause remote control", null, (_, _) => Dispatcher.Invoke(_model.Pause));

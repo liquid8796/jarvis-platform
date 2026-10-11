@@ -35,6 +35,23 @@ public sealed class PromptInjectionViewModel : ObservableViewModel
         set { if (Set(ref _selected, value)) { Changed(nameof(HasSelection)); DeleteCommand.Refresh(); } }
     }
     public bool HasSelection => Selected is not null;
+    public bool HasItems => _loaded && Items.Count > 0;
+    public bool? AllPromptsEnabled
+    {
+        get => Items.Count == 0 || Items.All(row => !row.Enabled) ? false
+            : Items.All(row => row.Enabled) ? true : null;
+        set
+        {
+            if (!HasItems || value is null || Items.All(row => row.Enabled == value.Value)) return;
+            _loading = true;
+            try
+            {
+                foreach (var row in Items) row.Enabled = value.Value;
+            }
+            finally { _loading = false; }
+            DraftChanged();
+        }
+    }
     public bool Enabled { get => _enabled; set { if (Set(ref _enabled, value)) DraftChanged(); } }
     public bool IsDirty => _dirty;
     public bool IsLoaded => _loaded;
@@ -93,6 +110,7 @@ public sealed class PromptInjectionViewModel : ObservableViewModel
     private void RefreshState()
     {
         Changed(nameof(IsDirty)); Changed(nameof(IsLoaded)); Changed(nameof(Summary));
+        Changed(nameof(HasItems)); Changed(nameof(AllPromptsEnabled));
         Changed(nameof(SavedSummary)); Changed(nameof(Preview)); Changed(nameof(HasSelection));
         AddCommand.Refresh(); DeleteCommand.Refresh(); SaveCommand.Refresh(); RestoreDefaultsCommand.Refresh();
     }

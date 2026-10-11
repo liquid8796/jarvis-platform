@@ -49,6 +49,49 @@ public sealed class PromptInjectionViewModelTests : IDisposable
     }
 
     [Fact]
+    public void Select_all_prompts_edits_only_the_draft_and_tracks_individual_toggles()
+    {
+        var vm = new PromptInjectionViewModel(Store);
+        Assert.True(vm.HasItems);
+        Assert.False(vm.AllPromptsEnabled);
+        Assert.False(vm.IsDirty);
+
+        vm.AllPromptsEnabled = true;
+        Assert.True(vm.AllPromptsEnabled);
+        Assert.All(vm.Items, row => Assert.True(row.Enabled));
+        Assert.True(vm.IsDirty);
+        Assert.All(Store.Load().Entries, row => Assert.False(row.Enabled));
+
+        vm.Items[0].Enabled = false;
+        Assert.Null(vm.AllPromptsEnabled);
+        vm.AllPromptsEnabled = true;
+        Assert.True(vm.AllPromptsEnabled);
+        vm.SaveCommand.Execute(null);
+        Assert.Empty(vm.Error);
+        Assert.False(vm.IsDirty);
+        Assert.All(Store.Load().Entries, row => Assert.True(row.Enabled));
+
+        vm.ReloadCommand.Execute(null);
+        Assert.True(vm.AllPromptsEnabled);
+        vm.AllPromptsEnabled = false;
+        Assert.All(vm.Items, row => Assert.False(row.Enabled));
+        vm.SaveCommand.Execute(null);
+        Assert.All(Store.Load().Entries, row => Assert.False(row.Enabled));
+    }
+
+    [Fact]
+    public void Select_all_is_disabled_for_an_empty_list_and_does_not_dirty_the_draft()
+    {
+        Store.Save(new() { Entries = [] }, 1);
+        var vm = new PromptInjectionViewModel(Store);
+        Assert.False(vm.HasItems);
+        Assert.False(vm.AllPromptsEnabled);
+        vm.AllPromptsEnabled = true;
+        Assert.False(vm.IsDirty);
+        Assert.False(vm.AllPromptsEnabled);
+    }
+
+    [Fact]
     public void Cancelling_delete_reload_or_restore_keeps_the_draft()
     {
         var vm = new PromptInjectionViewModel(Store, confirm: _ => false);

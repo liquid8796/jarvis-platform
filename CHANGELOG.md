@@ -1,3 +1,10 @@
+## 1.0.104 - 2026-10-11
+
+- Correct two malformed UI status/tray strings caused by double-decoded UTF-8; use explicit Unicode escapes for the em dash and ellipsis.
+- Add a Select all prompts checkbox to the Prompt injection panel with checked, unchecked and mixed states. Bulk enable/disable remains draft-only until Save changes.
+- Extend Prompt Injection view-model tests and published WPF UI smoke checks; 197 Windows Agent tests and prompt-panel smoke checks pass.
+- Document the required version-bump, Conventional Commit, push-to-master and conditional OCI server-deployment workflow in `AGENTS.md`. Bump package and assembly/file versions to **1.0.104**.
+
 ## 1.0.103 - 2026-10-01
 
 - Replace the Agent Sessions page's local-only close action with confirmed permanent deletion for both open and retained closed sessions. Deletion cancels only owned work, removes local session metadata/mailbox events, and leaves unrelated sessions untouched; Stop work remains resumable.

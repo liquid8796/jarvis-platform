@@ -197,7 +197,7 @@ public sealed partial class AgentConnection : IAsyncDisposable
             try
             {
                 SetReachability(attempt == 0 ? "CONNECTING" : "RECONNECTING",
-                    attempt == 0 ? "Connecting securelyâ€¦" : "Reconnecting; interrupted calls will not be replayed.", false);
+                    attempt == 0 ? "Connecting securely\u2026" : "Reconnecting; interrupted calls will not be replayed.", false);
                 using var socket = await _socketConnector(endpoint, token, stop.Token).ConfigureAwait(false);
                 var wire = _current = new WireSocket(socket);
                 var catalog = _registry.Snapshot;

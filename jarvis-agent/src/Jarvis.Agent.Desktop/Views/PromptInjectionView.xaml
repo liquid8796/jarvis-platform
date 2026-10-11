@@ -23,7 +23,11 @@
       <TextBlock Text="{Binding Summary}" Style="{StaticResource SessionHint}" Margin="0,0,0,10"/>
       <Grid MinHeight="320">
         <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
-        <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}" Height="330" VerticalAlignment="Top"
+        <StackPanel>
+          <CheckBox Content="Select all prompts" IsThreeState="False" IsChecked="{Binding AllPromptsEnabled, Mode=TwoWay}"
+                    IsEnabled="{Binding HasItems}" Margin="0,0,0,10" Foreground="{DynamicResource Text}"
+                    AutomationProperties.Name="Select all prompts" ToolTip="Enable or disable every prompt in the draft; Save changes to apply"/>
+        <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}" Height="300" VerticalAlignment="Top"
                  Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
                  HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  ItemContainerStyle="{StaticResource SessionRow}" AutomationProperties.Name="Prompt preset list">
@@ -36,6 +40,7 @@
             </Border>
           </DataTemplate></ListBox.ItemTemplate>
         </ListBox>
+        </StackPanel>
         <StackPanel Grid.Column="2" IsEnabled="{Binding HasSelection}">
           <TextBlock Text="TITLE (EDITOR ONLY)" Style="{StaticResource SessionHint}" Margin="0,0,0,6"/>
           <TextBox Text="{Binding Selected.Title, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SessionInput}" MaxLength="120" AutomationProperties.Name="Prompt title"/>
