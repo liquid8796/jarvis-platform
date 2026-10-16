@@ -1,3 +1,19 @@
+## 1.0.107 - 2026-10-16
+
+- Remove nullable warnings from REA launcher path validation without relaxing the local-stdio-only policy.
+- Keep the 1.0.105 REA bridge and 1.0.106 catalog-test update; bump package and assembly/file versions to **1.0.107** / **1.0.107.0**.
+
+## 1.0.106 - 2026-10-16
+
+- Update the live Agent Tool permissions catalog regression for six additional REA descriptors (116 total), and assert both REA discovery and invocation are visible to the operator. The underlying REA integration was introduced in 1.0.105.
+- Bump package and assembly/file versions to **1.0.106** / **1.0.106.0**.
+
+## 1.0.105 - 2026-10-16
+
+- Add a local-only REA (Reverse Engineer Anything) MCP bridge to Jarvis Agent using the existing session-isolated, approval-gated external MCP transport. Expose six unique rea_* discovery/call/resource/prompt wrappers for the downstream REA catalog, without registering 207 independent Agent tools.
+- Validate the operator-owned Node.js/rea-agents stdio launcher and optional absolute Ghidra/JDK paths; reject HTTP/shell launchers. Preserve Unity/Blender bridges, cancellation and no-retry semantics, and add focused configuration/discovery/session tests.
+- Document setup for an already-installed REA + Ghidra/JDK toolchain. Bump package to **1.0.105** and assembly/file to **1.0.105.0**.
+
 ## 1.0.104 - 2026-10-11
 
 - Correct two malformed UI status/tray strings caused by double-decoded UTF-8; use explicit Unicode escapes for the em dash and ellipsis.

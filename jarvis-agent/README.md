@@ -1,4 +1,28 @@
-# Jarvis Agent - 1.0.103
+# Jarvis Agent - 1.0.107
+
+## REA reverse-engineering MCP bridge (1.0.105)
+
+Jarvis can connect to an operator-installed Reverse Engineer Anything (REA, https://github.com/morluto/rea) server, independently of Codex. It uses the locally approved, lazy, per-session MCP stdio bridge shared with Unity and Blender. Upstream REA tools are never automatically elevated or granted Full Permission.
+
+Install rea-agents independently. Merge an entry named rea into the existing mcpServers object in %LOCALAPPDATA%\JarvisAgent\mcp.json. Example on the enrolled Windows machine (JSON strings must escape backslashes):
+
+    "rea": {
+      "type": "stdio",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\Liquid\\AppData\\Roaming\\npm\\node_modules\\rea-agents\\scripts\\rea.mjs",
+        "mcp"
+      ],
+      "env": {
+        "GHIDRA_INSTALL_DIR": "D:\\Tools\\Ghidra\\ghidra_12.1.4_PUBLIC",
+        "JAVA_HOME": "C:\\Program Files\\Java\\jdk-21.0.8"
+      }
+    }
+
+Adjust paths for your Node/npm/Ghidra/JDK installations. The launcher must be absolute node.exe with exactly the installed rea-agents/scripts/rea.mjs and mcp arguments; HTTP, arbitrary shells and unrelated scripts are rejected. GHIDRA_INSTALL_DIR/JAVA_HOME are optional for other REA providers, but native Ghidra analysis requires working installations.
+
+After building and restarting the updated Agent, use rea_list_tools to discover exact downstream tool schemas, then rea_call_tool with name and arguments. Six canonical IDs are rea.list_tools, rea.call_tool, rea.list_resources, rea.read_resource, rea.list_prompts and rea.get_prompt; public names use the rea_ prefix. Local Tool permissions and the server Tool Catalog may need to allow these new descriptors. Pause/stop closes session-owned MCP clients but cannot undo Ghidra actions already completed; uncertain modifying calls are never retried automatically. This is Agent-only; OCI MCP server deployment is unnecessary.
+
 
 ## Permanent session deletion and server synchronization (1.0.103)
 

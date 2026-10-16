@@ -16,6 +16,7 @@ public sealed class ToolInventory : IDisposable
     private readonly ImageGenerationToolSet _imageGen;
     private readonly UnityMcpToolSet _unity;
     private readonly BlenderMcpToolSet _blender;
+    private readonly ReaMcpToolSet _rea;
     private readonly SessionFileObservations _fileObservations = new();
     private readonly SessionBrowserToolSet _browserTools;
     private readonly NativeInspectionToolSet _nativeInspection;
@@ -65,6 +66,8 @@ public sealed class ToolInventory : IDisposable
         tools.AddRange(_unity.Tools);
         _blender = new BlenderMcpToolSet(Path.Combine(root, BlenderMcpConfig.FileName));
         tools.AddRange(_blender.Tools);
+        _rea = new ReaMcpToolSet(Path.Combine(root, ReaMcpConfig.FileName));
+        tools.AddRange(_rea.Tools);
         Tools = tools;
     }
     public async Task StopSessionAsync(AgentSessionIdentity identity, bool close, CancellationToken ct)
@@ -72,11 +75,12 @@ public sealed class ToolInventory : IDisposable
         _imageGen.Jobs.StopSession(identity);
         _unity.StopSession(identity.SessionId);
         _blender.StopSession(identity.SessionId);
+        _rea.StopSession(identity.SessionId);
         _computerStates.Invalidate(identity.SessionId);
         if (close) _fileObservations.Forget(identity);
         try { await _browserTools.StopSessionAsync(identity, close, ct); }
         finally { if (close) _computerStates.InvalidateAll(); }
     }
-    public void Pause() { _imageGen.Jobs.Pause(); _unity.Pause(); _blender.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
-    public void Dispose() { Pause(); _imageGen.Dispose(); _unity.Dispose(); _blender.Dispose(); _browser.Dispose(); }
+    public void Pause() { _imageGen.Jobs.Pause(); _unity.Pause(); _blender.Pause(); _rea.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
+    public void Dispose() { Pause(); _imageGen.Dispose(); _unity.Dispose(); _blender.Dispose(); _rea.Dispose(); _browser.Dispose(); }
 }
