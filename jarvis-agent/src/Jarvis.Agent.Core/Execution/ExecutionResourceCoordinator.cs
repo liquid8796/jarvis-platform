@@ -41,8 +41,8 @@ public sealed class ExecutionResourceCoordinator : IDisposable
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (cancellationToken.IsCancellationRequested) return Task.FromCanceled<IDisposable>(cancellationToken);
-            if (!_held.Any(held => Conflicts(held.Resources, held.Exclusive, claims, exclusive)) &&
-                !_waiting.Any(waiter => Conflicts(waiter.Resources, waiter.Exclusive, claims, exclusive)))
+            if (!_held.Any(held => Conflicts(held, owner, claims, exclusive)) &&
+                !_waiting.Any(waiter => ConflictsWithEarlier(waiter, owner, claims, exclusive)))
                 return Task.FromResult<IDisposable>(Grant(owner, claims, exclusive));
             if (_waiting.Count >= _maximumQueued)
                 return Task.FromException<IDisposable>(new AgentRequestException("RESOURCE_BUSY", "The requested resource is held by other work and the resource queue is full. No tool was started."));
@@ -66,7 +66,7 @@ public sealed class ExecutionResourceCoordinator : IDisposable
     {
         var held = new Held(owner, resources, exclusive);
         _held.Add(held);
-        return new(this, held);
+        return new(this, held, retained: false);
     }
     private IDisposable Retain(Held held)
     {
@@ -74,15 +74,18 @@ public sealed class ExecutionResourceCoordinator : IDisposable
         {
             if (held.References <= 0) throw new ObjectDisposedException(nameof(IExecutionResourceLease));
             checked { held.References++; }
-            return new Lease(this, held);
+            return new Lease(this, held, retained: true);
         }
     }
-    private void Release(Held held)
+    private void Release(Held held, bool retained)
     {
         lock (_sync)
         {
-            if (--held.References != 0) return;
-            _held.Remove(held);
+            // After the initiating call returns, a retained shell job still excludes other
+            // sessions and all writes. Its own session may, however, perform read-only
+            // inspection without waiting for that long-running job to exit.
+            if (!retained) held.PrimaryReleased = true;
+            if (--held.References == 0) _held.Remove(held);
             if (!_disposed) Pump();
         }
     }
@@ -98,8 +101,8 @@ public sealed class ExecutionResourceCoordinator : IDisposable
                 Remove(waiter);
                 waiter.Completion.TrySetCanceled(waiter.Cancellation);
             }
-            else if (!_held.Any(held => Conflicts(held.Resources, held.Exclusive, waiter.Resources, waiter.Exclusive)) &&
-                     !earlier.Any(previous => Conflicts(previous.Resources, previous.Exclusive, waiter.Resources, waiter.Exclusive)))
+            else if (!_held.Any(held => Conflicts(held, waiter.Owner, waiter.Resources, waiter.Exclusive)) &&
+                     !earlier.Any(previous => ConflictsWithEarlier(previous, waiter.Owner, waiter.Resources, waiter.Exclusive)))
             {
                 Remove(waiter);
                 waiter.Completion.TrySetResult(Grant(waiter.Owner, waiter.Resources, waiter.Exclusive));
@@ -126,6 +129,27 @@ public sealed class ExecutionResourceCoordinator : IDisposable
     }
     private static bool Conflicts(string[] first, bool firstExclusive, string[] second, bool secondExclusive) =>
         (firstExclusive || secondExclusive) && first.Any(a => second.Any(b => Overlaps(a, b)));
+    private static bool Conflicts(Held held, string owner, string[] resources, bool exclusive)
+    {
+        // Only an already-detached background shell's wildcard is eligible for this
+        // exception. Never bypass foreground commands, mutations, or another owner.
+        if (!exclusive && held.PrimaryReleased && held.Owner == owner &&
+            resources.Length > 0 && resources.All(r => r.StartsWith("fs|", StringComparison.Ordinal)) &&
+            held.Exclusive && held.Resources.Length == 1 && held.Resources[0] == "*")
+            return false;
+        return Conflicts(held.Resources, held.Exclusive, resources, exclusive);
+    }
+    private bool ConflictsWithEarlier(Waiter earlier, string owner, string[] resources, bool exclusive)
+    {
+        if (!Conflicts(earlier.Resources, earlier.Exclusive, resources, exclusive)) return false;
+        // A writer queued behind this session's background shell cannot make progress
+        // until the job exits. Do not force a later read-only file inspection to wait
+        // behind that writer as well; never skip another session's waiting writer.
+        return exclusive || earlier.Owner != owner || !earlier.Exclusive ||
+            resources.Length == 0 || !resources.All(r => r.StartsWith("fs|", StringComparison.Ordinal)) ||
+            !_held.Any(held => held.Owner == owner && held.PrimaryReleased && held.Exclusive &&
+                held.Resources.Length == 1 && held.Resources[0] == "*");
+    }
     private static bool Overlaps(string a, string b)
     {
         if (a == "*" || b == "*")
@@ -157,13 +181,14 @@ public sealed class ExecutionResourceCoordinator : IDisposable
         public string Owner { get; } = owner;
         public string[] Resources { get; } = resources;
         public bool Exclusive { get; } = exclusive;
+        public bool PrimaryReleased;
         public int References = 1;
     }
-    private sealed class Lease(ExecutionResourceCoordinator owner, Held held) : IExecutionResourceLease
+    private sealed class Lease(ExecutionResourceCoordinator owner, Held held, bool retained) : IExecutionResourceLease
     {
         private ExecutionResourceCoordinator? _owner = owner;
         public IDisposable Retain() => (Volatile.Read(ref _owner) ?? throw new ObjectDisposedException(nameof(Lease))).Retain(held);
-        public void Dispose() => Interlocked.Exchange(ref _owner, null)?.Release(held);
+        public void Dispose() => Interlocked.Exchange(ref _owner, null)?.Release(held, retained);
     }
     private sealed class Waiter(string owner, string[] resources, bool exclusive, CancellationToken cancellation)
     {

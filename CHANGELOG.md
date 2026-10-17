@@ -1,3 +1,8 @@
+## 1.0.108 - 2026-10-18
+
+- Prevent a long-running, retained `exec_command` background job from starving non-mutating file inspections in its own Jarvis session after the initiating call has returned. Foreground shell execution, mutating operations, and other sessions remain resource-isolated.
+- Add a regression covering foreground wait, read admission after background detachment, and preserved cross-session/write conflicts. Bump Agent version to **1.0.108** / **1.0.108.0**.
+
 ## 1.0.107 - 2026-10-16
 
 - Remove nullable warnings from REA launcher path validation without relaxing the local-stdio-only policy.

@@ -115,6 +115,43 @@ public sealed class ExecutionResourceTests
         (await desktop.WaitAsync(TimeSpan.FromSeconds(2))).Dispose();
     }
 
+    [Fact]
+    public async Task Retained_background_shell_does_not_block_its_own_session_reads_but_still_blocks_writes_and_other_sessions()
+    {
+        using var coordinator = Create();
+        var initialCall = (IExecutionResourceLease)await Acquire(coordinator, "session-a", "*", true);
+        var backgroundJob = initialCall.Retain();
+        var ownRead = Acquire(coordinator, "session-a", "fs|C:/repo/readme.md", false);
+        Assert.False(ownRead.IsCompleted); // A foreground shell still excludes reads.
+
+        initialCall.Dispose(); // exec_command returned a session_id while its owned process lives.
+        using var readLease = await ownRead.WaitAsync(TimeSpan.FromSeconds(2));
+        var otherRead = Acquire(coordinator, "session-b", "fs|C:/repo/other.md", false);
+        var ownWrite = Acquire(coordinator, "session-a", "fs|C:/repo/build.dll", true);
+        Assert.False(otherRead.IsCompleted);
+        Assert.False(ownWrite.IsCompleted);
+
+        backgroundJob.Dispose();
+        (await otherRead.WaitAsync(TimeSpan.FromSeconds(2))).Dispose();
+        (await ownWrite.WaitAsync(TimeSpan.FromSeconds(2))).Dispose();
+    }
+
+    [Fact]
+    public async Task Pending_same_session_write_behind_background_shell_does_not_starve_a_later_read()
+    {
+        using var coordinator = Create();
+        var startingCall = (IExecutionResourceLease)await Acquire(coordinator, "owner", "*", true);
+        var background = startingCall.Retain();
+        startingCall.Dispose();
+
+        var waitingWrite = Acquire(coordinator, "owner", "fs|C:/repo/file.cs", true);
+        Assert.False(waitingWrite.IsCompleted);
+        using (await Acquire(coordinator, "owner", "fs|C:/repo/file.cs", false).WaitAsync(TimeSpan.FromSeconds(2))) { }
+        Assert.False(waitingWrite.IsCompleted);
+        background.Dispose();
+        (await waitingWrite.WaitAsync(TimeSpan.FromSeconds(2))).Dispose();
+    }
+
     private static IDisposable Create()
     {
         var type = typeof(AgentConnection).Assembly.GetType("Jarvis.Agent.Core.Execution.ExecutionResourceCoordinator");
