@@ -17,6 +17,7 @@ public sealed class ToolInventory : IDisposable
     private readonly UnityMcpToolSet _unity;
     private readonly BlenderMcpToolSet _blender;
     private readonly ReaMcpToolSet _rea;
+    private readonly BabylonEditorMcpToolSet _babylonEditor;
     private readonly SessionFileObservations _fileObservations = new();
     private readonly SessionBrowserToolSet _browserTools;
     private readonly NativeInspectionToolSet _nativeInspection;
@@ -68,6 +69,8 @@ public sealed class ToolInventory : IDisposable
         tools.AddRange(_blender.Tools);
         _rea = new ReaMcpToolSet(Path.Combine(root, ReaMcpConfig.FileName));
         tools.AddRange(_rea.Tools);
+        _babylonEditor = new BabylonEditorMcpToolSet(Path.Combine(root, BabylonEditorMcpConfig.FileName));
+        tools.AddRange(_babylonEditor.Tools);
         Tools = tools;
     }
     public async Task StopSessionAsync(AgentSessionIdentity identity, bool close, CancellationToken ct)
@@ -76,11 +79,12 @@ public sealed class ToolInventory : IDisposable
         _unity.StopSession(identity.SessionId);
         _blender.StopSession(identity.SessionId);
         _rea.StopSession(identity.SessionId);
+        _babylonEditor.StopSession(identity.SessionId);
         _computerStates.Invalidate(identity.SessionId);
         if (close) _fileObservations.Forget(identity);
         try { await _browserTools.StopSessionAsync(identity, close, ct); }
         finally { if (close) _computerStates.InvalidateAll(); }
     }
-    public void Pause() { _imageGen.Jobs.Pause(); _unity.Pause(); _blender.Pause(); _rea.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
-    public void Dispose() { Pause(); _imageGen.Dispose(); _unity.Dispose(); _blender.Dispose(); _rea.Dispose(); _browser.Dispose(); }
+    public void Pause() { _imageGen.Jobs.Pause(); _unity.Pause(); _blender.Pause(); _rea.Pause(); _babylonEditor.Pause(); _computerStates.InvalidateAll(); _teach?.End(); }
+    public void Dispose() { Pause(); _imageGen.Dispose(); _unity.Dispose(); _blender.Dispose(); _rea.Dispose(); _babylonEditor.Dispose(); _browser.Dispose(); }
 }

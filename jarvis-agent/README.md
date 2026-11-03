@@ -1,5 +1,18 @@
 # Jarvis Agent - 1.0.107
 
+## BabylonJS Editor desktop MCP bridge (1.0.109)
+
+Jarvis Agent now bridges the **native** MCP packaged in BabylonJS Editor **5.5.2** (`build/mcp/index.mjs`), not the unrelated Babylon.js web editor MCP servers. It exposes six locally approved `babylonjs_editor_*` MCP wrappers for discovery, invocation, resources and prompts. The Editor native server enumerated 79 tools during a real Windows stdio handshake.
+
+**Activation:** Open a project in the installed Windows BabylonJS Editor, open **AI Assistant**, and start a **Claude Code** assistant session. Keep the session running. Editor starts a short-lived authenticated HTTP server bound to `127.0.0.1` and creates `%TEMP%\babylonjs-editor-assistant\<session>\mcp.json`. Jarvis detects exactly one such Editor-generated profile; validates the installed Electron executable, bundled script, loopback URL and 64-character bearer token; then launches the native MCP stdio client. Token material stays in the Editor-owned temporary session file and is never copied to Jarvis settings or uploaded to OCI.
+
+Starting Editor alone does not activate MCP. This integration currently detects the Editor's **Claude Code** session profile; its **Codex** mode forwards the ephemeral values in CLI arguments instead, without writing that file. A Codex-only assistant session therefore is **not** an activation path. If multiple profiles are present, close unused assistant sessions. A stale session may need to be closed and reopened before activation succeeds.
+
+Build/install Agent 1.0.109 and restart when no Jarvis work is active; reconnect/import the `babylonjs-editor` tool category in Jarvis Control and grant normal local permissions. Use `babylonjs_editor_list_tools` to discover the exact current tool schemas, then `babylonjs_editor_call_tool` to inspect and modify a scene. The bridge serializes Jarvis calls but does not isolate Editor sessions from other agents; stop/Pause cannot reverse a completed edit. Save work and never blindly retry uncertain mutations.
+
+**Validation limits:** MCP initialize/tools/list passed with 79 native tools, and bridge tests/build verify its Jarvis integration. A live scene mutation requires an active Editor project and Assistant and has not been verified just by installing the bridge. No OCI MCP server changes are needed.
+
+
 ## REA reverse-engineering MCP bridge (1.0.105)
 
 Jarvis can connect to an operator-installed Reverse Engineer Anything (REA, https://github.com/morluto/rea) server, independently of Codex. It uses the locally approved, lazy, per-session MCP stdio bridge shared with Unity and Blender. Upstream REA tools are never automatically elevated or granted Full Permission.

@@ -1,3 +1,8 @@
+## 1.0.109 - 2026-11-03
+
+- Integrate the native BabylonJS Editor desktop MCP server into Jarvis Agent as six approval-gated `babylonjs_editor_*` discovery, invocation, resource and prompt tools. The native Editor 5.5.2+ provides its own 79-tool MCP catalog.
+- Discover a single Editor-issued, ephemeral AI Assistant MCP session from the local temporary session directory. Validate the exact bundled Electron executable and MCP script, strict loopback URL, and 64-hex session token. Do not persist tokens in Jarvis settings, open unauthenticated ports, modify Editor binaries, or reuse the unrelated Babylon.js web editor MCP servers.
+- Retain per-session connection lifetimes, serialize Jarvis-side editor operations, and stop connections on Pause/session stop. Add configuration, endpoint-rejection, ambiguous-session, and tool-catalog tests.
 ## 1.0.108 - 2026-10-18
 
 - Prevent a long-running, retained `exec_command` background job from starving non-mutating file inspections in its own Jarvis session after the initiating call has returned. Foreground shell execution, mutating operations, and other sessions remain resource-isolated.

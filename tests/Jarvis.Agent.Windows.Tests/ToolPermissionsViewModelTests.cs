@@ -49,7 +49,7 @@ public sealed class ToolPermissionsViewModelTests : IDisposable
             settingsRoot: _root, pluginDirectory: Path.Combine(_root, "plugins"));
         viewModel.ReplaceDescriptors(runtime.Connection.Descriptors);
 
-        Assert.Equal(116, runtime.Connection.Descriptors.Count);
+        Assert.Equal(122, runtime.Connection.Descriptors.Count);
         Assert.Equal(runtime.Connection.Descriptors.Count, viewModel.Items.Count);
         Assert.Equal(runtime.Connection.Descriptors.Select(tool => tool.Id).Order(),
             viewModel.Items.Select(item => item.Id).Order());
@@ -58,6 +58,8 @@ public sealed class ToolPermissionsViewModelTests : IDisposable
         Assert.Contains(viewModel.Items, item => item.Id == "blender.get_capabilities");
         Assert.Contains(viewModel.Items, item => item.Id == "rea.list_tools");
         Assert.Contains(viewModel.Items, item => item.Id == "rea.call_tool");
+        Assert.Contains(viewModel.Items, item => item.Id == "babylonjs-editor.list_tools");
+        Assert.Contains(viewModel.Items, item => item.Id == "babylonjs-editor.call_tool");
         Assert.Contains(viewModel.Items, item => item.Id == "process.launch");
         Assert.Contains(viewModel.Items, item => item.Id == "audit.query");
         Assert.Contains(viewModel.Items, item => item.Id == "diagnostics.binary_inspect");
