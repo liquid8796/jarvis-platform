@@ -32,6 +32,65 @@ globalThis.JarvisImageGen = (() => {
     if (!job || job.sessionId !== session.id) throw Error('IMAGEGEN_JOB_NOT_OWNED');
     return job;
   }
+  async function restoreOriginalTab(job, session) {
+    // chrome.storage.session is cleared by unpacked-extension Reload. The job
+    // in chrome.storage.local still pins the original conversation, account
+    // and marker. Never search arbitrary tabs or resend a prompt. If the
+    // original tab closed, only a tab already owned by this SAME session and
+    // showing this exact conversation may be verified for recovery.
+    if (scopes.has(session.id)) return null;
+    // A locally stopped tracking job can still have a finished ChatGPT image.
+    // Poll/download are explicitly allowed after local cancellation; submission
+    // stays forbidden and the original account+marker must still be verified.
+    if (!job.sendIntent || !job.marker || !job.accountHash || job.failed ||
+        !Number.isInteger(job.tabId) || !/^\[jarvis-imagegen:ig_[a-f0-9]{32}\]$/.test(job.marker))
+      return error('TAB_LOST', 'Only a previously submitted image request can restore its original tab.');
+    let tab, replacingClosedTab = false;
+    try { tab = await chrome.tabs.get(job.tabId); }
+    catch {
+      if (!job.conversationId) return error('TAB_LOST', 'The original ImageGen tab is closed and the conversation is unknown.');
+      const replacements = (await chrome.tabs.query({})).filter(t => {
+        if (tabOwners.get(t.id) !== session.id) return false;
+        try {
+          const url = new URL(t.url);
+          return url.origin === 'https://chatgpt.com' && url.pathname === '/c/' + job.conversationId;
+        } catch { return false; }
+      });
+      if (replacements.length !== 1)
+        return error('TAB_LOST', 'Original ImageGen tab closed. Open its exact conversation in a tab owned by this Jarvis session.');
+      [tab] = replacements; replacingClosedTab = true;
+    }
+    if (tabOwners.has(tab.id) && tabOwners.get(tab.id) !== session.id)
+      return error('TAB_LOST', 'The original ImageGen tab belongs to another Jarvis session.');
+    let conv;
+    try {
+      const url = new URL(tab.url);
+      if (url.origin !== 'https://chatgpt.com') return error('ORIGIN_CHANGED', 'The original ImageGen tab changed origin.');
+      conv = (url.pathname.match(/^\/c\/([a-zA-Z0-9-]+)$/) || [])[1] || null;
+    } catch { return error('TAB_LOST', 'The original ImageGen tab URL could not be verified.'); }
+    if (!conv || (job.conversationId && job.conversationId !== conv) ||
+        [...scopes.values()].some(s => s.sessionId !== session.id && s.conversationId === conv))
+      return error('CONVERSATION_CHANGED', 'The original ImageGen conversation could not be verified.');
+    try {
+      const identity = await runInPage(tab.id, jarvisImageGenPage, ['account']);
+      if (identity?.errorCode || identity?.accountHash !== job.accountHash)
+        return error('ACCOUNT_CHANGED', 'The original ChatGPT account must be restored before image recovery.');
+      const state = await runInPage(tab.id, jarvisImageGenPage, ['poll', {
+        marker: job.marker, userIds: job.userIds, userMessageId: job.userMessageId
+      }]);
+      if (state?.errorCode || !state?.userMessageId || state.conversationId !== conv ||
+          (job.userMessageId && state.userMessageId !== job.userMessageId))
+        return error('CONVERSATION_CHANGED', 'The original marked image request is absent or changed. No new prompt was sent.');
+    } catch {
+      return error('PAGE_UNSUPPORTED', 'The original ChatGPT tab could not verify the image request after extension reload.');
+    }
+    await ensureGroup(tab.id, session);
+    if (replacingClosedTab) job.tabId = tab.id;
+    scopes.set(session.id, { sessionId: session.id, tabId: tab.id, conversationId: conv,
+      adopted: false, accountHash: job.accountHash });
+    await persist();
+    return null;
+  }
   async function page(job, session, action, data = {}) {
     const tab = await targetTab({ tabId: job.tabId }, session);
     if (new URL(tab.url).origin !== 'https://chatgpt.com') return error('ORIGIN_CHANGED', 'The selected ImageGen tab changed origin.');
@@ -64,8 +123,20 @@ globalThis.JarvisImageGen = (() => {
     catch { return false; }
   }
   function isCandidate(item, active) {
-    return allowedAsset(item.url) && sameConversation(item.referrer, active.job) &&
-      (!item.mime || item.mime.startsWith('image/')) && Date.parse(item.startTime) >= active.started - 1000;
+    if (!allowedAsset(item.url) || (item.mime && !item.mime.startsWith('image/')) ||
+        !Number.isFinite(Date.parse(item.startTime)) || Date.parse(item.startTime) < active.started - 1000)
+      return false;
+    if (sameConversation(item.referrer, active.job)) return true;
+    // Current ChatGPT's generated-image viewer downloads a blob URL, but
+    // Chrome reports only https://chatgpt.com/ as its referrer. The tab URL
+    // is not exposed by chrome.downloads.DownloadItem. Permit this narrower
+    // case only during a serialized, already verified image Save operation.
+    // Concurrent matching downloads cause DOWNLOAD_AMBIGUOUS, not silent import.
+    return item.referrer === 'https://chatgpt.com/' &&
+      /^blob:https:\/\/chatgpt\.com\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(item.url) &&
+      !!active.job.conversationId && !!active.job.userMessageId &&
+      active.job.stable >= 3 && Array.isArray(active.job.keys) &&
+      active.job.keys.length > active.index && active.job.sendIntent === true;
   }
   // The Save-button route is serialized across this extension. Ambiguous download attribution fails closed.
   chrome.downloads.onCreated.addListener(item => {
@@ -89,7 +160,7 @@ globalThis.JarvisImageGen = (() => {
       return { downloadId };
     }
     if (pendingSave) return error('DOWNLOAD_BUSY', 'Another image save is currently being attributed. Read this job again later.');
-    const active = { job, filename, started: Date.now(), items: new Map(), named: new Set() };
+    const active = { job, index, filename, started: Date.now(), items: new Map(), named: new Set() };
     pendingSave = active;
     try {
       const click = await page(job, session, 'click_save', data);
@@ -150,6 +221,10 @@ globalThis.JarvisImageGen = (() => {
       jobs.set(job.jobId, job); await persist(); return publicState(job);
     }
     const job = getJob(args.jobId, session);
+    if (['imagegen_poll', 'imagegen_download', 'imagegen_download_status'].includes(cmd) && !scopes.has(session.id)) {
+      const restoration = await restoreOriginalTab(job, session);
+      if (restoration?.errorCode) return restoration;
+    }
     if (job.cancelled && !['imagegen_cancel', 'imagegen_poll', 'imagegen_download', 'imagegen_download_status'].includes(cmd))
       return error('CANCELLED', 'This browser image job was cancelled before submission.');
     if (cmd === 'imagegen_inspect') {
@@ -205,7 +280,7 @@ globalThis.JarvisImageGen = (() => {
       await ensureAttached(job.tabId);
       await debuggerSend(job.tabId, 'Input.insertText', { text: job.text });
       if (job.cancelled) return error('CANCELLED', 'Image submission was stopped locally.');
-      const result = await page(job, session, 'submit', { text: job.text, names: job.names, userIds: job.userIds });
+      const result = await page(job, session, 'submit', { text: job.text, marker: job.marker, names: job.names, userIds: job.userIds });
       if (result.errorCode) return result;
       job.submitted = true; await persist(); return publicState(job, { submitted: true });
     }
@@ -302,14 +377,37 @@ globalThis.JarvisImageGen = (() => {
       if (message.action === 'adopt') {
         const session = sessionStates.get(message.sessionId);
         if (!session || session.closed || message.confirmImageOnly !== true) throw Error('Select a live session and confirm this is an image-only chat.');
-        if ([...jobs.values()].some(j => j.sessionId === session.id && !j.cancelled && !j.completed && !j.failed)) throw Error('Finish the active job before changing its tab.');
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab || new URL(tab.url).origin !== 'https://chatgpt.com') throw Error('Open the image-only ChatGPT tab first.');
         if (tabOwners.has(tab.id) && tabOwners.get(tab.id) !== session.id) throw Error('That tab belongs to another session.');
         const conv = (new URL(tab.url).pathname.match(/\/c\/([a-zA-Z0-9-]+)/) || [])[1] || null;
         if (conv && [...scopes.values()].some(s => s.sessionId !== session.id && s.conversationId === conv)) throw Error('That conversation is already assigned to another session.');
+        const pending = [...jobs.values()].filter(j => j.sessionId === session.id && !j.completed && !j.failed);
+        let restoredJob = null;
+        if (pending.length) {
+          if (pending.length !== 1 || !pending[0].sendIntent || !pending[0].marker ||
+              !pending[0].accountHash || !conv || pending[0].conversationId !== conv ||
+              (scopes.has(session.id) && scopes.get(session.id).tabId !== tab.id))
+            throw Error('Finish the active job before changing its tab. Recovery requires its original ChatGPT conversation.');
+          const original = pending[0];
+          const identity = await runInPage(tab.id, jarvisImageGenPage, ['account']);
+          if (identity?.errorCode || identity?.accountHash !== original.accountHash)
+            throw Error('The original ChatGPT account could not be verified for this image job.');
+          const verification = await runInPage(tab.id, jarvisImageGenPage, ['poll', {
+            marker: original.marker, userIds: original.userIds, userMessageId: original.userMessageId
+          }]);
+          if (verification?.errorCode || !verification?.userMessageId ||
+              verification.conversationId !== conv ||
+              (original.userMessageId && verification.userMessageId !== original.userMessageId))
+            throw Error('The original image request marker was not verified. Nothing was reassigned.');
+          // The image may be finished or still generating. Reuse its exact
+          // conversation; a canceled job may only be polled/downloaded.
+          restoredJob = original;
+        }
         await ensureGroup(tab.id, session);
-        scopes.set(session.id, { sessionId: session.id, tabId: tab.id, conversationId: conv, adopted: true }); await persist();
+        if (restoredJob) restoredJob.tabId = tab.id;
+        scopes.set(session.id, { sessionId: session.id, tabId: tab.id, conversationId: conv,
+          adopted: true, accountHash: pending[0]?.accountHash || null }); await persist();
       } else if (!['bind', 'unbind'].includes(message.action)) throw Error('Unknown configuration action.');
       if (!post({ event: 'imagegen_bind_browser', enabled: message.action !== 'unbind' }))
         throw Error('Jarvis Agent disconnected before the browser selection could be saved. Wait for reconnect and try again.');

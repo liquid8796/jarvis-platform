@@ -6,12 +6,20 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
   const normal = s => String(s || '').replace(/\s+/g, ' ').trim();
   const visible = e => !!e && e.getClientRects().length > 0;
   const conversationId = (location.pathname.match(/\/c\/([a-zA-Z0-9-]+)/) || [])[1] || null;
-  const composer = () => document.querySelector('#prompt-textarea[contenteditable="true"],textarea#prompt-textarea');
+  // ChatGPT's newer ProseMirror composer has no #prompt-textarea ID.
+  // Limit the fallback to the composer inside a form, never an arbitrary page editor.
+  const composer = () => document.querySelector('#prompt-textarea[contenteditable="true"],textarea#prompt-textarea,form [data-composer-markdown][contenteditable="true"][role="textbox"]');
   const form = () => composer()?.closest('form') || document.querySelector('#composer-background');
-  const users = () => [...document.querySelectorAll('[data-message-author-role="user"]')];
+  const users = () => {
+    const legacy = [...document.querySelectorAll('[data-message-author-role="user"]')];
+    return legacy.length ? legacy :
+      [...document.querySelectorAll('[data-chatgpt-search-unit-key$=":user"][data-chatgpt-search-message-ids]')];
+  };
   const userText = e => normal((e.querySelector('.whitespace-pre-wrap') || e).innerText || e.textContent);
-  const id = e => e.getAttribute('data-message-id') || e.closest('[data-message-id]')?.getAttribute('data-message-id') || null;
-  const busy = () => !!document.querySelector('[data-testid="stop-button"],button[aria-label="Stop generating"],button[aria-label="Dừng tạo"]');
+  const id = e => e.getAttribute('data-message-id') || e.closest('[data-message-id]')?.getAttribute('data-message-id') ||
+    (/^[a-f0-9-]{36}$/i.test(e.getAttribute('data-chatgpt-search-message-ids') || '') ?
+      e.getAttribute('data-chatgpt-search-message-ids') : null);
+  const busy = () => !!document.querySelector('[data-testid="stop-button"],button[aria-label="Stop generating"],button[aria-label="Dừng tạo"],form button[aria-label="Stop"]');
   function attachments(expected) {
     const root = form();
     if (!root) return { ready: false };
@@ -24,9 +32,11 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
     const all = users(), matches = all.filter(e => userText(e).includes(marker));
     if (matches.length !== 1 || all.at(-1) !== matches[0]) return null;
     const user = matches[0];
-    const article = user.closest('article') || user.closest('[data-testid^="conversation-turn"]');
+    const article = user.closest('article') || user.closest('[data-testid^="conversation-turn"]') || user.closest('[data-turn-key]');
     if (!article || !id(user)) return null;
-    const assistants = [...document.querySelectorAll('[data-message-author-role="assistant"]')]
+    const modern = [...article.querySelectorAll('[data-chatgpt-search-message-ids]')]
+      .filter(e => e !== user && !e.hasAttribute('data-chatgpt-search-unit-key') && !!id(e));
+    const assistants = modern.length ? modern : [...document.querySelectorAll('[data-message-author-role="assistant"]')]
       .filter(e => !!(article.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING));
     return { user, userId: id(user), assistants };
   }
@@ -36,7 +46,12 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
       for (const image of assistant.querySelectorAll('img')) {
         if (!image.complete || image.naturalWidth < 16 || image.naturalHeight < 16 || !image.currentSrc && !image.src) continue;
         let node = image.parentElement, card = null, control = null;
-        for (let i = 0; node && node !== assistant.parentElement && i < 8; i++, node = node.parentElement) {
+        // New image gallery shows Download only after opening its verified preview.
+        const preview = image.closest('button[data-testid="generated-image-preview"]');
+        const gallery = preview?.closest('[data-testid="generated-image-gallery"]');
+        if (gallery && gallery.querySelectorAll('img').length === 1 &&
+            /^Generated image \d+$/i.test(image.alt || '')) { card = gallery; control = preview; }
+        for (let i = 0; !control && node && node !== assistant.parentElement && i < 8; i++, node = node.parentElement) {
           const controls = [...node.querySelectorAll('button,a[download]')].filter(e => {
             const label = normal((e.getAttribute('aria-label') || '') + ' ' + (e.title || '') + ' ' + (e.innerText || ''));
             return e.hasAttribute('download') || /^(save image|download image|download|lưu ảnh|tải xuống|tải ảnh)(\s|$)/i.test(label);
@@ -104,7 +119,19 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
     if (busy() || !attachments(data.names || []).ready) return fail('UPLOAD_INCOMPLETE', 'References or composer state changed before send.');
     const all = users().map(id);
     if (JSON.stringify(all) !== JSON.stringify(data.userIds)) return fail('CONVERSATION_CHANGED', 'Another user message appeared before send.');
-    const findSend = () => document.querySelector('[data-testid="send-button"],button[aria-label="Send prompt"],button[aria-label="Gửi lời nhắc"]');
+    const findSend = () => {
+      const root = form();
+      if (!root) return null;
+      // Current ChatGPT uses <button type="submit" aria-label="Send">. Keep
+      // older labels, but require exactly one send control in this composer.
+      const buttons = [...root.querySelectorAll('button')].filter(button => {
+        const label = normal(button.getAttribute('aria-label') || button.title);
+        return button.matches('[data-testid="send-button"]') ||
+          /^(send|send prompt|send message|gửi|gửi lời nhắc|gửi tin nhắn)$/i.test(label) ||
+          (button.type === 'submit' && !label);
+      });
+      return buttons.length === 1 ? buttons[0] : null;
+    };
     let button = findSend();
     // React may replace the voice control with Send after native insertText returns.
     for (let i = 0; i < 40 && (!button || button.disabled || !visible(button)); i++) {
@@ -114,7 +141,17 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
     if (normal(editor.value ?? editor.innerText) !== normal(data.text) || busy() ||
         JSON.stringify(users().map(id)) !== JSON.stringify(data.userIds) || !attachments(data.names || []).ready)
       return fail('CONVERSATION_CHANGED', 'The composer or conversation changed before Send.');
-    button.click(); return { submitted: true };
+    button.click();
+    // A DOM click can return without React accepting the message. Never claim
+    // submission until the exact marked user turn appears; never click twice.
+    for (let i = 0; i < 40; i++) {
+      const latest = users();
+      if (latest.length === all.length + 1 && latest.slice(0, -1).every((e, n) => id(e) === all[n]) &&
+          id(latest.at(-1)) && userText(latest.at(-1)).includes(data.marker))
+        return { submitted: true };
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return fail('SUBMISSION_UNVERIFIED', 'Send was clicked, but ChatGPT did not confirm a new request. Inspect this image job before retrying.');
   }
   if (action === 'poll' || action === 'download_plan' || action === 'click_save') {
     const turn = currentTurn(data.marker);
@@ -139,11 +176,32 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
     if (busy() || !cards[data.index] || cards[data.index].key !== data.key) return fail('RESULT_UNVERIFIED', 'The selected generated image changed before download.');
     const control = cards[data.index].control;
     if (action === 'download_plan') return { href: control.tagName === 'A' && control.hasAttribute('download') ? control.href : null, conversationId };
+    if (control.matches('button[data-testid="generated-image-preview"]')) {
+      // Do not download from an unrelated existing viewer or pick an ambiguous control.
+      if ([...document.querySelectorAll('[role="dialog"]')].some(e =>
+        e.querySelector('button[aria-label="Download"]') && e.querySelector('button[aria-label="Close viewer"]')))
+        return fail('PAGE_UNSUPPORTED', 'Close the existing image viewer before saving this result.');
+      control.click();
+      let viewer = null;
+      for (let i = 0; i < 30; i++) {
+        const candidates = [...document.querySelectorAll('[role="dialog"]')]
+          .filter(e => e.querySelector('button[aria-label="Download"]') && e.querySelector('button[aria-label="Close viewer"]'));
+        if (candidates.length === 1) { viewer = candidates[0]; break; }
+        if (candidates.length > 1) return fail('RESULT_UNVERIFIED', 'Multiple image viewers opened; download was not started.');
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      if (!viewer) return fail('PAGE_UNSUPPORTED', 'The generated image viewer did not show a unique Download control.');
+      const download = viewer.querySelector('button[aria-label="Download"]');
+      if (!download || download.disabled || !visible(download)) return fail('RESULT_UNVERIFIED', 'The selected image Download control is unavailable.');
+      download.click();
+      viewer.querySelector('button[aria-label="Close viewer"]')?.click();
+      return { clicked: true };
+    }
     control.click(); return { clicked: true };
   }
   if (action === 'cancel') {
     if (!currentTurn(data.marker)) return { stopRequested: false };
-    const stop = document.querySelector('[data-testid="stop-button"],button[aria-label="Stop generating"],button[aria-label="Dừng tạo"]');
+    const stop = document.querySelector('[data-testid="stop-button"],button[aria-label="Stop generating"],button[aria-label="Dừng tạo"],form button[aria-label="Stop"]');
     if (stop) stop.click();
     return { stopRequested: !!stop, serverCancellationConfirmed: false };
   }

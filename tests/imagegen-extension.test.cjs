@@ -71,9 +71,25 @@ function browser() {
           state.sendClicks++; assert.equal(data.text, state.text); state.userIds.push('user-' + state.sendClicks);
           tab.url = 'https://chatgpt.com/c/conversation-' + target.tabId; result = { submitted: true }; break;
         case 'poll': result = state.pollError ? { errorCode: state.pollError, message: 'Synthetic ChatGPT refusal' }
+          : state.pollMissingMarker ? { ready: false, conversationId: conv }
           : { ready: state.imageKeys.length > 0, conversationId: conv, userMessageId: state.userIds.at(-1), keys: [...state.imageKeys] }; break;
         case 'download_plan': result = { href: state.href, conversationId: conv }; break;
-        case 'click_save': result = { clicked: true }; break;
+        case 'click_save':
+          if (state.mockBlobDownload) {
+            const id = ++nextDownload;
+            const item = { id, url: state.blobUrl || 'blob:https://chatgpt.com/11111111-2222-4333-8444-555555555555',
+              referrer: state.blobReferrer || 'https://chatgpt.com/', mime: state.blobMime || 'image/png',
+              startTime: new Date().toISOString(), state: 'complete', danger: 'safe', fileSize: 840505,
+              filename: 'C:\\Users\\Fixture\\Downloads\\Vivid Blue Circle on White.png' };
+            for (const fn of chrome.downloads.onCreated.listeners) fn(item);
+            for (const fn of chrome.downloads.onDeterminingFilename.listeners)
+              fn(item, suggestion => {
+                if (suggestion?.filename) item.filename = 'C:\\Users\\Fixture\\Downloads\\' +
+                  suggestion.filename.replaceAll('/', '\\');
+              });
+            downloads.set(id, item);
+          }
+          result = { clicked: true }; break;
         case 'cancel': state.stopped++; result = { stopRequested: true, serverCancellationConfirmed: false }; break;
         default: throw Error('Unmocked page action ' + action);
       }
@@ -179,6 +195,90 @@ test('submit intent survives service worker restart and is never replayed', asyn
   assert.equal(result.reconciliationRequired, true); assert.equal(b.state.sendClicks, 1);
   assert.equal((await b.call(A, 'imagegen_poll', { jobId: J })).ready, true);
 });
+test('extension reload losing session-scoped ownership restores only the pinned original image tab', async t => {
+  const b = browser(); t.after(b.dispose); await b.generate();
+  const tab = [...b.tabs.values()][0], initialGroup = tab.groupId;
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.reload();
+  assert.equal((await b.call(A, 'imagegen_state')).status, 'no_image_tab');
+  const recovered = await b.call(A, 'imagegen_poll', { jobId: J });
+  assert.equal(recovered.ready, true);
+  const owned = await b.call(A, 'imagegen_state');
+  assert.equal(owned.status, 'tab_bound');
+  assert.equal(owned.tabId, tab.id);
+  assert.equal(tab.id, 1);
+  assert.equal(b.state.sendClicks, 1);
+  assert.ok(tab.groupId !== initialGroup);
+  assert.equal((await b.call(A, 'imagegen_download_status', { jobId: J })).ready, true);
+  assert.equal(b.state.downloaded, 1);
+  await assert.rejects(b.call(B, 'imagegen_poll', { jobId: J }), /OWNED/);
+});
+test('original tab recovery rejects account switch and never downloads', async t => {
+  const b = browser(); t.after(b.dispose); await b.generate();
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.state.accountHash = 'b'.repeat(64); b.reload();
+  assert.equal((await b.call(A, 'imagegen_poll', { jobId: J })).errorCode, 'ACCOUNT_CHANGED');
+  assert.equal((await b.call(A, 'imagegen_state')).status, 'no_image_tab');
+  assert.equal(b.state.sendClicks, 1); assert.equal(b.state.downloaded, 0);
+});
+test('an explicitly resumed locally stopped job may verify and download its original image but cannot resend', async t => {
+  const b = browser(); t.after(b.dispose); await b.generate();
+  await b.call(A, 'imagegen_cancel', { jobId: J });
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.reload();
+  assert.equal((await b.call(A, 'imagegen_poll', { jobId: J })).ready, true);
+  assert.equal((await b.call(A, 'imagegen_download_status', { jobId: J })).ready, true);
+  assert.equal(b.state.downloaded, 1);
+  assert.equal(b.state.sendClicks, 1);
+  assert.equal((await b.call(A, 'imagegen_submit', { jobId: J, prompt: 'Retry' })).errorCode, 'CANCELLED');
+});
+test('original tab recovery rejects missing tracking marker or changed conversation', async t => {
+  const b = browser(); t.after(b.dispose); await b.generate();
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.state.pollMissingMarker = true; b.reload();
+  assert.equal((await b.call(A, 'imagegen_poll', { jobId: J })).errorCode, 'CONVERSATION_CHANGED');
+  assert.equal((await b.call(A, 'imagegen_state')).status, 'no_image_tab');
+  b.state.pollMissingMarker = false;
+  [...b.tabs.values()][0].url = 'https://chatgpt.com/c/other-chat';
+  assert.equal((await b.call(A, 'imagegen_poll', { jobId: J })).errorCode, 'CONVERSATION_CHANGED');
+  assert.equal(b.state.sendClicks, 1); assert.equal(b.state.downloaded, 0);
+});
+test('a closed original tab recovers using only same-session owned exact conversation and marked user message', async t => {
+  const b = browser(); t.after(b.dispose); await b.generate();
+  await b.chrome.tabs.remove(1);
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.reload();
+  const reopened = await b.call(A, 'create_tab', { url: 'https://chatgpt.com/c/conversation-1' });
+  assert.equal((await b.call(A, 'imagegen_state')).status, 'no_image_tab');
+  const recovered = await b.call(A, 'imagegen_poll', { jobId: J });
+  assert.equal(recovered.ready, true);
+  assert.equal((await b.call(A, 'imagegen_state')).tabId, reopened.tabId);
+  assert.equal((await b.call(A, 'imagegen_download_status', { jobId: J })).ready, true);
+  assert.equal(b.state.sendClicks, 1);
+  assert.equal(b.state.downloaded, 1);
+});
+test('recovery never adopts matching ChatGPT tab owned by another session', async t => {
+  const b = browser(); t.after(b.dispose); await b.generate();
+  await b.chrome.tabs.remove(1);
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.reload();
+  await b.call(B, 'create_tab', { url: 'https://chatgpt.com/c/conversation-1' });
+  assert.equal((await b.call(A, 'imagegen_poll', { jobId: J })).errorCode, 'TAB_LOST');
+  assert.equal((await b.call(A, 'imagegen_state')).status, 'no_image_tab');
+  assert.equal(b.state.downloaded, 0); assert.equal(b.state.sendClicks, 1);
+});
 test('foreign session cannot poll, cancel, download or adopt another sessions job/tab', async t => {
   const b = browser(); t.after(b.dispose); await b.generate(); await b.call(B, 'imagegen_state');
   for (const command of ['poll', 'cancel', 'download', 'download_status', 'submit'])
@@ -242,6 +342,31 @@ test('safe MIME and browser safety status are required before accepting a downlo
   b.downloads.get(1).mime = 'image/png'; b.downloads.get(1).danger = 'dangerous';
   assert.equal((await b.call(A, 'imagegen_download_status', { jobId: J })).errorCode, 'DOWNLOAD_UNVERIFIED');
 });
+test('ChatGPT generated blob download with origin-only referrer is attributed to verified job and renamed', async t => {
+  const b = browser(); t.after(b.dispose);
+  b.state.href = null; b.state.mockBlobDownload = true;
+  await b.generate();
+  const saved = await b.call(A, 'imagegen_download', { jobId: J });
+  assert.equal(saved.started, 1);
+  const done = await b.call(A, 'imagegen_download_status', { jobId: J });
+  assert.equal(done.ready, true);
+  assert.equal(done.downloads.length, 1);
+  assert.match(done.downloads[0].filename, /JarvisImageGen/);
+  assert.equal(done.downloads[0].mimeType, 'image/png');
+  assert.equal(b.state.sendClicks, 1);
+  assert.equal(b.state.downloaded, 0); // Native site Download; not an extension URL download.
+});
+test('blob download from untrusted referrer is never attributed, even during verified Save', async t => {
+  const b = browser(); t.after(b.dispose);
+  b.state.href = null; b.state.mockBlobDownload = true;
+  b.state.blobReferrer = 'https://evil.example/';
+  await b.generate();
+  const denied = await b.call(A, 'imagegen_download', { jobId: J });
+  assert.equal(denied.errorCode, 'DOWNLOAD_UNVERIFIED');
+  const [download] = b.downloads.values();
+  assert.ok(download.filename.endsWith('Vivid Blue Circle on White.png'));
+  assert.equal(b.state.sendClicks, 1);
+});
 test('ChatGPT refusal/limit propagates without downloads or additional sends', async t => {
   const b = browser(); t.after(b.dispose); await b.generate();
   for (const code of ['GENERATION_REJECTED', 'QUOTA_EXCEEDED']) {
@@ -275,6 +400,38 @@ test('an unfinished pre-send job cannot be moved to another tab', async t => {
   const result = await b.config('adopt', { sessionId: A, confirmImageOnly: true });
   assert.match(result.error, /Finish the active job/);
 });
+test('explicitly assigning reopened original conversation recovers stopped image result without sending again', async t => {
+  const b = browser(); t.after(b.dispose); await b.generate();
+  await b.call(A, 'imagegen_cancel', { jobId: J });
+  await b.chrome.tabs.remove(1);
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.reload();
+  assert.equal((await b.call(A, 'imagegen_state')).status, 'no_image_tab');
+  const reopened = await b.chrome.tabs.create({ url: 'https://chatgpt.com/c/conversation-1', active: true });
+  const adopted = await b.config('adopt', { sessionId: A, confirmImageOnly: true });
+  assert.equal(adopted.requested, true);
+  assert.equal((await b.call(A, 'imagegen_state')).tabId, reopened.id);
+  assert.equal((await b.call(A, 'imagegen_poll', { jobId: J })).ready, true);
+  assert.equal((await b.call(A, 'imagegen_download_status', { jobId: J })).ready, true);
+  assert.equal(b.state.sendClicks, 1); assert.equal(b.state.downloaded, 1);
+});
+test('reopened tab adoption rejects changed marker and mismatched account without transferring the job', async t => {
+  const b = browser(); t.after(b.dispose); await b.generate();
+  await b.chrome.tabs.remove(1);
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.reload(); await b.call(A, 'imagegen_state');
+  await b.chrome.tabs.create({ url: 'https://chatgpt.com/c/conversation-1', active: true });
+  b.state.pollMissingMarker = true;
+  assert.match((await b.config('adopt', { sessionId: A, confirmImageOnly: true })).error, /marker/i);
+  b.state.pollMissingMarker = false; b.state.accountHash = 'b'.repeat(64);
+  assert.match((await b.config('adopt', { sessionId: A, confirmImageOnly: true })).error, /account/i);
+  assert.equal((await b.call(A, 'imagegen_state')).status, 'no_image_tab');
+  assert.equal(b.state.downloaded, 0); assert.equal(b.state.sendClicks, 1);
+});
 test('oversized owned downloads are cancelled while unrelated downloads remain untouched', async t => {
   const b = browser(); t.after(b.dispose); await b.generate(); await b.call(A, 'imagegen_download', { jobId: J });
   const owned = b.downloads.get(1); owned.state = 'in_progress'; owned.totalBytes = 25 * 1024 * 1024;
@@ -290,4 +447,100 @@ test('actual page adapter refuses stale attachments before creating a new job', 
   const context = vm.createContext({ location: { origin: 'https://chatgpt.com', pathname: '/' }, document });
   vm.runInContext(fs.readFileSync(path.join(base, 'imagegen-page.js'), 'utf8'), context);
   assert.equal((await context.jarvisImageGenPage('inspect')).errorCode, 'ATTACHMENTS_PRESENT');
+});
+
+test('current ProseMirror composer recognizes Send and verifies a new tracked user turn', async () => {
+  const marker = '[jarvis-imagegen:' + J + ']';
+  const prompt = 'Create an icon\n\nRequest tracking reference (do not draw this text): ' + marker;
+  const users = [];
+  let clicks = 0;
+  const send = {
+    type: 'submit', disabled: false, getClientRects: () => [1],
+    getAttribute: name => name === 'aria-label' ? 'Send' : null,
+    matches: () => false,
+    click() {
+      clicks++;
+      users.push({ innerText: prompt, querySelector: () => null,
+        getAttribute: name => name === 'data-message-id' ? 'new-user-message' : null });
+    }
+  };
+  const form = { innerText: '', querySelector: () => null,
+    querySelectorAll: selector => selector === 'button' ? [send] : [] };
+  const editor = { innerText: '', closest: () => form, focus() {} };
+  const document = {
+    querySelector: selector => selector.includes('data-composer-markdown') ? editor : null,
+    querySelectorAll: selector => selector === '[data-message-author-role="user"]' ? users : []
+  };
+  const context = vm.createContext({ location: { origin: 'https://chatgpt.com', pathname: '/' }, document, setTimeout });
+  vm.runInContext(fs.readFileSync(path.join(base, 'imagegen-page.js'), 'utf8'), context);
+  assert.equal((await context.jarvisImageGenPage('inspect')).ready, true);
+  editor.innerText = prompt;
+  assert.equal((await context.jarvisImageGenPage('submit', { text: prompt, marker, names: [], userIds: [] })).submitted, true);
+  assert.equal(clicks, 1);
+});
+
+test('a Send click with no new tracked user turn is not reported as successful', async () => {
+  const marker = '[jarvis-imagegen:' + J + ']';
+  const prompt = 'Create an icon ' + marker;
+  let clicks = 0;
+  const send = { type: 'submit', disabled: false, getClientRects: () => [1],
+    getAttribute: name => name === 'aria-label' ? 'Send' : null,
+    matches: () => false, click: () => { clicks++; } };
+  const form = { innerText: '', querySelector: () => null,
+    querySelectorAll: selector => selector === 'button' ? [send] : [] };
+  const editor = { innerText: prompt, closest: () => form };
+  const document = { querySelector: selector => selector.includes('data-composer-markdown') ? editor : null, querySelectorAll: () => [] };
+  const context = vm.createContext({ location: { origin: 'https://chatgpt.com', pathname: '/' },
+    document, setTimeout: callback => callback() });
+  vm.runInContext(fs.readFileSync(path.join(base, 'imagegen-page.js'), 'utf8'), context);
+  const result = await context.jarvisImageGenPage('submit', { text: prompt, marker, names: [], userIds: [] });
+  assert.equal(result.errorCode, 'SUBMISSION_UNVERIFIED');
+  assert.equal(clicks, 1);
+});
+
+test('current ChatGPT turn IDs and generated image viewer are verified before download', async () => {
+  const marker = '[jarvis-imagegen:' + J + ']';
+  const userId = '081404c7-1812-4159-a02e-332d1e24b8a4';
+  const assistantId = '798bf3e9-b685-4c3e-affb-61ec3b38f942';
+  let viewerOpen = false, downloaded = 0, previews = 0;
+  const download = { disabled: false, getClientRects: () => [1], click: () => { downloaded++; } };
+  const close = { click: () => { viewerOpen = false; } };
+  const viewer = { querySelector: selector => selector === 'button[aria-label="Download"]' ? download :
+    selector === 'button[aria-label="Close viewer"]' ? close : null };
+  const gallery = { innerText: '', getAttribute: () => 'generated-image-gallery',
+    querySelectorAll: selector => selector === 'img' ? [image] : [] };
+  const preview = { click: () => { previews++; viewerOpen = true; },
+    closest: selector => selector === '[data-testid="generated-image-gallery"]' ? gallery : null,
+    matches: selector => selector === 'button[data-testid="generated-image-preview"]' };
+  const image = { complete: true, naturalWidth: 1254, naturalHeight: 1254,
+    currentSrc: 'blob:https://chatgpt.com/generated', alt: 'Generated image 1',
+    parentElement: preview, closest: selector => selector === 'button[data-testid="generated-image-preview"]' ? preview : null };
+  const assistant = { innerText: '', getAttribute: name => name === 'data-chatgpt-search-message-ids' ? assistantId : null,
+    closest: () => null, hasAttribute: () => false,
+    querySelectorAll: selector => selector === 'img' ? [image] : [] };
+  const turn = { querySelectorAll: selector => selector === '[data-chatgpt-search-message-ids]' ? [user, assistant] : [] };
+  const user = { innerText: 'Make an icon ' + marker, textContent: marker,
+    querySelector: () => null, closest: selector => selector === '[data-turn-key]' ? turn : null,
+    getAttribute: name => name === 'data-chatgpt-search-message-ids' ? userId : null };
+  const unrelatedDialog = { querySelector: () => null };
+  const document = {
+    querySelector: selector => selector === '[role="dialog"]' ? unrelatedDialog : null,
+    querySelectorAll: selector => selector === '[data-chatgpt-search-unit-key$=":user"][data-chatgpt-search-message-ids]' ? [user] :
+      selector === '[role="dialog"]' ? viewerOpen ? [unrelatedDialog, viewer] : [unrelatedDialog] : []
+  };
+  const context = vm.createContext({ document, location: { origin: 'https://chatgpt.com', pathname: '/c/test-conversation' },
+    setTimeout: callback => callback() });
+  vm.runInContext(fs.readFileSync(path.join(base, 'imagegen-page.js'), 'utf8'), context);
+  const poll = await context.jarvisImageGenPage('poll', { marker, userIds: [] });
+  assert.equal(poll.ready, true);
+  assert.equal(poll.userMessageId, userId);
+  assert.equal(poll.count, 1);
+  assert.match(poll.keys[0], new RegExp(assistantId));
+  const save = await context.jarvisImageGenPage('click_save', {
+    marker, userIds: [], userMessageId: userId, index: 0, key: poll.keys[0]
+  });
+  assert.equal(save.clicked, true);
+  assert.equal(previews, 1);
+  assert.equal(downloaded, 1);
+  assert.equal(viewerOpen, false);
 });
