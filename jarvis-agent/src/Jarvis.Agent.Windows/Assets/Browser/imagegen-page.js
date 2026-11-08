@@ -5,7 +5,10 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
   if (location.origin !== 'https://chatgpt.com') return fail('ORIGIN_CHANGED', 'The ImageGen tab is no longer on ChatGPT.');
   const normal = s => String(s || '').replace(/\s+/g, ' ').trim();
   const visible = e => !!e && e.getClientRects().length > 0;
-  const conversationId = (location.pathname.match(/\/c\/([a-zA-Z0-9-]+)/) || [])[1] || null;
+  // New ChatGPT chats can temporarily use /c/local-chatgpt before the server assigns an ID.
+  // This is not a durable conversation identity; anchor the real ID only after our marked turn.
+  const routeId = (location.pathname.match(/\/c\/([a-zA-Z0-9-]+)/) || [])[1] || null;
+  const conversationId = routeId === 'local-chatgpt' ? null : routeId;
   // ChatGPT's newer ProseMirror composer has no #prompt-textarea ID.
   // Limit the fallback to the composer inside a form, never an arbitrary page editor.
   const composer = () => document.querySelector('#prompt-textarea[contenteditable="true"],textarea#prompt-textarea,form [data-composer-markdown][contenteditable="true"][role="textbox"]');

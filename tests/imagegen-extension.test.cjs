@@ -179,6 +179,34 @@ test('new image uses inactive tab in existing window and returns only verified d
   assert.match(done.downloads[0].filename, /JarvisImageGen/);
   assert.doesNotMatch(JSON.stringify(done), /accountHash|accessToken|cookie|https:/);
 });
+test('ChatGPT temporary local-chatgpt route is not pinned before first Send', async t => {
+  const b = browser(); t.after(b.dispose);
+  await b.call(A, 'imagegen_prepare', { jobId: J });
+  const tab = [...b.tabs.values()][0];
+  tab.url = 'https://chatgpt.com/c/local-chatgpt';
+  const inspected = await b.call(A, 'imagegen_inspect', { jobId: J });
+  assert.equal(inspected.conversationId, null);
+  await b.call(A, 'imagegen_submit', { jobId: J, prompt: 'Original talisman concept' });
+  const polled = await b.call(A, 'imagegen_poll', { jobId: J });
+  assert.equal(polled.conversationId, 'conversation-1');
+  assert.equal(b.state.sendClicks, 1);
+});
+
+test('previously persisted local-chatgpt alias rebinds only after marked turn verification', async t => {
+  const b = browser(); t.after(b.dispose); await b.prepare();
+  await b.call(A, 'imagegen_submit', { jobId: J, prompt: 'Original talisman concept' });
+  const stored = b.local['jarvis.imagegen.jobs.v1'];
+  stored[0].conversationId = 'local-chatgpt';
+  b.state.pollMissingMarker = true; b.reload();
+  const missing = await b.call(A, 'imagegen_poll', { jobId: J });
+  assert.equal(missing.ready, false);
+  assert.equal(b.local['jarvis.imagegen.jobs.v1'][0].conversationId, 'local-chatgpt');
+  b.state.pollMissingMarker = false;
+  const polled = await b.call(A, 'imagegen_poll', { jobId: J });
+  assert.equal(polled.conversationId, 'conversation-1');
+  assert.equal(b.state.sendClicks, 1);
+});
+
 test('local edits upload exact staged images and incomplete upload prevents Send', async t => {
   const b = browser(); t.after(b.dispose); await b.prepare();
   const paths = ['C:\\stage\\source-0.png', 'C:\\stage\\source-1.png'];
@@ -215,6 +243,19 @@ test('extension reload losing session-scoped ownership restores only the pinned 
   assert.equal(b.state.downloaded, 1);
   await assert.rejects(b.call(B, 'imagegen_poll', { jobId: J }), /OWNED/);
 });
+test('extension reload restores a legacy temporary conversation alias only with matching request', async t => {
+  const b = browser(); t.after(b.dispose); await b.prepare();
+  await b.call(A, 'imagegen_submit', { jobId: J, prompt: 'Original talisman concept' });
+  b.local['jarvis.imagegen.jobs.v1'][0].conversationId = 'local-chatgpt';
+  await b.chrome.storage.session.set({
+    'jarvis.applicationSessions.v1': [], 'jarvis.imagegen.sessions.v1': []
+  });
+  b.reload();
+  const recovered = await b.call(A, 'imagegen_poll', { jobId: J });
+  assert.equal(recovered.conversationId, 'conversation-1');
+  assert.equal(b.state.sendClicks, 1);
+});
+
 test('original tab recovery rejects account switch and never downloads', async t => {
   const b = browser(); t.after(b.dispose); await b.generate();
   await b.chrome.storage.session.set({

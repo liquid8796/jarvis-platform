@@ -22,6 +22,7 @@ globalThis.JarvisImageGen = (() => {
     return writeTail;
   }
   const error = (errorCode, message) => ({ errorCode, message });
+  const confirmedConversationId = value => value === 'local-chatgpt' ? null : value;
   function publicState(job, extra = {}) {
     return { jobId: job.jobId, tabId: job.tabId, conversationId: job.conversationId || null,
       submissionAttempted: !!job.sendIntent, ...extra };
@@ -68,9 +69,11 @@ globalThis.JarvisImageGen = (() => {
       if (url.origin !== 'https://chatgpt.com') return error('ORIGIN_CHANGED', 'The original ImageGen tab changed origin.');
       conv = (url.pathname.match(/^\/c\/([a-zA-Z0-9-]+)$/) || [])[1] || null;
     } catch { return error('TAB_LOST', 'The original ImageGen tab URL could not be verified.'); }
-    if (!conv || (job.conversationId && job.conversationId !== conv) ||
+    const knownId = confirmedConversationId(job.conversationId);
+    if (!conv || (knownId && knownId !== conv) ||
         [...scopes.values()].some(s => s.sessionId !== session.id && s.conversationId === conv))
       return error('CONVERSATION_CHANGED', 'The original ImageGen conversation could not be verified.');
+    let verifiedMessageId = null;
     try {
       const identity = await runInPage(tab.id, jarvisImageGenPage, ['account']);
       if (identity?.errorCode || identity?.accountHash !== job.accountHash)
@@ -81,11 +84,13 @@ globalThis.JarvisImageGen = (() => {
       if (state?.errorCode || !state?.userMessageId || state.conversationId !== conv ||
           (job.userMessageId && state.userMessageId !== job.userMessageId))
         return error('CONVERSATION_CHANGED', 'The original marked image request is absent or changed. No new prompt was sent.');
+      verifiedMessageId = state.userMessageId;
     } catch {
       return error('PAGE_UNSUPPORTED', 'The original ChatGPT tab could not verify the image request after extension reload.');
     }
     await ensureGroup(tab.id, session);
     if (replacingClosedTab) job.tabId = tab.id;
+    job.conversationId = conv; job.userMessageId = verifiedMessageId;
     scopes.set(session.id, { sessionId: session.id, tabId: tab.id, conversationId: conv,
       adopted: false, accountHash: job.accountHash });
     await persist();
@@ -95,7 +100,13 @@ globalThis.JarvisImageGen = (() => {
     const tab = await targetTab({ tabId: job.tabId }, session);
     if (new URL(tab.url).origin !== 'https://chatgpt.com') return error('ORIGIN_CHANGED', 'The selected ImageGen tab changed origin.');
     const actualId = (new URL(tab.url).pathname.match(/\/c\/([a-zA-Z0-9-]+)/) || [])[1] || null;
-    if (job.conversationId && actualId !== job.conversationId) return error('CONVERSATION_CHANGED', 'The selected ImageGen conversation changed.');
+    // An old job may have persisted ChatGPT's provisional /c/local-chatgpt URL.
+    // Permit its one-time first-send transition only for account verification and
+    // marked-turn polling; the poll must verify the original marker before anchoring.
+    const firstSendTransition = job.conversationId === 'local-chatgpt' && job.sendIntent &&
+      !job.userMessageId && ['account', 'poll'].includes(action) && !!actualId;
+    if (job.conversationId && actualId !== job.conversationId && !firstSendTransition)
+      return error('CONVERSATION_CHANGED', 'The selected ImageGen conversation changed.');
     showIndicator(tab.id, null);
     return await runInPage(tab.id, jarvisImageGenPage, [action, data]) || error('PAGE_UNSUPPORTED', 'ChatGPT returned no verifiable page state.');
   }
@@ -240,8 +251,8 @@ globalThis.JarvisImageGen = (() => {
     if (cmd === 'imagegen_inspect') {
       const state = await page(job, session, 'inspect');
       if (state.ready) {
-        job.userIds = state.userIds; job.conversationId = state.conversationId;
-        const scope = scopes.get(session.id); scope.conversationId = state.conversationId;
+        job.userIds = state.userIds; job.conversationId = confirmedConversationId(state.conversationId);
+        const scope = scopes.get(session.id); scope.conversationId = job.conversationId;
         if (state.conversationId && [...scopes.values()].some(s => s.sessionId !== session.id && s.conversationId === state.conversationId))
           return error('CONVERSATION_OWNED', 'This ChatGPT conversation belongs to another ImageGen session.');
         await persist();
@@ -288,7 +299,8 @@ globalThis.JarvisImageGen = (() => {
       if (!job.sendIntent || !job.marker) return error('SUBMISSION_UNVERIFIED', 'No verifiable prompt submission exists for this browser job.');
       const state = await page(job, session, 'poll', { marker: job.marker, userIds: job.userIds, userMessageId: job.userMessageId });
       if (state.errorCode) return state;
-      if (state.conversationId) {
+      // Never attach a new real conversation ID without the exact marked user turn.
+      if (confirmedConversationId(state.conversationId) && state.userMessageId) {
         job.conversationId = state.conversationId;
         const scope = scopes.get(session.id); if (scope) scope.conversationId = state.conversationId;
       }
