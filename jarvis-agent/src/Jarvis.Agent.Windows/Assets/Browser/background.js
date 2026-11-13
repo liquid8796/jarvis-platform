@@ -16,6 +16,73 @@ let reconnectDelay = 1000;
 let reconnectTimer = null;
 let connecting = false;
 let extensionInstancePromise = null;
+let nativeReady = false;
+let readyTimeout = null;
+const readyWaiters = new Set();
+const bindingWaiters = new Map();
+
+function isNativeReady() { return !!port && nativeReady; }
+
+function waitForNativeReady(timeoutMs = 12000) {
+  if (isNativeReady()) return Promise.resolve();
+  connect();
+  return new Promise((resolve, reject) => {
+    const done = () => { clearTimeout(timer); readyWaiters.delete(done); resolve(); };
+    const timer = setTimeout(() => {
+      readyWaiters.delete(done);
+      reject(new Error("Jarvis Agent did not confirm the Chrome connection. Check the local Agent and retry."));
+    }, timeoutMs);
+    readyWaiters.add(done);
+  });
+}
+
+function failBindingWaiters(reason) {
+  for (const [id, waiter] of bindingWaiters) {
+    bindingWaiters.delete(id);
+    waiter.reject(reason);
+  }
+}
+
+function onNativeMessage(message, candidate) {
+  if (port !== candidate) return; // An old relay must not change the new connection.
+  if (message?.event === "jarvis_native_ready") {
+    if (message.accepted !== true) { candidate.disconnect(); return; }
+    nativeReady = true;
+    connected();
+    for (const done of readyWaiters) done();
+    return;
+  }
+  if (message?.event === "imagegen_bind_result") {
+    const waiter = bindingWaiters.get(message.requestId);
+    if (waiter) {
+      bindingWaiters.delete(message.requestId);
+      if (message.ok === true) waiter.resolve();
+      else waiter.reject(message.error || "Jarvis Agent rejected the browser selection.");
+    }
+    return;
+  }
+  onRequest(message);
+}
+
+async function confirmBrowserBinding(enabled) {
+  await waitForNativeReady();
+  return new Promise((resolve, reject) => {
+    const requestId = crypto.randomUUID();
+    const timer = setTimeout(() => {
+      bindingWaiters.delete(requestId);
+      reject(new Error("Jarvis Agent did not confirm the browser selection. Check ImageGen settings before retrying."));
+    }, 8000);
+    bindingWaiters.set(requestId, {
+      resolve: () => { clearTimeout(timer); resolve(); },
+      reject: reason => { clearTimeout(timer); reject(new Error(reason)); }
+    });
+    if (!post({ event: "imagegen_bind_browser", enabled, requestId })) {
+      const waiter = bindingWaiters.get(requestId);
+      bindingWaiters.delete(requestId);
+      waiter?.reject("Jarvis Agent disconnected before the browser selection could be confirmed.");
+    }
+  });
+}
 
 async function extensionInstanceId() {
   extensionInstancePromise ??= (async () => {
@@ -40,11 +107,15 @@ function connect() {
     return;
   }
   port = candidate;
+  nativeReady = false;
   connecting = false;
-  candidate.onMessage.addListener(onRequest);
+  candidate.onMessage.addListener(message => onNativeMessage(message, candidate));
   candidate.onDisconnect.addListener(() => {
     if (port !== candidate) return;
     port = null;
+    nativeReady = false;
+    if (readyTimeout !== null) { clearTimeout(readyTimeout); readyTimeout = null; }
+    failBindingWaiters("Jarvis Agent disconnected before the browser selection could be confirmed.");
     // Nothing is driving these pages any more; leaving a glow up would lie.
     clearIndicators("off").catch(() => {});
     schedule();
@@ -59,7 +130,9 @@ function connect() {
     capabilities: EXTENSION_CAPABILITIES,
     extensionInstanceId: instanceId,
     applicationSessions: true
-  }, candidate) ? connected() : candidate.disconnect()).catch(() => candidate.disconnect());
+  }, candidate) ? (readyTimeout = setTimeout(() => {
+    if (port === candidate && !nativeReady) candidate.disconnect();
+  }, 10000)) : candidate.disconnect()).catch(() => candidate.disconnect());
 }
 
 // Which Chromium this is, so the app can tell several connected browsers apart.
@@ -93,6 +166,7 @@ function schedule() {
 
 function connected() {
   reconnectDelay = 1000;
+  if (readyTimeout !== null) { clearTimeout(readyTimeout); readyTimeout = null; }
   if (reconnectTimer !== null) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;

@@ -16,20 +16,29 @@ function browser() {
   const timerHandles = new Set();
   let context, requestId = 0, nextTab = 0, nextGroup = 0, nextDownload = 0;
   const state = { accountHash: 'a'.repeat(64), sendClicks: 0, uploads: 0, downloaded: 0, stopped: 0, nativeConnects: 0, nativeDisconnects: 0,
-    nativePostError: false,
+    nativePostError: false, autoReadyAck: true, autoBindAck: true, bindingAllowed: true,
     namesReady: true, ready: true, userIds: [], imageKeys: ['assistant:https://chatgpt.com/backend-api/files/image'],
     href: 'https://chatgpt.com/backend-api/files/image/download', commands: [], boundRequests: [] };
   const store = target => ({ async get(key) { return { [key]: structuredClone(target[key]) }; },
     async set(value) { Object.assign(target, structuredClone(value)); } });
   const chrome = {
     runtime: { id: 'test-extension', getURL: name => 'chrome-extension://test-extension/' + name,
-      onMessage: event(), onStartup: event(), onInstalled: event(), getManifest: () => ({ version: '1.4.1' }),
+      onMessage: event(), onStartup: event(), onInstalled: event(), getManifest: () => ({ version: '1.4.2' }),
       connectNative: () => {
         state.nativeConnects++;
         const nativePort = { onMessage: event(), onDisconnect: event(),
           disconnect() { state.nativeDisconnects++; for (const fn of nativePort.onDisconnect.listeners) fn(); }, postMessage(m) {
             if (state.nativePostError) throw Error('Synthetic native disconnect');
-            if (m.id) replies.set(m.id, m); if (m.event === 'imagegen_bind_browser') state.boundRequests.push(m);
+            if (m.id) replies.set(m.id, m);
+            if (m.event === 'ready' && state.autoReadyAck)
+              Promise.resolve().then(() => nativePort.onMessage.listeners.forEach(fn => fn({ event: 'jarvis_native_ready', accepted: true })));
+            if (m.event === 'imagegen_bind_browser') {
+              state.boundRequests.push(m);
+              if (state.autoBindAck) Promise.resolve().then(() => nativePort.onMessage.listeners.forEach(fn => fn({
+                event: 'imagegen_bind_result', requestId: m.requestId, ok: state.bindingAllowed,
+                error: state.bindingAllowed ? null : 'Jarvis Agent could not save the browser selection.'
+              })));
+            }
           } };
         nativePorts.push(nativePort); return nativePort;
       } },
@@ -149,7 +158,7 @@ function browser() {
 
 test('shipping manifest declares durable native reconnect support', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(base, 'manifest.json'), 'utf8'));
-  assert.equal(manifest.version, '1.4.1');
+  assert.equal(manifest.version, '1.4.2');
   assert.ok(manifest.permissions.includes('alarms'));
 });
 
@@ -355,6 +364,24 @@ test('popup configuration is local-only and cannot be requested by a web page', 
   const b = browser(); t.after(b.dispose);
   assert.match((await b.config('bind', {}, true)).error, /restricted/); assert.equal(b.state.boundRequests.length, 0);
   assert.equal((await b.config('bind')).requested, true); assert.equal(b.state.boundRequests.length, 1);
+});
+test('popup reports disconnected until the native bridge acknowledges ready', async t => {
+  const b = browser(); t.after(b.dispose);
+  b.state.autoReadyAck = false;
+  b.reload();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal((await b.config('state')).connected, false);
+  const port = b.nativePorts.at(-1);
+  for (const fn of port.onMessage.listeners) fn({ event: 'jarvis_native_ready', accepted: true });
+  assert.equal((await b.config('state')).connected, true);
+});
+test('popup rejects a binding the local Agent could not persist', async t => {
+  const b = browser(); t.after(b.dispose);
+  b.state.bindingAllowed = false;
+  const result = await b.config('bind');
+  assert.match(result.error, /could not save/);
+  assert.equal(b.state.boundRequests.length, 1);
+  assert.ok(b.state.boundRequests[0].requestId);
 });
 test('popup does not claim a browser binding after native delivery fails', async t => {
   const b = browser(); t.after(b.dispose); await new Promise(resolve => setImmediate(resolve));

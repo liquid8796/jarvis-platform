@@ -66,6 +66,42 @@ public sealed class BrowserSessionBridgeTests
         Assert.Null(await Identity());
     }
 
+    [Fact]
+    public async Task Native_ready_and_browser_binding_are_acknowledged_by_the_bridge()
+    {
+        var pipe = "jarvis-binding-ack-" + Guid.NewGuid().ToString("N");
+        using var bridge = new BrowserBridge(pipe);
+        bridge.ImageGenerationBindingRequested += (_, enabled) => enabled;
+        await using var stream = new NamedPipeClientStream(".", pipe, PipeDirection.InOut, PipeOptions.Asynchronous);
+        await stream.ConnectAsync(5000);
+        using var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, true);
+        using var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, true) { AutoFlush = true };
+        await writer.WriteLineAsync(new JsonObject
+        {
+            ["event"] = "ready", ["browser"] = "Chrome",
+            ["browserFamily"] = "extension", ["browserProtocolVersion"] = 2,
+            ["nativeHostProtocolVersion"] = 2, ["applicationSessions"] = true,
+            ["extensionInstanceId"] = Guid.NewGuid().ToString("D"),
+            ["capabilities"] = new JsonArray("imagegen-v1", "application-sessions-v1")
+        }.ToJsonString());
+        var ready = JsonNode.Parse((await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(3)))!)!.AsObject();
+        Assert.Equal("jarvis_native_ready", ready["event"]!.GetValue<string>());
+        Assert.True(ready["accepted"]!.GetValue<bool>());
+
+        foreach (var enabled in new[] { true, false })
+        {
+            var requestId = Guid.NewGuid().ToString("D");
+            await writer.WriteLineAsync(new JsonObject
+            {
+                ["event"] = "imagegen_bind_browser", ["enabled"] = enabled, ["requestId"] = requestId
+            }.ToJsonString());
+            var result = JsonNode.Parse((await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(3)))!)!.AsObject();
+            Assert.Equal("imagegen_bind_result", result["event"]!.GetValue<string>());
+            Assert.Equal(requestId, result["requestId"]!.GetValue<string>());
+            Assert.Equal(enabled, result["ok"]!.GetValue<bool>());
+        }
+    }
+
     private static async Task Ready(BrowserBridge bridge, int count)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
@@ -93,7 +129,9 @@ public sealed class BrowserSessionBridgeTests
                         ["extensionInstanceId"] = Guid.NewGuid().ToString("N"), ["applicationSessions"] = sessionAware }.ToJsonString());
                     while (await _reader.ReadLineAsync() is { } line)
                     {
-                        var request = JsonNode.Parse(line)!.AsObject(); Interlocked.Increment(ref RequestCount);
+                        var request = JsonNode.Parse(line)!.AsObject();
+                        if (request["event"] is not null) continue;
+                        Interlocked.Increment(ref RequestCount);
                         await _writer.WriteLineAsync(new JsonObject { ["id"] = request["id"]!.DeepClone(), ["ok"] = true,
                             ["data"] = new JsonObject { ["browser"] = name, ["sessionId"] = request["sessionId"]?.DeepClone() } }.ToJsonString());
                     }

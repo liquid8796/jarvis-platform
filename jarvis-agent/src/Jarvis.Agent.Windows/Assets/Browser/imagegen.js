@@ -380,12 +380,11 @@ globalThis.JarvisImageGen = (() => {
       await loaded; await sessionReady;
       if (message.action === 'state') {
         if (!port) connect();
-        return { connected: !!port, browser: browserName(),
+        return { connected: isNativeReady(), browser: browserName(),
         instanceId: await extensionInstanceId(), sessions: [...sessionStates.values()].filter(s => !s.closed).map(s => ({ id: s.id, imageTab: scopes.get(s.id)?.tabId || null })) };
       }
-      if (!port) connect();
-      if (!port) throw Error('Connect Jarvis Agent before choosing a browser.');
       if (!['Chrome', 'Edge'].includes(browserName())) throw Error('ImageGen supports Chrome or Edge.');
+      await waitForNativeReady();
       if (message.action === 'adopt') {
         const session = sessionStates.get(message.sessionId);
         if (!session || session.closed || message.confirmImageOnly !== true) throw Error('Select a live session and confirm this is an image-only chat.');
@@ -421,9 +420,8 @@ globalThis.JarvisImageGen = (() => {
         scopes.set(session.id, { sessionId: session.id, tabId: tab.id, conversationId: conv,
           adopted: true, accountHash: pending[0]?.accountHash || null }); await persist();
       } else if (!['bind', 'unbind'].includes(message.action)) throw Error('Unknown configuration action.');
-      if (!post({ event: 'imagegen_bind_browser', enabled: message.action !== 'unbind' }))
-        throw Error('Jarvis Agent disconnected before the browser selection could be saved. Wait for reconnect and try again.');
-      return { requested: true, message: 'Selection sent to the local Agent. Refresh ImageGen settings to confirm.' };
+      await confirmBrowserBinding(message.action !== 'unbind');
+      return { requested: true, message: 'Browser selection confirmed and saved by Jarvis Agent.' };
     })().then(respond, e => respond({ error: e.message || 'Configuration failed.' }));
     return true;
   });

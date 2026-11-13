@@ -103,7 +103,7 @@ public sealed class BrowserBridge : IDisposable
     private readonly AsyncLocal<string?> _applicationSession = new();
     private readonly Dictionary<string, string> _applicationSelections = new(StringComparer.Ordinal);
     public event Action<string>? ApplicationStopRequested;
-    public event Action<BrowserConnectionInfo, bool>? ImageGenerationBindingRequested;
+    public event Func<BrowserConnectionInfo, bool, bool>? ImageGenerationBindingRequested;
 
     /// <summary>Scope selection and native envelopes without changing legacy desktop bridge clients.</summary>
     public IDisposable EnterApplicationSession(string sessionId)
@@ -374,10 +374,17 @@ public sealed class BrowserBridge : IDisposable
 
         if (message["event"]?.GetValue<string>() == "imagegen_bind_browser")
         {
+            var accepted = false;
             if (connection.Ready && connection.ExtensionInstanceId is not null && connection.Capabilities.Contains("imagegen-v1"))
-                ImageGenerationBindingRequested?.Invoke(new BrowserConnectionInfo(connection.Id, connection.Name, true, false,
+                accepted = ImageGenerationBindingRequested?.Invoke(new BrowserConnectionInfo(connection.Id, connection.Name, true, false,
                     connection.BrowserProtocolVersion, connection.BrowserFamily, connection.Capabilities, connection.ExtensionInstanceId),
-                    message["enabled"]?.GetValue<bool>() == true);
+                    message["enabled"]?.GetValue<bool>() == true) == true;
+            if (message["requestId"]?.GetValue<string>() is { } requestId && Guid.TryParse(requestId, out _))
+                SendNativeEvent(connection, new JsonObject
+                {
+                    ["event"] = "imagegen_bind_result", ["requestId"] = requestId, ["ok"] = accepted,
+                    ["error"] = accepted ? null : "Jarvis Agent could not save the browser selection."
+                });
             return;
         }
 
@@ -399,6 +406,7 @@ public sealed class BrowserBridge : IDisposable
             }
 
             StateChanged?.Invoke();
+            SendNativeEvent(connection, new JsonObject { ["event"] = "jarvis_native_ready", ["accepted"] = connection.Ready });
             return;
         }
 
@@ -407,6 +415,26 @@ public sealed class BrowserBridge : IDisposable
         {
             entry.Waiter.TrySetResult(message);
         }
+    }
+
+    private void SendNativeEvent(Connection connection, JsonObject message)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _writeLock.WaitAsync(_cts.Token).ConfigureAwait(false);
+                try
+                {
+                    await connection.Writer.WriteLineAsync(message.ToJsonString().AsMemory(), _cts.Token).ConfigureAwait(false);
+                }
+                finally { _writeLock.Release(); }
+            }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException or OperationCanceledException)
+            {
+                // A disconnected relay will reconnect and announce ready again.
+            }
+        });
     }
 
     private void FailPending(Connection connection, string reason)

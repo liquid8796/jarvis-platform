@@ -45,6 +45,12 @@ When the connected MCP server negotiates `application-session-deletion-sync-v1`,
 
 Install matching Agent/server **1.0.103** to obtain end-to-end handle revocation. Package **1.0.103**, assembly/file **1.0.103.0**.
 
+## Confirmed Chrome extension connection and binding (1.0.110)
+
+Jarvis Agent Browser **1.4.2** waits for a ready acknowledgement from the local Browser Bridge instead of treating a newly opened native messaging port as proof that the Agent is connected. The extension retries a missing native handshake, preserves existing session/tab ownership, and ignores delayed replies from stale relay processes. Its ImageGen popup refreshes the connection status while open.
+
+Selecting Chrome/Edge for ImageGen now uses a request ID and waits for the Agent to confirm that it saved the exact browser instance. Failed or interrupted writes are reported instead of showing a false success. Update the Agent and Chrome extension together; while the Agent is running, do not overwrite its active executable. After installing **1.0.110**, restart the Agent, run **Set up browser integration**, and reload the unpacked extension in Chrome.
+
 ## Browser extension reconnect recovery (1.0.102)
 
 Jarvis Agent Browser **1.4.1** combines immediate native-host retries with a persistent Manifest V3 alarm. If Chrome/Edge is already open when the Agent starts, service-worker suspension can no longer discard the only reconnect timer; the alarm wakes the extension every 30 seconds until the Agent bridge accepts it. Startup/install events retry as well, and a stale disconnected port cannot overwrite a newer healthy connection.

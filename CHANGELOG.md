@@ -1,3 +1,10 @@
+## 1.0.110 - 2026-11-13
+
+- Require a native bridge ready acknowledgement before the Chrome/Edge extension reports an active Agent connection; recover automatically after disconnect without accepting an old relay's messages.
+- Confirm ImageGen browser binding with an Agent-side save result instead of reporting success after a fire-and-forget native message. Reject stale/disconnected or unsuccessfully persisted selections and keep existing tab ownership boundaries.
+- Refresh the ImageGen popup's connection state while open so a recovered Agent does not leave a stale disconnected label.
+- Bump the bundled Jarvis Agent Browser extension to 1.4.2 and add connection/selection regression coverage.
+
 ## 1.0.109 - 2026-11-03
 
 - Integrate the native BabylonJS Editor desktop MCP server into Jarvis Agent as six approval-gated `babylonjs_editor_*` discovery, invocation, resource and prompt tools. The native Editor 5.5.2+ provides its own 79-tool MCP catalog.

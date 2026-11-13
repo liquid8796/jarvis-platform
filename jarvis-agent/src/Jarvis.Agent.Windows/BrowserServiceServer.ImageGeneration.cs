@@ -9,19 +9,21 @@ namespace Jarvis.Agent.Windows;
 
 public sealed partial class BrowserServiceServer
 {
-    private void OnImageGenerationBindingRequested(BrowserConnectionInfo connection, bool enabled)
+    private bool OnImageGenerationBindingRequested(BrowserConnectionInfo connection, bool enabled)
     {
         if (connection.Id == _devConnectionId || !connection.Ready || connection.ExtensionInstanceId is null ||
-            connection.Name is not ("Chrome" or "Edge") || connection.Capabilities?.Contains("imagegen-v1") != true) return;
+            connection.Name is not ("Chrome" or "Edge") || connection.Capabilities?.Contains("imagegen-v1") != true) return false;
         try
         {
             var store = new ImageGenBrowserBindingStore(_root);
             var old = store.Read();
             if (enabled) store.Save(connection.ExtensionInstanceId, connection.Name.ToLowerInvariant(), old?.Revision);
             else if (old?.ExtensionInstanceId == connection.ExtensionInstanceId) store.Clear(old.Revision);
+            else if (old is not null) return false;
+            return true;
         }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or JsonException)
-        { /* Invalid or concurrently changed local settings are preserved; the settings UI reports them. */ }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+        { return false; /* Preserve settings on failure and report it to the extension. */ }
     }
     private async Task<JsonObject> ExecuteImageGenerationAsync(string id, BrowserRuntimeRequest request, JsonObject args, CancellationToken ct)
     {
