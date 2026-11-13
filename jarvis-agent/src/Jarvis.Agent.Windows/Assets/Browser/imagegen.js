@@ -365,6 +365,7 @@ globalThis.JarvisImageGen = (() => {
     if (scope?.adopted && tabOwners.get(scope.tabId) === session.id) {
       // A user-adopted tab is never closed by session teardown.
       tabOwners.delete(scope.tabId);
+      sharedTabs.delete(scope.tabId);
       await chrome.debugger.detach({ tabId: scope.tabId }).catch(() => {});
       if (chrome.tabs.ungroup) await chrome.tabs.ungroup(scope.tabId).catch(() => {});
     }
@@ -381,7 +382,7 @@ globalThis.JarvisImageGen = (() => {
       if (message.action === 'state') {
         if (!port) connect();
         return { connected: isNativeReady(), browser: browserName(),
-        instanceId: await extensionInstanceId(), sessions: [...sessionStates.values()].filter(s => !s.closed).map(s => ({ id: s.id, imageTab: scopes.get(s.id)?.tabId || null })) };
+        instanceId: await extensionInstanceId(), sessions: [...sessionStates.values()].filter(s => !s.closed).reverse().map(s => ({ id: s.id, imageTab: scopes.get(s.id)?.tabId || null })) };
       }
       if (!['Chrome', 'Edge'].includes(browserName())) throw Error('ImageGen supports Chrome or Edge.');
       await waitForNativeReady();

@@ -45,6 +45,12 @@ When the connected MCP server negotiates `application-session-deletion-sync-v1`,
 
 Install matching Agent/server **1.0.103** to obtain end-to-end handle revocation. Package **1.0.103**, assembly/file **1.0.103.0**.
 
+## Share an existing Chrome tab with Jarvis (1.0.111)
+
+An empty result from tabs_context_mcp means the current Jarvis application session owns no tabs. It is not evidence of a disconnected browser. To reuse a tab already open in your existing Chrome profile, call tabs_context_mcp from the intended session to register that session, switch Chrome to the desired normal HTTP(S) tab, click the **Jarvis Browser** extension icon, select that session, and choose **Share current Chrome tab with Jarvis**. The next tabs_context_mcp in that same session lists the tab and subsequent MCP page operations may use its tab ID.
+
+Sharing never imports the other tabs in the browser, never automatically switches ownership from another session, does not move the tab between tab groups, and requires a local popup click. Ending the session or calling tabs_close_mcp on a shared tab revokes access but **leaves the user's existing tab open**. Session-created tabs retain the usual automatic cleanup. The share record survives a Manifest V3 service-worker restart and can be restored only for that same session. Install Agent **1.0.111** and reload the bundled Chrome extension **1.4.3** together.
+
 ## Confirmed Chrome extension connection and binding (1.0.110)
 
 Jarvis Agent Browser **1.4.2** waits for a ready acknowledgement from the local Browser Bridge instead of treating a newly opened native messaging port as proof that the Agent is connected. The extension retries a missing native handshake, preserves existing session/tab ownership, and ignores delayed replies from stale relay processes. Its ImageGen popup refreshes the connection status while open.

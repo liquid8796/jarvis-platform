@@ -242,7 +242,9 @@ public sealed class BrowserTabsTool(BrowserBridge bridge) : ITool
         "it exists. CRITICAL: You must get the context at least once before using other browser automation " +
         "tools so you know what tabs exist. Each new conversation should create its own new tab (using " +
         "tabs_create_mcp) rather than reusing existing tabs, unless the user explicitly asks to use an " +
-        "existing tab.";
+        "existing tab. An empty list means no tabs belong to THIS session, not that the Chrome extension " +
+        "is disconnected. To use an existing Chrome tab, open it, click the Jarvis extension icon and " +
+        "choose Share current Chrome tab with Jarvis for this session, then call this tool again.";
 
     public JsonObject InputSchema =>
         CapturedMcpSchemas.Schema(InternalMcpServerNames.ClaudeInChrome, "tabs_context_mcp");
@@ -257,12 +259,15 @@ public sealed class BrowserTabsTool(BrowserBridge bridge) : ITool
         // createIfEmpty the reference starts one rather than answering empty,
         // which is what lets a standalone navigate omit its tabId.
         var listing = await JarvisBrowserTools.Run(bridge, "tabs", null, Render, cancellationToken);
-        if (arguments["createIfEmpty"]?.GetValue<bool>() != true ||
-            listing.IsError ||
-            listing.Content.Length > 0)
+        if (listing.IsError || listing.Content.Length > 0)
         {
             return listing;
         }
+        if (arguments["createIfEmpty"]?.GetValue<bool>() != true)
+            return ToolResult.Success("Chrome is connected, but this Jarvis session has no tabs yet. " +
+                "To use a tab already open in Chrome, click the Jarvis extension icon on that tab, " +
+                "select this session and choose 'Share current Chrome tab with Jarvis', then retry tabs_context_mcp. " +
+                "Otherwise use createIfEmpty:true to open a new session-owned tab.");
 
         var created = await JarvisBrowserTools.Run(
             bridge, "create_tab", [], static data => $"Opened tab {data["tabId"]}.", cancellationToken);
@@ -272,7 +277,8 @@ public sealed class BrowserTabsTool(BrowserBridge bridge) : ITool
 
         static string Render(JsonObject data) => data["result"] is JsonArray tabs
             ? string.Join("\n", tabs.Select(static t =>
-                $"[{t?["id"]}] {(t?["active"]?.GetValue<bool>() == true ? "* " : "")}{t?["title"]} — {t?["url"]}"))
+                $"[{t?["id"]}] {(t?["active"]?.GetValue<bool>() == true ? "* " : "")}{t?["title"]} — {t?["url"]}" +
+                (t?["shared"]?.GetValue<bool>() == true ? " (user-shared; kept open on close)" : "")))
             : data.ToJsonString();
     }
 }

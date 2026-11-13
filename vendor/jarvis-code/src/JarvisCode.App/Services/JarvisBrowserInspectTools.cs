@@ -370,7 +370,8 @@ public sealed class BrowserTabCloseTool(BrowserBridge bridge) : ITool
         "Close a tab in the MCP tab group by its ID. Use to clean up tabs you're done with. Only tabs in " +
         "this session's group are closable; call tabs_context_mcp first to get valid IDs. If you close the " +
         "group's last tab, Chrome auto-removes the group — the next tabs_context_mcp with createIfEmpty " +
-        "starts fresh.";
+        "starts fresh. For an existing tab explicitly shared by the user, release Jarvis access instead " +
+        "of closing that tab in Chrome.";
 
     public JsonObject InputSchema =>
         CapturedMcpSchemas.Schema(InternalMcpServerNames.ClaudeInChrome, "tabs_close_mcp");
@@ -387,7 +388,9 @@ public sealed class BrowserTabCloseTool(BrowserBridge bridge) : ITool
         }
 
         return JarvisBrowserTools.Run(bridge, "close_tab", new JsonObject { ["tabId"] = tabId },
-            data => $"Closed tab {tabId}.",
+            data => data["released"] is not null
+                ? $"Released shared Chrome tab {tabId}; the user's tab remains open."
+                : $"Closed tab {tabId}.",
             cancellationToken);
     }
 }

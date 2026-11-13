@@ -1,3 +1,9 @@
+## 1.0.111 - 2026-11-13
+
+- Explain that an empty MCP tab list is an empty *session* and not an Agent/Chrome disconnection. Make read-only tab discovery persist new session identity across MV3 worker restarts.
+- Add explicit "Share current Chrome tab with Jarvis" in the already-installed extension popup: a user chooses one existing HTTP(S) tab and a live Jarvis session. No implicit tab listing/adoption, no profile change, and no reassignment from another session.
+- Preserve the original Chrome tab and group when shared. Reload restores the narrow grant; session close and MCP tab close revoke access without closing the user's tab. Add security and lifecycle regressions. Bundled extension version **1.4.3**.
+
 ## 1.0.110 - 2026-11-13
 
 - Require a native bridge ready acknowledgement before the Chrome/Edge extension reports an active Agent connection; recover automatically after disconnect without accepting an old relay's messages.

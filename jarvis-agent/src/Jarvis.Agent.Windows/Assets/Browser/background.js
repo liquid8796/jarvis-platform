@@ -204,6 +204,8 @@ chrome.runtime.onInstalled?.addListener(() => { reconnectDelay = 1000; connect()
 // Application identity comes from the authenticated native host envelope, never page/tool arguments.
 const sessionStates = new Map();
 const tabOwners = new Map();
+// Existing user tabs are shared only from the extension popup; never auto-adopt.
+const sharedTabs = new Set();
 const sessionQueues = new Map();
 const SESSION_STORAGE = "jarvis.applicationSessions.v1";
 const SESSION_ID = /^js_[a-f0-9]{32}$/;
@@ -215,7 +217,8 @@ const sessionReady = (async () => {
   if (!saved) return;
   if (!Array.isArray(saved) || saved.length > 8192) throw new Error("Invalid browser session state.");
   for (const value of saved) {
-    if (!SESSION_ID.test(value.id) || !Array.isArray(value.tabs) || value.tabs.length > 512)
+    if (!SESSION_ID.test(value.id) || !Array.isArray(value.tabs) || value.tabs.length > 512 ||
+        (value.sharedTabs !== undefined && (!Array.isArray(value.sharedTabs) || value.sharedTabs.length > 512)))
       throw new Error("Invalid browser session ownership.");
     const state = { id: value.id, groupId: Number.isInteger(value.groupId) ? value.groupId : null,
       closed: value.closed === true, closedAt: Number.isFinite(value.closedAt) ? value.closedAt : (value.closed ? Date.now() : null) };
@@ -224,15 +227,75 @@ const sessionReady = (async () => {
       if (!Number.isInteger(id) || id < 0 || tabOwners.has(id)) throw new Error("Invalid browser tab ownership.");
       tabOwners.set(id, state.id);
     }
+    for (const id of value.sharedTabs || []) {
+      if (!Number.isInteger(id) || !value.tabs.includes(id) || sharedTabs.has(id))
+        throw new Error("Invalid shared browser tab.");
+      sharedTabs.add(id);
+    }
   }
 })();
 function persistSessions() {
   persistenceTail = persistenceTail.catch(() => {}).then(() => chrome.storage.session.set({
     [SESSION_STORAGE]: [...sessionStates.values()].map(s => ({ id: s.id, groupId: s.groupId, closed: s.closed, closedAt: s.closedAt,
-      tabs: [...tabOwners].filter(([, owner]) => owner === s.id).map(([id]) => id) }))
+      tabs: [...tabOwners].filter(([, owner]) => owner === s.id).map(([id]) => id),
+      sharedTabs: [...sharedTabs].filter(id => tabOwners.get(id) === s.id) }))
   }));
   return persistenceTail;
 }
+
+async function releaseSharedTab(tabId) {
+  if (!sharedTabs.has(tabId)) return false;
+  sharedTabs.delete(tabId);
+  tabOwners.delete(tabId);
+  await chrome.debugger.detach({ tabId }).catch(() => {});
+  attached.delete(tabId);
+  clearTimeout(indicated.get(tabId)); indicated.delete(tabId);
+  await runInPage(tabId, pageIndicator, [{ mode: "off" }]).catch(() => {});
+  await persistSessions();
+  return true;
+}
+
+// Only a click in the local extension popup can share an existing browser tab.
+// The authenticated native session id must already be known to this extension.
+chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (message?.type !== "JARVIS_TAB_CONFIG") return;
+  if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL("imagegen-popup.html")) {
+    respond({ error: "Only the Jarvis extension popup can share a browser tab." }); return;
+  }
+  (async () => {
+    if (message.action !== "share") throw new Error("Unknown tab-sharing action.");
+    await sessionReady;
+    await waitForNativeReady();
+    const session = sessionStates.get(message.sessionId);
+    if (!session || session.closed) throw new Error("Select an open Jarvis session. Run tabs_context_mcp in that session first.");
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!Number.isInteger(tab?.id) || tab.incognito === true ||
+        !/^https?:\/\//i.test(tab.url || ""))
+      throw new Error("Switch to a normal http(s) website tab in this Chrome window before sharing.");
+    const owner = tabOwners.get(tab.id);
+    if (owner && owner !== session.id) throw new Error("This tab already belongs to another Jarvis session.");
+    if (owner === session.id) return sharedTabs.has(tab.id)
+      ? { shared: true, tabId: tab.id, message: "This user-shared Chrome tab is already available to the selected session." }
+      : { shared: false, tabId: tab.id, message: "This tab was created by Jarvis and remains session-managed. Select a manually opened tab if it must stay open on session close." };
+    if ([...tabOwners.values()].filter(id => id === session.id).length >= 512)
+      throw new Error("This Jarvis session has reached its tab limit.");
+    // Serialize with native requests in the same session; no tab group changes.
+    const previous = sessionQueues.get(session.id) || Promise.resolve();
+    const work = previous.catch(() => {}).then(async () => {
+      if (session.closed || tabOwners.has(tab.id))
+        throw new Error("Session or tab ownership changed; retry explicit sharing.");
+      tabOwners.set(tab.id, session.id);
+      sharedTabs.add(tab.id);
+      try { await persistSessions(); }
+      catch (e) { sharedTabs.delete(tab.id); tabOwners.delete(tab.id); throw e; }
+      return { shared: true, tabId: tab.id, message: "Current Chrome tab shared with Jarvis. It remains open when the session ends." };
+    });
+    sessionQueues.set(session.id, work);
+    try { return await work; }
+    finally { if (sessionQueues.get(session.id) === work) sessionQueues.delete(session.id); }
+  })().then(respond, error => respond({ error: error.message || "Could not share the current tab." }));
+  return true;
+});
 async function onRequest(message) {
   if (!message || !message.id) return;
   let admitted = false;
@@ -251,6 +314,9 @@ async function onRequest(message) {
         throw new Error("Browser active-session capacity reached; close unused sessions.");
       session = { id: message.sessionId, groupId: null, closed: false, closedAt: null };
       sessionStates.set(session.id, session);
+      // A read-only tabs query must still make the session visible to the
+      // extension popup after an MV3 worker suspension/restart.
+      await persistSessions();
     }
     // Serialize only this session. Never use a mutable global current-session around await.
     const previous = sessionQueues.get(session.id) || Promise.resolve();
@@ -290,7 +356,9 @@ async function ensureGroup(tabId, session) {
   return session.groupId;
 }
 async function inGroup(tab, session) {
-  if (tabOwners.get(tab.id) !== session.id || session.groupId === null || tab.groupId !== session.groupId) return false;
+  if (tabOwners.get(tab.id) !== session.id) return false;
+  if (sharedTabs.has(tab.id)) return true; // Do not move a user tab into a Jarvis group.
+  if (session.groupId === null || tab.groupId !== session.groupId) return false;
   try { await chrome.tabGroups.get(session.groupId); return true; }
   catch { session.groupId = null; await persistSessions(); return false; }
 }
@@ -305,7 +373,10 @@ async function targetTab(args, session) {
     const tab = tabs.find(t => t.active) || tabs[0];
     if (tab) return tab;
   }
-  throw new Error("No owned tab in this session. Open one with tabs_create_mcp.");
+  const shared = (await chrome.tabs.query({})).filter(t =>
+    tabOwners.get(t.id) === session.id && sharedTabs.has(t.id));
+  if (shared.length) return shared.find(t => t.active) || shared[0];
+  throw new Error("No owned tab in this session. Create a tab or explicitly share an existing tab from the Jarvis extension popup.");
 }
 
 // ---- CDP session management ------------------------------------------------
@@ -470,7 +541,7 @@ chrome.debugger.onDetach.addListener((source) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  attached.delete(tabId); tabOwners.delete(tabId);
+  attached.delete(tabId); tabOwners.delete(tabId); sharedTabs.delete(tabId);
   clearTimeout(indicated.get(tabId)); indicated.delete(tabId);
   sessionReady.then(persistSessions).catch(() => {});
 });
@@ -1228,6 +1299,7 @@ async function handle(cmd, args, session) {
         session.closedAt ??= Date.now();
         const owned = [...tabOwners].filter(([, owner]) => owner === session.id).map(([id]) => id);
         for (const id of owned) {
+          if (await releaseSharedTab(id)) continue;
           await chrome.debugger.detach({ tabId: id }).catch(() => {});
           await chrome.tabs.remove(id).catch(() => {});
           attached.delete(id); tabOwners.delete(id);
@@ -1243,6 +1315,7 @@ async function handle(cmd, args, session) {
       return tabs.map(t => ({
         id: t.id, title: t.title, url: t.url, active: t.active,
         attached: attached.has(t.id),
+        shared: sharedTabs.has(t.id),
         grouped: session.groupId !== null && t.groupId === session.groupId,
       }));
     }
@@ -1290,14 +1363,15 @@ async function handle(cmd, args, session) {
       await targetTab(args, session);
       const tab = await chrome.tabs.update(args.tabId, { active: true });
       await chrome.windows.update(tab.windowId, { focused: true });
-      // Selecting is how a tab the user already had open joins the group.
-      await ensureGroup(args.tabId, session);
-      return { selected: args.tabId, grouped: true };
+      // Selecting a user-shared tab does not move it to a different group.
+      if (!sharedTabs.has(args.tabId)) await ensureGroup(args.tabId, session);
+      return { selected: args.tabId, grouped: !sharedTabs.has(args.tabId) };
     }
 
     case "close_tab": {
       if (!args.tabId) throw new Error("tabId is required");
       await targetTab(args, session);
+      if (await releaseSharedTab(args.tabId)) return { released: args.tabId };
       await chrome.tabs.remove(args.tabId);
       tabOwners.delete(args.tabId); await persistSessions();
       return { closed: args.tabId };
