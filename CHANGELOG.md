@@ -1,3 +1,9 @@
+## 1.0.112 - 2026-11-19
+
+- Remove "Share current Chrome tab with Jarvis" from the extension popup and delete its native-session tab-sharing endpoint. The Agent uses its connected Chrome/Edge extension to open new tabs without manually attaching existing tabs.
+- Let tabs_context_mcp automatically create a session-owned tab when the list is empty (unless createIfEmpty:false is explicitly supplied); retain tabs_create_mcp for additional tabs. Keep page access and cleanup isolated to the creating Jarvis session.
+- Migrate persisted 1.4.3 user-shared tab grants to unowned personal tabs, without closing or moving them. Leave ImageGen's separate image-only conversation recovery controls intact. Ship extension 1.4.4.
+
 ## 1.0.111 - 2026-11-13
 
 - Explain that an empty MCP tab list is an empty *session* and not an Agent/Chrome disconnection. Make read-only tab discovery persist new session identity across MV3 worker restarts.

@@ -238,36 +238,32 @@ public sealed class BrowserTabsTool(BrowserBridge bridge) : ITool
     public string Name => "tabs_context_mcp";
 
     public string Description =>
-        "Get context information about the current MCP tab group. Returns all tab IDs inside the group if " +
-        "it exists. CRITICAL: You must get the context at least once before using other browser automation " +
-        "tools so you know what tabs exist. Each new conversation should create its own new tab (using " +
-        "tabs_create_mcp) rather than reusing existing tabs, unless the user explicitly asks to use an " +
-        "existing tab. An empty list means no tabs belong to THIS session, not that the Chrome extension " +
-        "is disconnected. To use an existing Chrome tab, open it, click the Jarvis extension icon and " +
-        "choose Share current Chrome tab with Jarvis for this session, then call this tool again.";
+        "Get the tabs owned by this Jarvis session in the already-connected Chrome/Edge browser with the " +
+        "Jarvis extension installed. If this session has no tabs, automatically open a fresh session-owned " +
+        "tab by default (set createIfEmpty:false to only check without opening). No manual tab sharing is " +
+        "required or supported; existing personal tabs remain private. Call this before other browser " +
+        "automation tools to obtain the new tab ID. Use tabs_create_mcp for additional tabs.";
 
     public JsonObject InputSchema =>
         CapturedMcpSchemas.Schema(InternalMcpServerNames.ClaudeInChrome, "tabs_context_mcp");
 
-    public bool IsReadOnly => true;
+    public bool IsReadOnly => false; // By default, an empty session creates a new Chrome tab.
     public string DescribeCall(JsonObject arguments) => "BrowserTabs()";
 
     public async Task<ToolResult> ExecuteAsync(
         JsonObject arguments, ToolExecutionContext context, CancellationToken cancellationToken)
     {
-        // "Returns all tab IDs inside the group if it exists" — and with
-        // createIfEmpty the reference starts one rather than answering empty,
-        // which is what lets a standalone navigate omit its tabId.
+        // A connected extension is sufficient to create a session-owned tab.
+        // Only an explicit false requests inspection without a side effect.
         var listing = await JarvisBrowserTools.Run(bridge, "tabs", null, Render, cancellationToken);
         if (listing.IsError || listing.Content.Length > 0)
         {
             return listing;
         }
-        if (arguments["createIfEmpty"]?.GetValue<bool>() != true)
-            return ToolResult.Success("Chrome is connected, but this Jarvis session has no tabs yet. " +
-                "To use a tab already open in Chrome, click the Jarvis extension icon on that tab, " +
-                "select this session and choose 'Share current Chrome tab with Jarvis', then retry tabs_context_mcp. " +
-                "Otherwise use createIfEmpty:true to open a new session-owned tab.");
+        if (arguments["createIfEmpty"]?.GetValue<bool>() == false)
+            return ToolResult.Success("Chrome is connected. This Jarvis session has no tabs yet. " +
+                "Call tabs_context_mcp without createIfEmpty:false, or tabs_create_mcp, " +
+                "to open a new tab automatically in this Chrome browser.");
 
         var created = await JarvisBrowserTools.Run(
             bridge, "create_tab", [], static data => $"Opened tab {data["tabId"]}.", cancellationToken);
@@ -277,8 +273,7 @@ public sealed class BrowserTabsTool(BrowserBridge bridge) : ITool
 
         static string Render(JsonObject data) => data["result"] is JsonArray tabs
             ? string.Join("\n", tabs.Select(static t =>
-                $"[{t?["id"]}] {(t?["active"]?.GetValue<bool>() == true ? "* " : "")}{t?["title"]} — {t?["url"]}" +
-                (t?["shared"]?.GetValue<bool>() == true ? " (user-shared; kept open on close)" : "")))
+                $"[{t?["id"]}] {(t?["active"]?.GetValue<bool>() == true ? "* " : "")}{t?["title"]} — {t?["url"]}"))
             : data.ToJsonString();
     }
 }

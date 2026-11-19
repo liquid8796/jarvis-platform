@@ -8,17 +8,12 @@ async function call(action, extra = {}) {
   if (!reply || reply.error) throw new Error(reply?.error || 'The extension did not respond. Reload Jarvis Agent Browser.');
   return reply;
 }
-async function callTab(action, extra = {}) {
-  const reply = await chrome.runtime.sendMessage({ type: 'JARVIS_TAB_CONFIG', action, ...extra });
-  if (!reply || reply.error) throw new Error(reply?.error || 'The extension did not respond.');
-  return reply;
-}
-async function run(action, extra, channel = 'imagegen') {
+async function run(action, extra) {
   const buttons = [...document.querySelectorAll('button')];
   busy = true;
   buttons.forEach(b => b.disabled = true);
   try {
-    const reply = await (channel === 'tab' ? callTab(action, extra) : call(action, extra));
+    const reply = await call(action, extra);
     status.textContent = reply.message || 'Selection saved.';
   }
   catch (error) { status.textContent = error.message; }
@@ -26,9 +21,6 @@ async function run(action, extra, channel = 'imagegen') {
 }
 document.getElementById('bind').addEventListener('click', () => run('bind'));
 document.getElementById('disconnect').addEventListener('click', () => run('unbind'));
-document.getElementById('shareTab').addEventListener('click', () => run('share', {
-  sessionId: sessionSelect.value
-}, 'tab'));
 document.getElementById('adopt').addEventListener('click', () => run('adopt', {
   sessionId: document.getElementById('session').value,
   confirmImageOnly: document.getElementById('confirmed').checked
@@ -44,11 +36,10 @@ async function refreshState() {
   }
   if (selected && state.sessions.some(session => session.id === selected)) sessionSelect.value = selected;
   if (!state.sessions.length && !status.textContent) {
-    status.textContent = 'Call tabs_context_mcp (or image_gen__get_state) in the Jarvis session first, then reopen this popup.';
+    status.textContent = 'For optional ImageGen tab assignment, call image_gen__get_state in your Jarvis session first.';
   }
   if (!busy) {
     document.getElementById('adopt').disabled = !state.sessions.length;
-    document.getElementById('shareTab').disabled = !state.connected || !state.sessions.length;
   }
 }
 refreshState().catch(error => { browserStatus.textContent = 'Jarvis Agent unavailable'; status.textContent = error.message; });

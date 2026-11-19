@@ -45,11 +45,17 @@ When the connected MCP server negotiates `application-session-deletion-sync-v1`,
 
 Install matching Agent/server **1.0.103** to obtain end-to-end handle revocation. Package **1.0.103**, assembly/file **1.0.103.0**.
 
-## Share an existing Chrome tab with Jarvis (1.0.111)
+## Automatic Chrome tab creation without sharing (1.0.112)
 
-An empty result from tabs_context_mcp means the current Jarvis application session owns no tabs. It is not evidence of a disconnected browser. To reuse a tab already open in your existing Chrome profile, call tabs_context_mcp from the intended session to register that session, switch Chrome to the desired normal HTTP(S) tab, click the **Jarvis Browser** extension icon, select that session, and choose **Share current Chrome tab with Jarvis**. The next tabs_context_mcp in that same session lists the tab and subsequent MCP page operations may use its tab ID.
+When Chrome or Edge has the Jarvis Agent Browser 1.4.4 extension installed and the local Agent is connected, browser MCP tools can open new tabs automatically **in that existing browser profile**. tabs_context_mcp creates a session-owned tab by default if the session has none; tabs_create_mcp creates additional tabs. A standalone navigate call can create a session tab and open its URL. No popup action, session selection, or manual sharing is required for normal browser automation. The old **Share current Chrome tab with Jarvis** control and message handler are removed.
 
-Sharing never imports the other tabs in the browser, never automatically switches ownership from another session, does not move the tab between tab groups, and requires a local popup click. Ending the session or calling tabs_close_mcp on a shared tab revokes access but **leaves the user's existing tab open**. Session-created tabs retain the usual automatic cleanup. The share record survives a Manifest V3 service-worker restart and can be restored only for that same session. Install Agent **1.0.111** and reload the bundled Chrome extension **1.4.3** together.
+Chrome tabs the user opened themselves are not imported, exposed, or closed by browser MCP tools. Tabs the Agent creates are isolated per application session and may be closed when the session ends. During upgrade, any legacy 1.4.3 browser tab-sharing permissions are discarded without closing those personal tabs. The optional ImageGen-only binding and recovery UI is unrelated to normal browser MCP tab creation. Install Agent 1.0.112 and reload the bundled Chrome/Edge extension 1.4.4.
+
+## Historical: manual Chrome tab sharing (1.0.111; removed in 1.0.112)
+
+Version 1.0.111 exposed an explicit manual sharing flow, superseded and removed in version 1.0.112.
+
+Do not use historical tab-sharing instructions with modern Agent builds. Existing manually shared tabs are released safely on upgrade.
 
 ## Confirmed Chrome extension connection and binding (1.0.110)
 

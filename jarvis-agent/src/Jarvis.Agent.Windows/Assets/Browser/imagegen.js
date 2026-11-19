@@ -365,7 +365,6 @@ globalThis.JarvisImageGen = (() => {
     if (scope?.adopted && tabOwners.get(scope.tabId) === session.id) {
       // A user-adopted tab is never closed by session teardown.
       tabOwners.delete(scope.tabId);
-      sharedTabs.delete(scope.tabId);
       await chrome.debugger.detach({ tabId: scope.tabId }).catch(() => {});
       if (chrome.tabs.ungroup) await chrome.tabs.ungroup(scope.tabId).catch(() => {});
     }

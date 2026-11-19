@@ -67,6 +67,34 @@ public sealed class BrowserSessionBridgeTests
     }
 
     [Fact]
+    public async Task Connected_browser_creates_one_session_tab_by_default_without_manual_sharing()
+    {
+        var pipe = "jarvis-tab-autocreate-" + Guid.NewGuid().ToString("N");
+        using var bridge = new BrowserBridge(pipe);
+        await using var browser = await FakeBrowser.Connect(pipe, "Chrome");
+        await Ready(bridge, 1);
+        using var scope = bridge.EnterApplicationSession(AgentSessionRules.NewSessionId());
+        var tool = new BrowserTabsTool(bridge);
+        Assert.False(tool.IsReadOnly); // It creates a new tab unless explicitly requested not to.
+        var context = new JarvisCode.Core.Tools.ToolExecutionContext { WorkingDirectory = @"C:\" };
+
+        var inspect = await tool.ExecuteAsync(new JsonObject { ["createIfEmpty"] = false }, context, default);
+        Assert.False(inspect.IsError);
+        Assert.Contains("no tabs yet", inspect.Content);
+        Assert.Equal(0, browser.CreatedTabCount);
+
+        var created = await tool.ExecuteAsync(new JsonObject(), context, default);
+        Assert.False(created.IsError);
+        Assert.Contains("[1]", created.Content);
+        Assert.Equal(1, browser.CreatedTabCount);
+
+        var listedAgain = await tool.ExecuteAsync(new JsonObject(), context, default);
+        Assert.False(listedAgain.IsError);
+        Assert.Contains("[1]", listedAgain.Content);
+        Assert.Equal(1, browser.CreatedTabCount);
+    }
+
+    [Fact]
     public async Task Native_ready_and_browser_binding_are_acknowledged_by_the_bridge()
     {
         var pipe = "jarvis-binding-ack-" + Guid.NewGuid().ToString("N");
@@ -114,6 +142,7 @@ public sealed class BrowserSessionBridgeTests
         private readonly StreamWriter _writer;
         private readonly Task _loop;
         public int RequestCount;
+        public int CreatedTabCount;
         private FakeBrowser(NamedPipeClientStream pipe, string name, bool sessionAware)
         {
             _pipe = pipe;
@@ -132,8 +161,28 @@ public sealed class BrowserSessionBridgeTests
                         var request = JsonNode.Parse(line)!.AsObject();
                         if (request["event"] is not null) continue;
                         Interlocked.Increment(ref RequestCount);
+                        JsonObject data;
+                        switch (request["cmd"]?.GetValue<string>())
+                        {
+                            case "tabs":
+                                data = new JsonObject
+                                {
+                                    ["result"] = new JsonArray(Enumerable.Range(1, Volatile.Read(ref CreatedTabCount))
+                                        .Select(id => (JsonNode?)new JsonObject
+                                        {
+                                            ["id"] = id, ["title"] = "Agent tab", ["url"] = "about:blank", ["active"] = true
+                                        }).ToArray())
+                                };
+                                break;
+                            case "create_tab":
+                                data = new JsonObject { ["tabId"] = Interlocked.Increment(ref CreatedTabCount), ["grouped"] = true };
+                                break;
+                            default:
+                                data = new JsonObject { ["browser"] = name, ["sessionId"] = request["sessionId"]?.DeepClone() };
+                                break;
+                        }
                         await _writer.WriteLineAsync(new JsonObject { ["id"] = request["id"]!.DeepClone(), ["ok"] = true,
-                            ["data"] = new JsonObject { ["browser"] = name, ["sessionId"] = request["sessionId"]?.DeepClone() } }.ToJsonString());
+                            ["data"] = data }.ToJsonString());
                     }
                 }
                 catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException) { }

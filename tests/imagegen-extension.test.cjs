@@ -23,7 +23,7 @@ function browser() {
     async set(value) { Object.assign(target, structuredClone(value)); } });
   const chrome = {
     runtime: { id: 'test-extension', getURL: name => 'chrome-extension://test-extension/' + name,
-      onMessage: event(), onStartup: event(), onInstalled: event(), getManifest: () => ({ version: '1.4.3' }),
+      onMessage: event(), onStartup: event(), onInstalled: event(), getManifest: () => ({ version: '1.4.4' }),
       connectNative: () => {
         state.nativeConnects++;
         const nativePort = { onMessage: event(), onDisconnect: event(),
@@ -141,14 +141,6 @@ function browser() {
       try { listener(message, sender, resolve); } catch (error) { reject(error); }
     });
   }
-  async function tabConfig(action, args = {}, fromPage = false) {
-    const message = { type: 'JARVIS_TAB_CONFIG', action, ...args };
-    const sender = { id: chrome.runtime.id, url: fromPage ? 'https://example.org/' : chrome.runtime.getURL('imagegen-popup.html') };
-    return new Promise((resolve, reject) => {
-      const listener = chrome.runtime.onMessage.listeners[0];
-      try { listener(message, sender, resolve); } catch (error) { reject(error); }
-    });
-  }
   async function prepare(sessionId = A, jobId = J) { await call(sessionId, 'imagegen_prepare', { jobId }); return call(sessionId, 'imagegen_inspect', { jobId }); }
   async function generate(sessionId = A, jobId = J) {
     await prepare(sessionId, jobId); await call(sessionId, 'imagegen_submit', { jobId, prompt: 'Create a small icon' });
@@ -159,14 +151,14 @@ function browser() {
     for (const fn of chrome.alarms.onAlarm.listeners) await fn({ name });
     await new Promise(resolve => setImmediate(resolve));
   }
-  return { call, config, tabConfig, prepare, generate, state, tabs, downloads, reload, chrome, local,
+  return { call, config, prepare, generate, state, tabs, downloads, reload, chrome, local,
     reconnectAlarms, nativePorts, fireAlarm, context: () => context,
     dispose: () => timerHandles.forEach(clearTimeout) };
 }
 
 test('shipping manifest declares durable native reconnect support', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(base, 'manifest.json'), 'utf8'));
-  assert.equal(manifest.version, '1.4.3');
+  assert.equal(manifest.version, '1.4.4');
   assert.ok(manifest.permissions.includes('alarms'));
 });
 
@@ -184,71 +176,43 @@ test('native disconnect schedules an alarm and an alarm wake reconnects', async 
   assert.equal(b.state.nativeConnects, 2);
   assert.equal(b.reconnectAlarms.has('jarvis.nativeReconnect.v1'), false);
 });
-test('existing Chrome tabs remain private until the extension popup shares the selected tab', async t => {
+test('connected Chrome creates a new Jarvis-owned tab without any manual sharing', async t => {
   const b = browser(); t.after(b.dispose);
-  const existing = await b.chrome.tabs.create({ url: 'https://example.org/', active: true });
+  const personalTab = await b.chrome.tabs.create({ url: 'https://example.org/personal', active: true });
   assert.deepEqual(await b.call(A, 'tabs'), []);
-  assert.equal(b.chrome.runtime.onMessage.listeners.length > 0, true);
-  assert.ok(b.tabConfig);
-  assert.match((await b.tabConfig('share', { sessionId: A }, true)).error, /popup/);
-  assert.match((await b.tabConfig('share', { sessionId: B })).error, /Select an open/);
-  assert.deepEqual(await b.call(B, 'tabs'), []);
-  const shared = await b.tabConfig('share', { sessionId: A });
-  assert.equal(shared.tabId, existing.id);
-  assert.equal(shared.shared, true);
-  const [entry] = await b.call(A, 'tabs');
-  assert.equal(entry.id, existing.id);
-  assert.equal(entry.shared, true);
-  assert.equal(entry.grouped, false);
-  assert.equal(b.tabs.get(existing.id).groupId, -1);
-  assert.deepEqual(await b.call(B, 'tabs'), []);
-  await assert.rejects(b.call(B, 'tab_origin', { tabId: existing.id }), /owned|session|group/);
-  assert.equal((await b.call(A, 'tab_origin', { tabId: existing.id })).url, 'https://example.org/');
-  const selected = await b.call(A, 'select_tab', { tabId: existing.id });
-  assert.equal(selected.grouped, false);
-  assert.equal(b.tabs.get(existing.id).groupId, -1);
-  assert.match((await b.tabConfig('share', { sessionId: B })).error, /another Jarvis session/);
-});
-test('shared user tabs survive worker restart and MCP tab cleanup', async t => {
-  const b = browser(); t.after(b.dispose);
-  const existing = await b.chrome.tabs.create({ url: 'https://example.org/docs', active: true });
-  await b.call(A, 'tabs');
-  await b.tabConfig('share', { sessionId: A });
-  b.reload();
-  assert.equal((await b.call(A, 'tabs'))[0].shared, true);
-  const released = await b.call(A, 'close_tab', { tabId: existing.id });
-  assert.equal(released.released, existing.id);
-  assert.ok(b.tabs.has(existing.id), 'Shared user tab must remain open after MCP cleanup');
+  let replied = false;
+  const request = { type: 'JARVIS_TAB_CONFIG', action: 'share', sessionId: A };
+  const sender = { id: b.chrome.runtime.id, url: b.chrome.runtime.getURL('imagegen-popup.html') };
+  for (const listener of b.chrome.runtime.onMessage.listeners)
+    listener(request, sender, () => { replied = true; });
+  assert.equal(replied, false, 'Removed sharing endpoint must not accept popup messages');
   assert.deepEqual(await b.call(A, 'tabs'), []);
-  await b.call(B, 'tabs');
-  assert.equal((await b.tabConfig('share', { sessionId: B })).shared, true);
-  assert.equal((await b.call(B, 'tabs'))[0].id, existing.id);
-});
-test('session close deletes only session-created tabs and releases explicitly shared user tabs', async t => {
-  const b = browser(); t.after(b.dispose);
-  const existing = await b.chrome.tabs.create({ url: 'https://example.org/', active: true });
-  const created = await b.call(A, 'create_tab', { url: 'https://example.org/new', active: false });
-  const shared = await b.tabConfig('share', { sessionId: A });
-  assert.equal(shared.tabId, existing.id);
+  await assert.rejects(b.call(A, 'tab_origin', { tabId: personalTab.id }), /owned|group/i);
+  const created = await b.call(A, 'create_tab', { url: 'https://example.org/automated' });
+  assert.deepEqual((await b.call(A, 'tabs')).map(t => t.id), [created.tabId]);
+  assert.equal((await b.call(A, 'tab_origin', { tabId: created.tabId })).url, 'https://example.org/automated');
   await b.call(A, 'session', { active: false, close: true });
-  assert.ok(b.tabs.has(existing.id), 'Manual Chrome tab must survive session close');
-  assert.equal(b.tabs.has(created.tabId), false, 'Jarvis-created tab must be closed');
-  assert.match((await b.tabConfig('share', { sessionId: A })).error, /open Jarvis session/);
+  assert.equal(b.tabs.has(created.tabId), false);
+  assert.equal(b.tabs.has(personalTab.id), true, 'Session cleanup never closes unrelated Chrome tabs');
 });
-test('browser tab sharing rejects restricted pages and ownership conflicts', async t => {
+test('1.4.3 shared-tab grants are revoked during migration without closing the user tab', async t => {
   const b = browser(); t.after(b.dispose);
-  const tab = await b.chrome.tabs.create({ url: 'chrome://settings/', active: true });
-  await b.call(A, 'tabs'); await b.call(B, 'tabs');
-  assert.match((await b.tabConfig('share', { sessionId: A })).error, /normal http/);
-  b.tabs.get(tab.id).url = 'https://example.org/';
-  b.tabs.get(tab.id).incognito = true;
-  assert.match((await b.tabConfig('share', { sessionId: A })).error, /normal http/);
-  b.tabs.get(tab.id).incognito = false;
-  assert.equal((await b.tabConfig('share', { sessionId: A })).shared, true);
-  assert.match((await b.tabConfig('share', { sessionId: B })).error, /another Jarvis session/);
-  await b.call(A, 'close_tab', { tabId: tab.id });
-  assert.equal((await b.tabConfig('share', { sessionId: B })).shared, true);
-  assert.equal((await b.call(B, 'tabs'))[0].id, tab.id);
+  const personalTab = await b.chrome.tabs.create({ url: 'https://example.org/personal', active: true });
+  const created = await b.call(A, 'create_tab', { url: 'https://example.org/owned', active: false });
+  const groupId = b.tabs.get(created.tabId).groupId;
+  await b.chrome.storage.session.set({ 'jarvis.applicationSessions.v1': [{
+    id: A, groupId, closed: false, closedAt: null,
+    tabs: [personalTab.id, created.tabId], sharedTabs: [personalTab.id]
+  }] });
+  b.reload();
+  assert.deepEqual((await b.call(A, 'tabs')).map(t => t.id), [created.tabId]);
+  const saved = (await b.chrome.storage.session.get('jarvis.applicationSessions.v1'))['jarvis.applicationSessions.v1'];
+  assert.equal(saved[0].sharedTabs, undefined, 'Old sharing grants are removed from stored session');
+  assert.deepEqual(saved[0].tabs, [created.tabId]);
+  await assert.rejects(b.call(A, 'close_tab', { tabId: personalTab.id }), /owned|group/i);
+  await b.call(A, 'session', { active: false, close: true });
+  assert.equal(b.tabs.has(personalTab.id), true);
+  assert.equal(b.tabs.has(created.tabId), false);
 });
 
 test('new image uses inactive tab in existing window and returns only verified download metadata', async t => {
