@@ -176,9 +176,25 @@ public sealed class ImageGenerationJobs(string root, IImageGenerationBackend bac
             }
             else Update("waiting_for_generation", message: "Reconciling the original browser job; no prompt is resent.");
             JsonObject result;
+            var consecutivePollTimeouts = 0;
             while (true)
             {
-                result = await Call("poll").ConfigureAwait(false);
+                try
+                {
+                    result = await Call("poll").ConfigureAwait(false);
+                    consecutivePollTimeouts = 0;
+                }
+                catch (ImageGenerationException ex) when (ex.Code == "BROWSER_POLL_TIMEOUT" &&
+                    consecutivePollTimeouts < 2 && !ct.IsCancellationRequested)
+                {
+                    // Only observation of this same submitted job can be repeated. Do not
+                    // replay Send, Save, or a result download after an ambiguous response.
+                    consecutivePollTimeouts++;
+                    Update("waiting_for_generation", code: ex.Code,
+                        message: "The selected browser did not answer the image status check. Checking the original request again without resending.");
+                    await Task.Delay(2000, ct).ConfigureAwait(false);
+                    continue;
+                }
                 Update("waiting_for_generation", result);
                 if (result["ready"]?.GetValue<bool>() == true) break;
                 await Task.Delay(2000, ct).ConfigureAwait(false);

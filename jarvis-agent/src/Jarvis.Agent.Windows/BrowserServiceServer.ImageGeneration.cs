@@ -70,7 +70,20 @@ public sealed partial class BrowserServiceServer
                 if (args["jobId"]?.GetValue<string>() is not { } job || !ImageGenerationSafety.IsJobId(job)) throw new ArgumentException("Invalid ImageGen job.");
                 args.Remove("instanceId"); args.Remove("bindingRevision");
                 using var session = _bridge.EnterApplicationSession(request.Context.ApplicationSessionId!);
-                result = await _bridge.RequestForExtensionInstanceAsync(binding.ExtensionInstanceId, "imagegen_" + operation, args, ct).ConfigureAwait(false);
+                try
+                {
+                    result = await _bridge.RequestForExtensionInstanceAsync(binding.ExtensionInstanceId, "imagegen_" + operation, args, ct).ConfigureAwait(false);
+                }
+                catch (TimeoutException) when (operation == "poll" && !ct.IsCancellationRequested)
+                {
+                    // Preserve the native extension deadline across the local pipe. Other
+                    // failures and any timeout during Send or Save are not retryable here.
+                    result = new JsonObject
+                    {
+                        ["errorCode"] = "BROWSER_POLL_TIMEOUT",
+                        ["message"] = "The selected browser did not answer the status check for this image request in time."
+                    };
+                }
             }
         }
         var reply = new BrowserRuntimeReply(result.ToJsonString(WireJson.Options), false);

@@ -1,3 +1,8 @@
+## 1.0.113 - 2026-11-20
+
+- Preserve a selected Chrome/Edge extension's ImageGen status-check timeout as a distinct error and retry observation of the same request up to twice. Never automatically repeat a prompt or download, and keep unresolved jobs blocked when confirmation is unavailable.
+- Keep the bundled extension's account-check deadline active until the session response body is read. The account, tab, marked turn and original-image checks remain required. Bundled extension 1.4.5.
+
 ## 1.0.112 - 2026-11-19
 
 - Remove "Share current Chrome tab with Jarvis" from the extension popup and delete its native-session tab-sharing endpoint. The Agent uses its connected Chrome/Edge extension to open new tabs without manually attaching existing tabs.

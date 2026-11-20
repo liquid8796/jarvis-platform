@@ -23,7 +23,7 @@ function browser() {
     async set(value) { Object.assign(target, structuredClone(value)); } });
   const chrome = {
     runtime: { id: 'test-extension', getURL: name => 'chrome-extension://test-extension/' + name,
-      onMessage: event(), onStartup: event(), onInstalled: event(), getManifest: () => ({ version: '1.4.4' }),
+      onMessage: event(), onStartup: event(), onInstalled: event(), getManifest: () => ({ version: '1.4.5' }),
       connectNative: () => {
         state.nativeConnects++;
         const nativePort = { onMessage: event(), onDisconnect: event(),
@@ -158,7 +158,7 @@ function browser() {
 
 test('shipping manifest declares durable native reconnect support', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(base, 'manifest.json'), 'utf8'));
-  assert.equal(manifest.version, '1.4.4');
+  assert.equal(manifest.version, '1.4.5');
   assert.ok(manifest.permissions.includes('alarms'));
 });
 
@@ -604,6 +604,43 @@ test('a Send click with no new tracked user turn is not reported as successful',
   assert.equal(clicks, 1);
 });
 
+
+test('ChatGPT account probe deadline covers the response body as well as headers', async () => {
+  let pendingDeadline, startBody, finishBody, observedBodyAbort = false;
+  const bodyEntered = new Promise(resolve => { startBody = resolve; });
+  const pause = new Promise(resolve => { finishBody = resolve; });
+  const context = vm.createContext({
+    location: { origin: 'https://chatgpt.com', pathname: '/c/test-conversation' },
+    AbortController, TextEncoder, crypto: require('node:crypto').webcrypto,
+    setTimeout(callback, duration) {
+      assert.equal(duration, 8000);
+      pendingDeadline = callback;
+      return 1;
+    },
+    clearTimeout(id) { assert.equal(id, 1); pendingDeadline = null; },
+    async fetch(route, { signal }) {
+      assert.equal(route, '/api/auth/session');
+      return { ok: true, json: () => new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => {
+          observedBodyAbort = true;
+          reject(signal.reason);
+        }, { once: true });
+        pause.then(() => resolve({ user: { id: 'synthetic-fixture-only' } }));
+        startBody();
+      }) };
+    }
+  });
+  vm.runInContext(fs.readFileSync(path.join(base, 'imagegen-page.js'), 'utf8'), context);
+  const checking = context.jarvisImageGenPage('account');
+  await bodyEntered;
+  pendingDeadline?.();
+  finishBody();
+  const result = await checking;
+  assert.equal(result.errorCode, 'ACCOUNT_UNVERIFIED');
+  assert.equal(observedBodyAbort, true);
+  assert.equal(pendingDeadline, null);
+});
+
 test('current ChatGPT turn IDs and generated image viewer are verified before download', async () => {
   const marker = '[jarvis-imagegen:' + J + ']';
   const userId = '081404c7-1812-4159-a02e-332d1e24b8a4';
@@ -637,11 +674,23 @@ test('current ChatGPT turn IDs and generated image viewer are verified before do
   const context = vm.createContext({ document, location: { origin: 'https://chatgpt.com', pathname: '/c/test-conversation' },
     setTimeout: callback => callback() });
   vm.runInContext(fs.readFileSync(path.join(base, 'imagegen-page.js'), 'utf8'), context);
+  image.complete = false;
+  const stillLoading = await context.jarvisImageGenPage('poll', { marker, userIds: [] });
+  assert.equal(stillLoading.ready, false);
+  assert.equal(stillLoading.count, 0);
+  assert.equal(stillLoading.userMessageId, userId);
+  image.complete = true;
   const poll = await context.jarvisImageGenPage('poll', { marker, userIds: [] });
   assert.equal(poll.ready, true);
   assert.equal(poll.userMessageId, userId);
   assert.equal(poll.count, 1);
   assert.match(poll.keys[0], new RegExp(assistantId));
+  const wrongMessage = await context.jarvisImageGenPage('click_save', {
+    marker, userIds: [], userMessageId: assistantId, index: 0, key: poll.keys[0]
+  });
+  assert.equal(wrongMessage.errorCode, 'CONVERSATION_CHANGED');
+  assert.equal(previews, 0);
+  assert.equal(downloaded, 0);
   const save = await context.jarvisImageGenPage('click_save', {
     marker, userIds: [], userMessageId: userId, index: 0, key: poll.keys[0]
   });

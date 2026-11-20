@@ -180,6 +180,47 @@ public sealed class ImageGenerationTests : IDisposable
         Assert.True(result["connected"]!.GetValue<bool>());
         Assert.Equal(JsonValueKind.Array, result["jobs"]!.GetValueKind());
     }
+
+    [Fact]
+    public async Task TransientBrowserPollDeadlineStillImportsTheOriginalJobWithoutResendOrStop()
+    {
+        var backend = new Backend { PollDeadlines = 1, NotReadyPolls = 1 };
+        using var jobs = new ImageGenerationJobs(_root, backend, new Artifacts());
+        var context = Context();
+        var job = await jobs.StartAsync(Request(), context, default);
+        var result = await Wait(jobs, context, job.JobId, "completed");
+        Assert.Single(result["artifacts"]!.AsArray());
+        Assert.Equal(new[] { "prepare", "inspect", "submit", "poll", "poll", "poll", "download", "download_status" }, backend.Calls);
+    }
+
+    [Fact]
+    public async Task PersistentBrowserPollDeadlineStopsAfterThreeObservationsButStillBlocksAnotherSend()
+    {
+        var backend = new Backend { PollDeadlines = int.MaxValue };
+        using var jobs = new ImageGenerationJobs(_root, backend, new Artifacts());
+        var context = Context();
+        var job = await jobs.StartAsync(Request(), context, default);
+        var result = await Wait(jobs, context, job.JobId, "completion_unknown");
+        Assert.Equal("BROWSER_POLL_TIMEOUT", result["errorCode"]?.GetValue<string>());
+        Assert.True(result["submissionAttempted"]!.GetValue<bool>());
+        Assert.Empty(result["artifacts"]!.AsArray());
+        Assert.Equal(new[] { "prepare", "inspect", "submit", "poll", "poll", "poll" }, backend.Calls);
+        var blocked = await Assert.ThrowsAsync<ImageGenerationException>(() => jobs.StartAsync(Request("next"), context, default));
+        Assert.Equal("SESSION_BUSY", blocked.Code);
+    }
+
+    [Fact]
+    public async Task ADownloadDeadlineIsNotAutomaticallyReplayed()
+    {
+        var backend = new Backend { TimeoutOperation = "download" };
+        using var jobs = new ImageGenerationJobs(_root, backend, new Artifacts());
+        var context = Context();
+        var job = await jobs.StartAsync(Request(), context, default);
+        var result = await Wait(jobs, context, job.JobId, "completion_unknown");
+        Assert.Empty(result["artifacts"]!.AsArray());
+        Assert.Equal(new[] { "prepare", "inspect", "submit", "poll", "download" }, backend.Calls);
+    }
+
     private static JsonObject ReadJson(ToolReply reply) => JsonNode.Parse(reply.Text)!.AsObject();
     private static async Task<JsonObject> Wait(ImageGenerationJobs jobs, AgentExecutionContext context, string id, string expected)
     {
@@ -200,6 +241,9 @@ public sealed class ImageGenerationTests : IDisposable
         public string? FailOperation { get; set; }
         public string Failure { get; set; } = "FAILURE";
         public string? BlockOperation { get; set; }
+        public string? TimeoutOperation { get; init; }
+        public int PollDeadlines { get; set; }
+        public int NotReadyPolls { get; set; }
         public bool ReturnParentedState { get; set; }
         public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ImageBrowserBinding Binding { get; set; } = new(Guid.NewGuid().ToString(), "chrome", Guid.NewGuid().ToString("N"));
@@ -216,6 +260,10 @@ public sealed class ImageGenerationTests : IDisposable
         {
             Calls.Enqueue(operation);
             if (operation == BlockOperation) { Entered.TrySetResult(); await Task.Delay(Timeout.Infinite, ct); }
+            if (operation == TimeoutOperation) throw new TimeoutException("The browser did not answer in time.");
+            if (operation == "poll" && PollDeadlines-- > 0)
+                return new JsonObject { ["errorCode"] = "BROWSER_POLL_TIMEOUT", ["message"] = "Synthetic browser observation deadline" };
+            if (operation == "poll" && NotReadyPolls-- > 0) return new JsonObject { ["ready"] = false };
             if (operation == FailOperation) return new JsonObject { ["errorCode"] = Failure, ["message"] = "Synthetic failure" };
             return new JsonObject { ["ready"] = true, ["downloads"] = new JsonArray() };
         }

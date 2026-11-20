@@ -72,12 +72,10 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
     return cards;
   }
   if (action === 'account') {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      let response;
-      try { response = await fetch('/api/auth/session', { credentials: 'include', redirect: 'error', signal: controller.signal }); }
-      finally { clearTimeout(timer); }
+      const response = await fetch('/api/auth/session', { credentials: 'include', redirect: 'error', signal: controller.signal });
       if (response.status === 403) return fail('CHALLENGE', 'Complete the verification in your selected ChatGPT tab.');
       if (!response.ok) return fail('ACCOUNT_UNVERIFIED', 'ChatGPT account state could not be verified.');
       // Only user identity is inspected. Never export accessToken, cookies or the full response.
@@ -86,6 +84,7 @@ globalThis.jarvisImageGenPage = async function (action, data = {}) {
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(identity));
       return { accountHash: [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('') };
     } catch { return fail('ACCOUNT_UNVERIFIED', 'ChatGPT account state could not be verified.'); }
+    finally { clearTimeout(timer); }
   }
   if (action === 'inspect') {
     if (document.querySelector('iframe[src*="challenges.cloudflare.com"],#challenge-running')) return fail('CHALLENGE', 'Complete the verification in ChatGPT.');

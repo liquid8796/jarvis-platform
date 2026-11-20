@@ -14,3 +14,4 @@ vm-ssh/
 *.user
 **/__pycache__/
 *.py[cod]
+_local/

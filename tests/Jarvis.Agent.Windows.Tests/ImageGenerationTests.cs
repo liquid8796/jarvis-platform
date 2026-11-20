@@ -1,4 +1,6 @@
 using System.IO;
+using System.IO.Pipes;
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -129,6 +131,77 @@ public sealed class ImageGenerationTests : IDisposable
         Assert.Contains("1.4.1+", vm.Status, StringComparison.Ordinal);
         Assert.Contains("automatic reconnect", vm.Status, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task NativeBrowserPollDeadlineCanBeObservedAgainOnExactOriginalBinding()
+    {
+        // Real Windows service and extension pipes, unique to this test. The fake extension
+        // responds only to the ordinary, already accepted original job (no real browser or account).
+        var suffix = Guid.NewGuid().ToString("N");
+        var servicePipe = "jarvis-imagegen-poll-service-" + suffix;
+        var extensionPipe = "jarvis-imagegen-poll-extension-" + suffix;
+        var bindingStore = new ImageGenBrowserBindingStore(_root);
+        var binding = bindingStore.Save(Guid.NewGuid().ToString("D"), "chrome", null);
+        var context = new AgentExecutionContext(_root, "test-call", AgentSessionRules.NewSessionId()) { OwnerId = "owner", AgentDeviceId = "device" };
+        var job = new ImageGenerationJob { JobId = JobId, OwnerId = "owner", DeviceId = "device", SessionId = context.SessionId,
+            RequestId = "original", RequestDigest = "original-digest", Prompt = "An already-submitted test image", Binding = binding };
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        using var service = new BrowserServiceServer(servicePipe, extensionPipe, _root);
+        var serviceTask = service.RunAsync(stop.Token);
+        using var client = new BrowserRuntimeClient(servicePipe);
+        await using var pipe = new NamedPipeClientStream(".", extensionPipe, PipeDirection.InOut, PipeOptions.Asynchronous);
+        try
+        {
+            await pipe.ConnectAsync(5000, stop.Token);
+            using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
+            using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+            async Task Write(JsonObject value) => await writer.WriteLineAsync(value.ToJsonString().AsMemory(), stop.Token);
+            async Task<JsonObject> Read() => JsonNode.Parse((await reader.ReadLineAsync(stop.Token))!)!.AsObject();
+            await Write(new JsonObject
+            {
+                ["event"] = "ready", ["browser"] = "Chrome", ["browserFamily"] = "extension",
+                ["browserProtocolVersion"] = 2, ["nativeHostProtocolVersion"] = 2, ["applicationSessions"] = true,
+                ["extensionInstanceId"] = binding.ExtensionInstanceId,
+                ["capabilities"] = new JsonArray("imagegen-v1", "application-sessions-v1")
+            });
+            var handshake = await Read();
+            Assert.Equal("jarvis_native_ready", handshake["event"]!.GetValue<string>());
+            Assert.True(handshake["accepted"]!.GetValue<bool>());
+
+            var backend = new ChatGptExtensionImageBackend(client, bindingStore);
+            void VerifyProbe(JsonObject request)
+            {
+                Assert.Equal("imagegen_poll", request["cmd"]!.GetValue<string>());
+                Assert.Equal(context.SessionId, request["sessionId"]!.GetValue<string>());
+                Assert.Equal(JobId, request["args"]!["jobId"]!.GetValue<string>());
+                Assert.Null(request["args"]!["prompt"]);
+            }
+            var first = backend.CallAsync("poll", job, context, stop.Token);
+            var slow = await Read(); VerifyProbe(slow);
+            // Delay its real acknowledgement beyond the bridge's own request deadline.
+            var timedOut = await first;
+            Assert.Equal("BROWSER_POLL_TIMEOUT", timedOut["errorCode"]?.GetValue<string>());
+            var second = backend.CallAsync("poll", job, context, stop.Token);
+            var fresh = await Read(); VerifyProbe(fresh);
+            Assert.NotEqual(slow["id"]!.GetValue<string>(), fresh["id"]!.GetValue<string>());
+            await Write(new JsonObject { ["id"] = slow["id"]!.DeepClone(), ["ok"] = true,
+                ["data"] = new JsonObject { ["ready"] = false } });
+            await Write(new JsonObject { ["id"] = fresh["id"]!.DeepClone(), ["ok"] = true,
+                ["data"] = new JsonObject { ["ready"] = true, ["count"] = 1, ["conversationId"] = "original-conversation" } });
+            var current = await second;
+            Assert.True(current["ready"]!.GetValue<bool>());
+            Assert.Equal(1, current["count"]!.GetValue<int>());
+            Assert.Equal("original-conversation", current["conversationId"]!.GetValue<string>());
+            Assert.Equal(binding, bindingStore.Read());
+        }
+        finally
+        {
+            await pipe.DisposeAsync();
+            stop.Cancel();
+            try { await serviceTask; } catch (OperationCanceledException) { }
+        }
+    }
+
     private static JsonObject Result(string path, long size) => new() { ["downloads"] = new JsonArray(new JsonObject
     { ["filename"] = path, ["state"] = "complete", ["downloadId"] = 7, ["fileSize"] = size }) };
     private static byte[] MakePng(int width, int height)
